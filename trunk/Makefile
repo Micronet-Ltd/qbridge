@@ -17,7 +17,7 @@ linkscript 	:= $(target).x
 
 ARCH            := arm
 COMPILER_PREFIX := arm-elf-
-CFLAGS          := -mcpu=arm720t -mlittle-endian -mapcs-32 -Wa,-ahld -Wall -fno-strict-aliasing -fno-builtin
+CFLAGS          := -mcpu=arm7tdmi -mlittle-endian -mapcs-32 -Wa,-ahld -Wall -fno-strict-aliasing -fno-builtin
 OPTIMIZE        := -Os
 IFLAGS          := -Isrc -I/usr/local/arm-elf/include
 
