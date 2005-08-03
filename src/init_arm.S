@@ -130,7 +130,7 @@ data_cpy:
    CMP	 r2, r1
    BNE	 data_cpy
       
-   @ Clear the bss section in SDRAM
+   @ Clear the bss section in RAM
 init_bss:
    MOV	 r0, #0
    LDR	 r1, =_bss_start
