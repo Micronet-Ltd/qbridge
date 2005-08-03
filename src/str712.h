@@ -65,7 +65,7 @@ typedef struct
 	volatile unsigned long pll1cr;
 	volatile unsigned long per;
 	volatile unsigned long smr;
-} RCCUREGS
+} RCCUREGS;
 #endif /* _ASM_ */
 
 
@@ -87,7 +87,7 @@ typedef struct
 	volatile unsigned long pll2cr;
 	volatile unsigned long bootcr;
 	volatile unsigned long pwrcr;
-} RCCUREGS
+} PCUREGS;
 #endif /* _ASM_ */
 
 
@@ -109,6 +109,59 @@ typedef struct
 #define UART1_REG_BASE		(APB1_REG_BASE + 0x5000)
 #define UART2_REG_BASE		(APB1_REG_BASE + 0x6000)
 #define UART3_REG_BASE		(APB1_REG_BASE + 0x7000)
+
+enum UartInterrupts { 
+	RxHalfFullIE		= 0x0100,
+	TimeoutIdleIE		= 0x0080,
+	TimeoutNotEmptyIE	= 0x0040,
+	OverrunErrorIE		= 0x0020,
+	FrameErrorIE		= 0x0010,
+	ParityErrorIE		= 0x0008,
+	TxHalfEmptyIE		= 0x0004,
+	TxEmptyIE			= 0x0002,
+	RxBufNotEmptyIE	= 0x0001,
+};
+
+enum UartStatusBits {
+	TxFull				= 0x0200,
+	RxHalfFull			= 0x0100,
+	TimeoutIdle			= 0x0080,
+	TimeoutNotEmtpy	= 0x0040,
+	OverrunError		= 0x0020,
+	FrameError			= 0x0010,
+	ParityError			= 0x0008,
+	TxHalfEmpty			= 0x0004,
+	TxEmpty				= 0x0002,
+	RxBufNotEmtpy		= 0x0001,
+};
+
+struct UARTRegisterMap {
+	volatile UINT32 BaudRate;
+	volatile UINT32 txBuffer;
+	volatile UINT32 rxBuffer;
+	volatile UINT32 portSettings;
+	volatile UINT32 intEnable;
+	volatile UINT32 status;
+	volatile UINT32 guardTime;
+	volatile UINT32 timeout;
+	volatile UINT32 txReset;
+	volatile UINT32 rxReset;
+};
+
+union UARTSettingsMap {
+	UINT32 value;
+	struct {
+		UINT32 mode:3;
+		UINT32 stopBits:2;
+		UINT32 parityOdd:1;
+		UINT32 loopBack:1;
+		UINT32 run:1;
+		UINT32 rxEnable:1;
+		UINT32 reserved1:1;
+		UINT32 fifoEnable:1;
+		UINT32 reserved2:21;
+	};
+};
 
 /*******/
 /* USB */
