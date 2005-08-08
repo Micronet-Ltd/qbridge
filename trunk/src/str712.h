@@ -135,7 +135,7 @@ enum UartStatusBits {
 	RxBufNotEmtpy		= 0x0001,
 };
 
-struct UARTRegisterMap {
+typedef struct _UARTRegisterMap {
 	volatile UINT32 BaudRate;
 	volatile UINT32 txBuffer;
 	volatile UINT32 rxBuffer;
@@ -146,9 +146,9 @@ struct UARTRegisterMap {
 	volatile UINT32 timeout;
 	volatile UINT32 txReset;
 	volatile UINT32 rxReset;
-};
+} UARTRegisterMap;
 
-union UARTSettingsMap {
+typedef union _UARTSettingsMap {
 	UINT32 value;
 	struct {
 		UINT32 mode:3;
@@ -161,7 +161,7 @@ union UARTSettingsMap {
 		UINT32 fifoEnable:1;
 		UINT32 reserved2:21;
 	};
-};
+} UARTSettingsMap;
 
 /*******/
 /* USB */
@@ -186,6 +186,17 @@ union UARTSettingsMap {
 /********/
 /* GPIO */
 /********/
+
+#define IOPORT0_REG_BASE (APB2_REG_BASE + 0x3000)
+#define IOPORT1_REG_BASE (APB2_REG_BASE + 0x4000)
+#define IOPORT2_REG_BASE (APB2_REG_BASE + 0x5000)
+
+typedef struct _IOPortRegisterMap {
+	volatile UINT32 PC0;
+	volatile UINT32 PC1;
+	volatile UINT32 PC2;
+	volatile UINT32 PD;
+} IOPortRegisterMap;
 
 /*******/
 /* ADC */

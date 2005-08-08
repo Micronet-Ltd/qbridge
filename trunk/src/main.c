@@ -1,9 +1,22 @@
 /*******************************************************************/
 /*                                                                 */
-/* File:  main.c                                                   */
+/* File:  api.c                                                    */
 /*                                                                 */
 /* Description: STR712 Qbridge (J1708/J1939 to serial converter)   */
 /*                                                                 */
+/*                                                                 */
+/*******************************************************************/
+/*      This program, in any form or on any media, may not be      */
+/*        used for any purpose without the express, written        */
+/*                      consent of QSI Corp.                       */
+/*                                                                 */
+/*             (c) Copyright 2005 QSI Corporation                  */
+/*******************************************************************/
+/* Release History                                                 */
+/*                                                                 */
+/*  Date        By           Rev     Description                   */
+/*-----------------------------------------------------------------*/
+/* 08-Aug-05  JBR/MKE        1.0     1st Release                   */
 /*******************************************************************/
 
 /*****************************/
@@ -14,6 +27,7 @@
 /*******************************/
 /* Programmer Library Includes */
 /*******************************/
+#include "serial.h"
 
 /***********/
 /* Pragmas */
@@ -62,7 +76,6 @@ unsigned long irq_stack[256] __attribute__((section(".irqstack"))) = { 0 };
 /**************/
 void irq_lockup(void)
 {
-#if 0
 	/* 
 	 * Jeremy, you can re-enable the print code when you have a serial
 	 * driver working.
@@ -76,28 +89,27 @@ void irq_lockup(void)
 
 	switch (mode) {
 	case ARM_MODE_FIQ:
-		print("FIQ");
+		DebugPrint("FIQ");
 		break;
 	case ARM_MODE_IRQ:
-		print("IRQ");
+		DebugPrint("IRQ");
 		break;
 	case ARM_MODE_SVC:
-		print("SWI");
+		DebugPrint("SWI");
 		break;
 	case ARM_MODE_ABT:
-		print("ABORT");
+		DebugPrint("ABORT");
 		break;
 	case ARM_MODE_UND:
-		print("UNDEFINED INSN");
+		DebugPrint("UNDEFINED INSN");
 		break;
 	default:
-		print("UNKNOWN");
-		print(errmsg);
+		DebugPrint("UNKNOWN");
+		//DebugPrint(errmsg);
 		for(;;) ; /* Lock up here for default case */
 	}
 
-	printf2("Unhandled exception: cpsr=0x%x lr=0x%x\r\n", cpsr, lr);
-#endif /* #if 0 */
+	DebugPrint("Unhandled exception: cpsr=0x%x lr=0x%x\r\n", cpsr, lr);
 
 	/* Now lock the machine */
 	for(;;) ; 
@@ -107,5 +119,11 @@ void irq_lockup(void)
 /* main */
 /********/
 int main(void) {
-	return (0);
+	InitializeAllSerialPorts();
+	Transmit (&com1, "Hello World", 11);
+
+
+
+	DebugPrint ("End of program reached. . . . Locking terminal");
+	while(1);
 }
