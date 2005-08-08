@@ -1,7 +1,30 @@
+/*******************************************************************/
+/*                                                                 */
+/* File:  serial.c                                                 */
+/*                                                                 */
+/* Description: QBridge serial drivers                             */
+/*                                                                 */
+/*                                                                 */
+/*******************************************************************/
+/*      This program, in any form or on any media, may not be      */
+/*        used for any purpose without the express, written        */
+/*                      consent of QSI Corp.                       */
+/*                                                                 */
+/*             (c) Copyright 2005 QSI Corporation                  */
+/*******************************************************************/
+/* Release History                                                 */
+/*                                                                 */
+/*  Date        By           Rev     Description                   */
+/*-----------------------------------------------------------------*/
+/* 08-Aug-05  JBR            1.0     1st Release                   */
+/*******************************************************************/
+
 #include "serial.h"
 
+#include <stdarg.h>
+
 // Assumes a baud clock of 14.7456 MHz
-#define bauddiv_460800  0x2
+/*#define bauddiv_460800  0x2
 #define bauddiv_230400  0x4 
 #define bauddiv_115200  0x8
 #define bauddiv_57600   0x10
@@ -13,12 +36,27 @@
 #define bauddiv_2400    0x180
 #define bauddiv_1200    0x300
 #define bauddiv_600     0x600
+*/
+
+// Assumes a baud clock of 16.0 MHz
+#define bauddiv_460800  2
+#define bauddiv_230400  4 
+#define bauddiv_115200  9
+#define bauddiv_57600   17
+#define bauddiv_38400   26
+#define bauddiv_19200   52
+#define bauddiv_14400   69
+#define bauddiv_9600    104
+#define bauddiv_4800    208
+#define bauddiv_2400    417
+#define bauddiv_1200    833
+#define bauddiv_600     1667
 
 
-struct BaudTableEntry {
+typedef struct _BaudTableEntry {
 	UINT32 baud;
 	UINT32 divisor;
-};
+} BaudTableEntry;
 
 static const BaudTableEntry BaudRateTable[] = {
    { 115200l, bauddiv_115200},
@@ -33,21 +71,53 @@ static const BaudTableEntry BaudRateTable[] = {
    { 600l,    bauddiv_600},
 };
 
+static void InitializePort (SerialPort *port);
 
-SerialPort com1 = { (UARTRegisterMap volatile * const)(UART0_REG_BASE) };
+SerialPort com1;
+SerialPort com2;
+IOPortRegisterMap * ioPort0;
+IOPortRegisterMap * ioPort1;
+
+/*****************************/
+/* InitializeAllSerialPorts */
+/***************************/
+void InitializeAllSerialPorts() {
+	ioPort0 = (IOPortRegisterMap *)IOPORT0_REG_BASE;
+	ioPort1 = (IOPortRegisterMap *)IOPORT1_REG_BASE;
+	
+	// Set the Alternate function for UART0 RX and TX pins 
+	ioPort0->PC0 |= (BIT(8)|BIT(9));
+	ioPort0->PC1 |= (BIT(8)|BIT(9));
+	ioPort0->PC2 |= (BIT(8)|BIT(9));
+/*	ioPort0->PC0 |= (BIT(8)|BIT(9)|BIT(10)|BIT(11));
+	ioPort0->PC1 |= (BIT(8)|BIT(9)|BIT(10)|BIT(11));
+	ioPort0->PC2 |= (BIT(8)|BIT(9)|BIT(10)|BIT(11));
+*/
+
+	/* Set the Alternate function for UART1 RX and TX pins */
+/*	ioPort1->PC0 |= (BIT(8)|BIT(9));
+	ioPort1->PC1 |= (BIT(8)|BIT(9));
+	ioPort1->PC2 |= (BIT(8)|BIT(9));
+*/
+	com1.port = (UARTRegisterMap volatile * const)(UART0_REG_BASE);
+	InitializePort(&com1);
+
+	com2.port = (UARTRegisterMap volatile * const)(UART1_REG_BASE);
+	InitializePort(&com2);
+}
 
 /*******************/
 /* InitializePort */
 /*****************/
-void InitializePort (SerialPort *port) {
+static void InitializePort (SerialPort *port) {
 	IRQSTATE saveState = 0;
 	DISABLE_IRQ(saveState);
 	InitializeQueue(&(port->rxQueue));
 	InitializeQueue(&(port->txQueue));
 	RESTORE_IRQ(saveState);
 
-	SetPortSettings(port, 19200, 8, 'N', 1);
-	port->port->intEnable = (RxHalfFullIE | TimeoutNotEmptyIE | OverrunErrorIE | FrameErrorIE | ParityErrorIE | TxHalfEmptyIE);
+	SetPortSettings(port, 19200l, 8, 'N', 1);
+	//port->port->intEnable = (RxHalfFullIE | TimeoutNotEmptyIE | OverrunErrorIE | FrameErrorIE | ParityErrorIE | TxHalfEmptyIE);
 	port->port->guardTime = 0;
 	port->port->timeout = 8;
 }
@@ -62,8 +132,8 @@ bool SetPortSettings (SerialPort *port, UINT32 baud, UINT8 dataBits, UINT8 parit
 		{ 0x4, 0x0, 0x0 }, // 9 Data Bits ( N E O )
 	};
 	int i;
-	UINT32 divisor=0;
 	int parityIndex = -1;
+	UINT32 divisor= 0;
 
 	for (i = 0; i < ARRAY_SIZE(BaudRateTable); i++) {
 		if (BaudRateTable[i].baud == baud) {
@@ -116,6 +186,7 @@ bool SetPortSettings (SerialPort *port, UINT32 baud, UINT8 dataBits, UINT8 parit
 	DISABLE_IRQ(saveState);
 	port->port->BaudRate = divisor;
 	port->port->portSettings = map.value;
+	port->port->txReset = 0;
 	RESTORE_IRQ(saveState);
 	return true;
 }
@@ -142,4 +213,33 @@ void StuffTxFifo(SerialPort *port) {
 		port->port->txBuffer = DequeueOne(&port->txQueue);
 	}
 	RESTORE_IRQ(saveState);
+}
+
+/*******************/
+/* PortTxFifoFull */
+/*****************/
+bool PortTxFifoFull(SerialPort *port) { 
+	return (port->port->status & TxFull) != 0; 
+}
+
+/***************/
+/* DebugPrint */
+/*************/
+void DebugPrint(char *formatStr, ...) {
+	char buf[512];
+	int len;
+	va_list ap;
+	va_start(ap, formatStr);
+	strncpy(buf, formatStr, 510);
+	//vsnprintf(buf, 510, formatStr, ap);
+	va_end(ap);
+	len = strlen(buf);
+	
+	// Append a \r\n to the output
+	buf[len] = '\r';
+	buf[len+1] = '\n';
+	buf[len+2] = '\0';
+	len += 2;
+
+	Transmit (&com2, buf, len);
 }

@@ -133,6 +133,9 @@
 						CompileAs="2"/>
 				</FileConfiguration>
 			</File>
+			<File
+				RelativePath=".\src\stubs.c">
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"

@@ -13,12 +13,12 @@ versdash        := -
 
 target	  	:= qbridge
 
-linkscript 	:= $(target).x
+linkscript 	:= $(target)_deb.x
 
 ARCH            := arm
 COMPILER_PREFIX := arm-elf-
-CFLAGS          := -mcpu=arm7tdmi -mlittle-endian -mapcs-32 -Wa,-ahld -Wall -fno-strict-aliasing -fno-builtin
-OPTIMIZE        := -Os
+CFLAGS          := -mcpu=arm7tdmi -mlittle-endian -mapcs-32 -Wa,-ahld -Wall -fno-strict-aliasing -fno-builtin -g
+OPTIMIZE        := 
 IFLAGS          := -Isrc -I/usr/local/arm-elf/include
 
 LIBPATH         := -L/usr/local/arm-elf/lib -L/usr/local/lib/gcc-lib/arm-elf/3.3.1
