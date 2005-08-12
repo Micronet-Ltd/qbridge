@@ -136,3 +136,21 @@ UINT8 DequeueOne (CircleQueue *queue) {
 		return retVal;
 	}
 }
+
+/***************/
+/* DequeueBuf */
+/*************/
+int DequeueBuf(CircleQueue *queue, UINT8*buf, int bufLen) {
+	if (queue->count < bufLen) {
+		bufLen = queue->count;
+	}
+
+	int count;
+	for (count=0; count < bufLen; count++, buf++) {
+		*buf = queue->data[queue->tail];
+		queue->tail = (queue->tail + 1) % QUEUE_SIZE;
+	}
+	queue->count -= bufLen;
+
+	return bufLen;
+}

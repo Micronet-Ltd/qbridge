@@ -18,6 +18,7 @@ int Enqueue(CircleQueue *queue, const UINT8* data, UINT16 length);
 extern inline bool QueueFull (CircleQueue *queue);
 extern inline bool QueueEmpty (CircleQueue *queue);
 extern inline UINT8 DequeueOne (CircleQueue *queue);
+int DequeueBuf(CircleQueue *queue, UINT8*buf, int bufLen);
 
 
 

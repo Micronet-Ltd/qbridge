@@ -21,8 +21,8 @@
 
 #include "serial.h"
 
-#include <string.h>
 #include <stdarg.h>
+#include <string.h>
 
 // Assumes a baud clock of 14.7456 MHz
 /*#define bauddiv_460800  0x2
@@ -87,19 +87,11 @@ void InitializeAllSerialPorts() {
 	ioPort1 = (IOPortRegisterMap *)IOPORT1_REG_BASE;
 	
 	// Set the Alternate function for UART0 RX and TX pins 
-	ioPort0->PC0 |= (BIT(8)|BIT(9));
-	ioPort0->PC1 |= (BIT(8)|BIT(9));
-	ioPort0->PC2 |= (BIT(8)|BIT(9));
-/*	ioPort0->PC0 |= (BIT(8)|BIT(9)|BIT(10)|BIT(11));
+	//ioPort0->PC0 |= (BIT(8)|BIT(9)|BIT(10)|BIT(11));
+	ioPort0->PC0 &= ~((BIT(8)|BIT(9)|BIT(10)|BIT(11)));
 	ioPort0->PC1 |= (BIT(8)|BIT(9)|BIT(10)|BIT(11));
 	ioPort0->PC2 |= (BIT(8)|BIT(9)|BIT(10)|BIT(11));
-*/
 
-	/* Set the Alternate function for UART1 RX and TX pins */
-/*	ioPort1->PC0 |= (BIT(8)|BIT(9));
-	ioPort1->PC1 |= (BIT(8)|BIT(9));
-	ioPort1->PC2 |= (BIT(8)|BIT(9));
-*/
 	com1.port = (UARTRegisterMap volatile * const)(UART0_REG_BASE);
 	InitializePort(&com1);
 
@@ -188,6 +180,7 @@ bool SetPortSettings (SerialPort *port, UINT32 baud, UINT8 dataBits, UINT8 parit
 	port->port->BaudRate = divisor;
 	port->port->portSettings = map.value;
 	port->port->txReset = 0;
+	port->port->rxReset = 0;
 	RESTORE_IRQ(saveState);
 	return true;
 }
@@ -221,6 +214,27 @@ void StuffTxFifo(SerialPort *port) {
 /*****************/
 bool PortTxFifoFull(SerialPort *port) { 
 	return (port->port->status & TxFull) != 0; 
+}
+
+UINT8 portValue;
+/******************/
+/* ProcessRxFifo */
+/****************/
+void ProcessRxFifo (SerialPort *port) {
+	IRQSTATE saveState = 0;
+	DISABLE_IRQ(saveState);
+	while (PortRxFifoNotEmpty(port)) {
+		portValue = port->port->rxBuffer;
+		Enqueue (&(port->rxQueue), &portValue, 1);
+	}
+	RESTORE_IRQ(saveState);
+}
+
+/***********************/
+/* PortRxFifoNotEmpty */
+/*********************/
+inline bool PortRxFifoNotEmpty(SerialPort *port) {
+	return (port->port->status & RxBufNotEmtpy) != 0; 
 }
 
 /***************/
