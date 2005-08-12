@@ -21,6 +21,7 @@
 
 #include "serial.h"
 
+#include <string.h>
 #include <stdarg.h>
 
 // Assumes a baud clock of 14.7456 MHz
