@@ -110,6 +110,7 @@ typedef struct
 #define UART2_REG_BASE		(APB1_REG_BASE + 0x6000)
 #define UART3_REG_BASE		(APB1_REG_BASE + 0x7000)
 
+#ifndef _ASM_
 enum UartInterrupts { 
 	RxHalfFullIE		= 0x0100,
 	TimeoutIdleIE		= 0x0080,
@@ -162,6 +163,7 @@ typedef union _UARTSettingsMap {
 		UINT32 reserved2:21;
 	};
 } UARTSettingsMap;
+#endif /* _ASM_ */
 
 /*******/
 /* USB */
@@ -182,6 +184,52 @@ typedef union _UARTSettingsMap {
 /*******/
 /* XTI */
 /*******/
+#define XTI_REG_BASE     (APB2_REG_BASE + 0x1000)
+
+#define XTI_SR_OFFSET    0x1c
+#define XTI_CTRL_OFFSET  0x24
+#define XTI_MRH_OFFSET   0x28
+#define XTI_MRL_OFFSET   0x2c
+#define XTI_TRH_OFFSET   0x30
+#define XTI_TRL_OFFSET   0x34
+#define XTI_PRH_OFFSET   0x38
+#define XTI_PRL_OFFSET   0x3c
+
+#ifndef _ASM_
+typedef struct {
+	volatile unsigned long pad1[7];
+	volatile unsigned long sr;   /* 0x1c */
+	volatile unsigned long pad2;
+	volatile unsigned long ctrl; /* 0x24 */
+	volatile unsigned long mrh;
+	volatile unsigned long mrl;
+	volatile unsigned long trh;
+	volatile unsigned long trl;
+	volatile unsigned long prh;
+	volatile unsigned long prl;
+} XTIREGS;
+
+typedef enum {
+	XTI_SW,          /* S/W interrupt */
+	XTI_USB,         /* USB wake-up event */
+	XTI_PORT2_8,     /* Port 2.8 */
+	XTI_PORT2_9,     /* Port 2.9 */
+	XTI_PORT2_10,    /* Port 2.10 */
+	XTI_PORT2_11,    /* Port 2.11 */
+	XTI_PORT1_11,    /* Port 1.11 */
+	XTI_PORT1_13,    /* Port 1.13 */
+	XTI_PORT1_14,    /* Port 1.14 */
+	XTI_PORT0_1,     /* Port 0.1 */
+	XTI_PORT0_2,     /* Port 0.2 */
+	XTI_PORT0_6,     /* Port 0.6 */
+	XTI_PORT0_8,     /* Port 0.8 */
+	XTI_PORT0_10,    /* Port 0.10 */
+	XTI_PORT0_13,    /* Port 0.13 */
+	XTI_PORT0_15     /* Port 0.15 */
+} XTI_SOURCE;
+
+enum irq_sense { IRQ_FALLING, IRQ_RISING };
+#endif /* _ASM_ */
 
 /********/
 /* GPIO */
@@ -191,12 +239,14 @@ typedef union _UARTSettingsMap {
 #define IOPORT1_REG_BASE (APB2_REG_BASE + 0x4000)
 #define IOPORT2_REG_BASE (APB2_REG_BASE + 0x5000)
 
+#ifndef _ASM_
 typedef struct _IOPortRegisterMap {
 	volatile UINT32 PC0;
 	volatile UINT32 PC1;
 	volatile UINT32 PC2;
 	volatile UINT32 PD;
 } IOPortRegisterMap;
+#endif /* _ASM_ */
 
 /*******/
 /* ADC */
@@ -217,6 +267,71 @@ typedef struct _IOPortRegisterMap {
 /*******/
 /* EIC */
 /*******/
+#define EIC_REG_BASE		(0xfffff800)
+
+#define EIC_ICR_OFFSET   0x00
+#define EIC_CICR_OFFSET  0x04
+#define EIC_CIPR_OFFSET  0x08
+#define EIC_IVR_OFFSET   0x18
+#define EIC_FIR_OFFSET   0x1C
+#define EIC_IER_OFFSET   0x20
+#define EIC_IPR_OFFSET   0x40
+#define EIC_SIR_OFFSET   0x60
+
+#ifndef _ASM_
+typedef struct {
+	volatile unsigned long icr;
+	volatile unsigned long cicr;
+	volatile unsigned long cipr;
+	volatile unsigned long pad1[3];
+	volatile unsigned long ivr;     /* 0x18 */
+	volatile unsigned long fir;
+	volatile unsigned long ier;
+	volatile unsigned long pad2[7];
+	volatile unsigned long ipr;     /* 0x40 */
+	volatile unsigned long pad3[7];
+	volatile unsigned long sir[32]; /* 0x60 */
+} EICREGS;
+
+/* STR712 interrupt sources */
+typedef enum {
+	EIC_TIMER0,      /* Timer 0 */
+	EIC_FLASH,       /* Flash */
+	EIC_PRCCU,       /* PRCCU */
+	EIC_RTC,         /* Real Time Clock */
+	EIC_WDG,         /* Watchdog Timer */
+	EIC_XTI,         /* External interrupt */
+	EIC_USB_HP,      /* USB high priority */
+	EIC_I2C0ERR,     /* I2C 0 error */
+	EIC_I2C1ERR,     /* I2C 1 error */
+	EIC_UART0,       /* UART 0 */
+	EIC_UART1,       /* UART 1 */
+	EIC_UART2,       /* UART 2 */
+	EIC_UART3,       /* UART 3 */
+	EIC_SPI0,        /* SPI 0 */
+	EIC_SPI1,        /* SPI 1 */
+	EIC_I2C0,        /* I2C 0 Rx/Tx */
+	EIC_I2C1,        /* I2C 1 Rx/Tx */
+	EIC_CAN,         /* CAN */
+	EIC_ADC,         /* ADC */
+	EIC_TIMER1,      /* Timer 1 */
+	EIC_TIMER2,      /* Timer 2 */
+	EIC_TIMER3,      /* Timer 3 */
+	EIC_RESERVED1,   /* Reserved */
+	EIC_RESERVED2,   /* Reserved */
+	EIC_RESERVED3,   /* Reserved */
+	EIC_HDLC,        /* HDLC */
+	EIC_USB_LP,      /* USB low priority */
+	EIC_RESERVED4,   /* Reserved */
+	EIC_RESERVED5,   /* Reserved */
+	EIC_TIMER0_OVF,  /* Timer 0 overflow */
+	EIC_TIMER0_OC1,  /* Timer 0 output compare 1 */
+	EIC_TIMER0_OC2   /* Timer 0 output compare 2 */
+} EIC_SOURCE;
+#endif /* _ASM_ */
+
+#define IRQ_EN      0x1
+#define FIQ_EN      0x2
 
 
 #endif /* STR712_H */
