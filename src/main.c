@@ -120,10 +120,25 @@ void irq_lockup(void)
 /********/
 int main(void) {
 	InitializeAllSerialPorts();
-	Transmit (&com1, "Hello World", 11);
+	Transmit (&com1, "One World", 9);
 
 
 
 	DebugPrint ("End of program reached. . . . Locking terminal");
-	while(1);
+	while(1) {
+		StuffTxFifo(&com1);
+		StuffTxFifo(&com2);
+		ProcessRxFifo(&com1);
+		while (!QueueEmpty(&(com1.rxQueue))) {
+			UINT8 buf[16];
+			int len = DequeueBuf(&com1.rxQueue, buf, 16);
+			Transmit (&com2, buf, len);
+		}
+
+/*		ProcessRxFifo(&com2);
+		while (!QueueEmpty(&(com2.rxQueue))) {
+			UINT8 value = DequeueOne(&(com2.rxQueue));
+			Transmit (&com1, &value, 1);
+		}*/
+	}
 }
