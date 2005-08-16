@@ -29,10 +29,10 @@ void DebugPrint(char *formatStr, ...);
 extern inline bool PortTxFifoFull(SerialPort *port);
 extern inline bool PortRxFifoNotEmpty(SerialPort *port);
 
-void Com1IRQ();
-void Com2IRQ();
-void Com3IRQ();
-void Com4IRQ();
+void Com1IRQ() __attribute__ ((interrupt("IRQ")));
+void Com2IRQ() __attribute__ ((interrupt("IRQ")));
+void Com3IRQ() __attribute__ ((interrupt("IRQ")));
+void Com4IRQ() __attribute__ ((interrupt("IRQ")));
 void HandleComIRQ(SerialPort *port);
 
 

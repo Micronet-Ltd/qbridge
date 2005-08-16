@@ -161,7 +161,6 @@ void InitializeClocks(void)
 int main(void) {
 	InitializeClocks();
 	InitializeEIC();
-	asdf
 
 	InitializeAllSerialPorts();
 	Transmit (&com1, "One World\n", 10);
