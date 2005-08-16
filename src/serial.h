@@ -29,10 +29,10 @@ void DebugPrint(char *formatStr, ...);
 extern inline bool PortTxFifoFull(SerialPort *port);
 extern inline bool PortRxFifoNotEmpty(SerialPort *port);
 
-void COM1IRQ();
-void COM2IRQ();
-void COM3IRQ();
-void COM4IRQ();
+void Com1IRQ();
+void Com2IRQ();
+void Com3IRQ();
+void Com4IRQ();
 void HandleComIRQ(SerialPort *port);
 
 
