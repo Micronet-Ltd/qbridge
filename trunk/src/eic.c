@@ -63,7 +63,8 @@ void InitializeEIC(void)
 	 *
 	 * Note that we store an address (not a jump opcode) into the IVR.
 	 */
-	eic->ivr = FLASH_PHYS_BASE & 0xffff0000; /* JEREMY CHANGE THIS TO RAM_PHYS_BASE for your debugging build */
+	eic->ivr = RAM_PHYS_BASE & 0xffff0000; /* JEREMY CHANGE THIS TO RAM_PHYS_BASE for your debugging build */
+	//eic->ivr = FLASH_PHYS_BASE & 0xffff0000; /* JEREMY CHANGE THIS TO RAM_PHYS_BASE for your debugging build */
 
 	/* Enable interrupts */
 	eic->icr |= IRQ_EN;

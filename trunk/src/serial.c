@@ -20,6 +20,7 @@
 /*******************************************************************/
 
 #include "serial.h"
+#include "eic.h"
 
 #include <stdarg.h>
 #include <string.h>
@@ -76,27 +77,95 @@ static void InitializePort (SerialPort *port);
 
 SerialPort com1;
 SerialPort com2;
+SerialPort com3;
+SerialPort com4;
 IOPortRegisterMap * ioPort0;
 IOPortRegisterMap * ioPort1;
+
+void GPIO_Config (IOPortRegisterMap *GPIOx, UINT16 Port_Pins, Gpio_PinModes GPIO_Mode) {
+  switch (GPIO_Mode)
+  {
+    case GPIO_HI_AIN_TRI:
+      GPIOx->PC0&=~Port_Pins;
+      GPIOx->PC1&=~Port_Pins;
+      GPIOx->PC2&=~Port_Pins;
+      break;
+
+    case GPIO_IN_TRI_TTL:
+      GPIOx->PC0|=Port_Pins;
+      GPIOx->PC1&=~Port_Pins;
+      GPIOx->PC2&=~Port_Pins;
+      break;
+
+    case GPIO_IN_TRI_CMOS:
+      GPIOx->PC0&=~Port_Pins;
+      GPIOx->PC1|=Port_Pins;
+      GPIOx->PC2&=~Port_Pins;
+      break;
+
+    case GPIO_INOUT_WP:
+      GPIOx->PC0|=Port_Pins;
+      GPIOx->PC1|=Port_Pins;
+      GPIOx->PC2&=~Port_Pins;
+      break;
+
+    case GPIO_OUT_OD:
+      GPIOx->PC0&=~Port_Pins;
+      GPIOx->PC1&=~Port_Pins;
+      GPIOx->PC2|=Port_Pins;
+      break;
+
+    case GPIO_OUT_PP:
+      GPIOx->PC0|=Port_Pins;
+      GPIOx->PC1&=~Port_Pins;
+      GPIOx->PC2|=Port_Pins;
+      break;
+
+    case GPIO_AF_OD:
+      GPIOx->PC0&=~Port_Pins;
+      GPIOx->PC1|=Port_Pins;
+      GPIOx->PC2|=Port_Pins;
+      break;
+
+    case GPIO_AF_PP:
+      GPIOx->PC0|=Port_Pins;
+      GPIOx->PC1|=Port_Pins;
+      GPIOx->PC2|=Port_Pins;
+      break;
+  }
+}
+
 
 /*****************************/
 /* InitializeAllSerialPorts */
 /***************************/
 void InitializeAllSerialPorts() {
+	// These should really be initialized as constants, but something seems broken about doing that
 	ioPort0 = (IOPortRegisterMap *)IOPORT0_REG_BASE;
 	ioPort1 = (IOPortRegisterMap *)IOPORT1_REG_BASE;
-	
-	// Set the Alternate function for UART0 RX and TX pins 
-	//ioPort0->PC0 |= (BIT(8)|BIT(9)|BIT(10)|BIT(11));
-	ioPort0->PC0 &= ~((BIT(8)|BIT(9)|BIT(10)|BIT(11)));
-	ioPort0->PC1 |= (BIT(8)|BIT(9)|BIT(10)|BIT(11));
-	ioPort0->PC2 |= (BIT(8)|BIT(9)|BIT(10)|BIT(11));
-
 	com1.port = (UARTRegisterMap volatile * const)(UART0_REG_BASE);
-	InitializePort(&com1);
-
 	com2.port = (UARTRegisterMap volatile * const)(UART1_REG_BASE);
+	com3.port = (UARTRegisterMap volatile * const)(UART2_REG_BASE);
+	com4.port = (UARTRegisterMap volatile * const)(UART3_REG_BASE);
+
+	// OK, this bit of magic was not documented anywhere that Mike & I could find.  I finally dredged up some source
+	// code off the internet which set this pins in this manner and it seemed to make everything work.
+	// Note:  We may want to change one of these once we decide on a 485 port.  We should probably 1/2 duplex everything on that port
+	// Configure the GPIO transmit pins as alternate function push pull 
+   GPIO_Config(ioPort0, UART0_Tx_Pin | UART1_Tx_Pin | UART2_Tx_Pin | UART3_Tx_Pin, GPIO_AF_PP);
+	// Configure the GPIO receive pins as Input Tristate CMOS 
+   GPIO_Config(ioPort0, UART0_Rx_Pin | UART1_Rx_Pin | UART2_Rx_Pin | UART3_Rx_Pin, GPIO_IN_TRI_CMOS);
+
+	InitializePort(&com1);
 	InitializePort(&com2);
+	InitializePort(&com3);
+	InitializePort(&com4);
+
+	// Have to register interrupts out here. -- each handler is port specific
+	/*RegisterEICHandler(EIC_UART0, Com1IRQ, SERIAL_IRQ_PRIORITY);
+	RegisterEICHandler(EIC_UART1, Com1IRQ, SERIAL_IRQ_PRIORITY);
+	RegisterEICHandler(EIC_UART2, Com1IRQ, SERIAL_IRQ_PRIORITY);
+	RegisterEICHandler(EIC_UART3, Com1IRQ, SERIAL_IRQ_PRIORITY);*/
 }
 
 /*******************/
@@ -110,7 +179,7 @@ static void InitializePort (SerialPort *port) {
 	RESTORE_IRQ(saveState);
 
 	SetPortSettings(port, 19200l, 8, 'N', 1);
-	//port->port->intEnable = (RxHalfFullIE | TimeoutNotEmptyIE | OverrunErrorIE | FrameErrorIE | ParityErrorIE | TxHalfEmptyIE);
+	port->port->intEnable = (RxHalfFullIE | TimeoutNotEmptyIE | OverrunErrorIE | FrameErrorIE | ParityErrorIE | TxHalfEmptyIE);
 	port->port->guardTime = 0;
 	port->port->timeout = 8;
 }
@@ -257,4 +326,43 @@ void DebugPrint(char *formatStr, ...) {
 	len += 2;
 
 	Transmit (&com2, buf, len);
+}
+
+/************/
+/* Com1IRQ */
+/**********/
+void Com1IRQ() {
+	HandleComIRQ(&com1);
+	EICClearIRQ(EIC_UART0);
+}
+
+/************/
+/* Com2IRQ */
+/**********/
+void Com2IRQ() {
+	HandleComIRQ(&com2);
+	EICClearIRQ(EIC_UART1);
+}
+
+/************/
+/* Com3IRQ */
+/**********/
+void Com3IRQ() {
+	HandleComIRQ(&com3);
+	EICClearIRQ(EIC_UART2);
+}
+
+/************/
+/* COM4IRQ */
+/**********/
+void COM4IRQ() {
+	HandleComIRQ(&com4);
+	EICClearIRQ(EIC_UART3);
+}
+
+/*****************/
+/* HandleComIRQ */
+/***************/
+void HandleComIRQ(SerialPort *port) {
+
 }

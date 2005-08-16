@@ -4,6 +4,7 @@
 #include "common.h"
 #include "queue.h"
 
+#define SERIAL_IRQ_PRIORITY 8
 
 typedef struct _SerialPort {
 	UARTRegisterMap volatile * port;
@@ -13,6 +14,8 @@ typedef struct _SerialPort {
 
 extern SerialPort com1;
 extern SerialPort com2;
+extern SerialPort com3;
+extern SerialPort com4;
 
 
 void InitializeAllSerialPorts();
@@ -25,6 +28,12 @@ void DebugPrint(char *formatStr, ...);
 
 extern inline bool PortTxFifoFull(SerialPort *port);
 extern inline bool PortRxFifoNotEmpty(SerialPort *port);
+
+void COM1IRQ();
+void COM2IRQ();
+void COM3IRQ();
+void COM4IRQ();
+void HandleComIRQ(SerialPort *port);
 
 
 #endif // SERIAL_H

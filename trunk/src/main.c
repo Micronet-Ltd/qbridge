@@ -28,6 +28,7 @@
 /* Programmer Library Includes */
 /*******************************/
 #include "serial.h"
+#include "eic.h"
 
 /***********/
 /* Pragmas */
@@ -129,12 +130,12 @@ void InitializeClocks(void)
 	/* 
 	 * Set up the PLL:
 	 * CLK2 = CLK3 = CK/2 (8 MHz for 16 MHz oscillator input)
-	 * MX = 01b (multiply by 12)
-	 * DX = 001b (divide by 2)
+	 * MX = 01b (multiply by 16)
+	 * DX = 001b (divide by 4)
 	 * FREF_RANGE = 1 (CLK2 > 3 MHz)
-	 * Therefore, RCLK = 48 MHz
+	 * Therefore, RCLK = 32 MHz
 	 */
-	rccu->pll1cr = 0x51;
+	rccu->pll1cr = 0x73;
 
 	/* Wait for PLL lock */
 	while ((rccu->cfr & LOCK) == 0) ;
@@ -144,11 +145,11 @@ void InitializeClocks(void)
 
 	/* 
 	 * Set up peripheral clocks:
-	 * MCLK = 48 MHz (no divisor, default)
-	 * PCLK1 = 16 MHz (divide by 4)
-	 * PCLK2 = 16 MHz (divide by 4)
+	 * MCLK = 32 MHz (no divisor, default)
+	 * PCLK1 = 16 MHz (divide by 2)
+	 * PCLK2 = 16 MHz (divide by 2)
 	 */
-	pcu->pdivr = 0x0202;
+	pcu->pdivr = 0x0101;
 
 	/* Disable peripheral clocks (External Memory and USB) to save power */
 	rccu->per = 0;
@@ -159,13 +160,14 @@ void InitializeClocks(void)
 /********/
 int main(void) {
 	InitializeClocks();
+	InitializeEIC();
 
 	InitializeAllSerialPorts();
-	Transmit (&com1, "One World", 9);
+	Transmit (&com1, "One World\n", 10);
+	Transmit (&com2, "Two World\n", 10);
+	Transmit (&com2, "Thr World\n", 10);
 
-
-
-	DebugPrint ("End of program reached. . . . Locking terminal");
+	DebugPrint ("End of program reached. . . . Locking QBridge");
 	while(1) {
 		StuffTxFifo(&com1);
 		StuffTxFifo(&com2);
@@ -176,10 +178,10 @@ int main(void) {
 			Transmit (&com2, buf, len);
 		}
 
-/*		ProcessRxFifo(&com2);
+		ProcessRxFifo(&com2);
 		while (!QueueEmpty(&(com2.rxQueue))) {
 			UINT8 value = DequeueOne(&(com2.rxQueue));
 			Transmit (&com1, &value, 1);
-		}*/
+		}
 	}
 }
