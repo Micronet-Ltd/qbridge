@@ -17,7 +17,7 @@ linkscript 	:= $(target)_deb.x
 
 ARCH            := arm
 COMPILER_PREFIX := arm-elf-
-CFLAGS          := -mcpu=arm7tdmi -mlittle-endian -mapcs-32 -Wa,-ahld -Wall -fno-strict-aliasing -fno-builtin -g
+CFLAGS          := -mcpu=arm7tdmi -mlittle-endian -mapcs-32 -Wall -fno-strict-aliasing -fno-builtin -g
 OPTIMIZE        := 
 IFLAGS          := -Isrc -I/usr/local/arm-elf/include
 
@@ -74,10 +74,12 @@ $(SDEPENDS): dpn/%.d: src/%.S
 	@$(CC) -MM $(IFLAGS) $(defs) $< | sed 's,$*\.o,obj/& $@,g' > $@
 
 $(COBJS): obj/%.o : src/%.c dpn/%.d
-	$(CC) $(DEBUG_FLAGS) $(OPTIMIZE) $(CFLAGS) $(IFLAGS) $(defs) -c -o $@ $< > lst/$*.lst
+	@echo -e '\E[32m'"\033[1m$<\033[0m"
+	$(CC) $(DEBUG_FLAGS) $(OPTIMIZE) $(CFLAGS) $(IFLAGS) $(defs) -Wa,-ahld=lst/$*.lst -c -o $@ $< 
 
 $(SOBJS): obj/%.o : src/%.S dpn/%.d
-	$(CC) $(DEBUG_FLAGS) $(OPTIMIZE) $(CFLAGS) $(IFLAGS) $(defs) -c -o $@ $< > lst/$*.lst
+	@echo -e '\E[32m'"\033[1m$<\033[0m"
+	$(CC) $(DEBUG_FLAGS) $(OPTIMIZE) $(CFLAGS) $(IFLAGS) $(defs) -Wa,-ahld=lst/$*.lst -c -o $@ $< 
 
 ##########
 #  Link  #
@@ -88,6 +90,7 @@ $(target).srec: $(target).elf
 
 $(target).bin: $(target).srec
 	$(OBJCPY) -v -I symbolsrec -O binary $(target).srec $(target).bin
+	@echo -e '\E[36m'"\033[1m**************Target Made**************\033[0m"
 
 $(target).elf: $(OBJS) $(linkscript)
 	$(CC) $(CFLAGS) $(OBJS) -Xlinker -Map -Xlinker $(target).map --warn-common \
@@ -109,9 +112,9 @@ endif
 #######################
 
 clean:
-	@echo '#################################################'
-	@echo '### Cleaning all generated files'
-	@echo '#################################################'
+	@echo -e '\E[37m'"\033[1m#################################################"
+	@echo -e '### Cleaning all generated files'
+	@echo -e '#################################################'"\033[0m"
 	@$(RM) obj/*.o lst/*.lst *.elf *.bin *.map *.srec TAGS
 
 realclean: clean
@@ -137,9 +140,9 @@ tags:
 	@etags src/*.c src/*.h
 
 doecho:
-	@echo '#################################################'
-	@echo '### Building $(target)'
-	@echo '#################################################'
+	@echo -e '\E[37m'"\033[1m#################################################"
+	@echo -e '### Building $(target)'
+	@echo -e '#################################################'"\033[0m"
 	@echo
 	@$(RM) obj/build.o #This throws in the current date and time every time.
 	@echo $(MAKECMDGOALS)

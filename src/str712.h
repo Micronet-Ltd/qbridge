@@ -171,6 +171,19 @@ typedef union _UARTSettingsMap {
 		UINT32 reserved2:21;
 	};
 } UARTSettingsMap;
+
+#define UART0_Rx_Pin BIT(8)   /*  TQFP 64: pin N° 63 , TQFP 144 pin N° 143 */
+#define UART0_Tx_Pin BIT(9)   /*  TQFP 64: pin N° 64 , TQFP 144 pin N° 144 */
+
+#define UART1_Rx_Pin BIT(10)  /*  TQFP 64: pin N° 1  , TQFP 144 pin N° 1   */
+#define UART1_Tx_Pin BIT(11)  /*  TQFP 64: pin N° 2  , TQFP 144 pin N° 3   */
+
+#define UART2_Rx_Pin BIT(13) /*  TQFP 64: pin N° 5  , TQFP 144 pin N° 9   */
+#define UART2_Tx_Pin BIT(14)  /*  TQFP 64: pin N° 6  , TQFP 144 pin N° 10  */
+
+#define UART3_Rx_Pin BIT(1)   /*  TQFP 64: pin N° 52 , TQFP 144 pin N° 123 */
+#define UART3_Tx_Pin BIT(0)   /*  TQFP 64: pin N° 53 , TQFP 144 pin N° 124 */
+
 #endif /* _ASM_ */
 
 /*******/
@@ -249,11 +262,27 @@ enum irq_sense { IRQ_FALLING, IRQ_RISING };
 
 #ifndef _ASM_
 typedef struct _IOPortRegisterMap {
-	volatile UINT32 PC0;
-	volatile UINT32 PC1;
-	volatile UINT32 PC2;
-	volatile UINT32 PD;
+	volatile UINT16 PC0;
+	volatile UINT16 pad0;
+	volatile UINT16 PC1;
+	volatile UINT16 pad1;
+	volatile UINT16 PC2;
+	volatile UINT16 pad2;
+	volatile UINT16 PD;
+	volatile UINT16 pad3;
 } IOPortRegisterMap;
+
+typedef enum _Gpio_PinModes {
+  GPIO_HI_AIN_TRI,
+  GPIO_IN_TRI_TTL,
+  GPIO_IN_TRI_CMOS,
+  GPIO_INOUT_WP,
+  GPIO_OUT_OD,
+  GPIO_OUT_PP,
+  GPIO_AF_OD,
+  GPIO_AF_PP
+} Gpio_PinModes;
+
 #endif /* _ASM_ */
 
 /*******/
