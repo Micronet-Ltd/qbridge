@@ -161,6 +161,7 @@ void InitializeClocks(void)
 int main(void) {
 	InitializeClocks();
 	InitializeEIC();
+	asdf
 
 	InitializeAllSerialPorts();
 	Transmit (&com1, "One World\n", 10);
@@ -169,19 +170,15 @@ int main(void) {
 
 	DebugPrint ("End of program reached. . . . Locking QBridge");
 	while(1) {
-		StuffTxFifo(&com1);
-		StuffTxFifo(&com2);
-		ProcessRxFifo(&com1);
-		while (!QueueEmpty(&(com1.rxQueue))) {
-			UINT8 buf[16];
-			int len = DequeueBuf(&com1.rxQueue, buf, 16);
+		if (!QueueEmpty(&(com1.rxQueue))) {
+			UINT8 buf[50];
+			int len = DequeueBuf(&(com1.rxQueue), buf, 50);
 			Transmit (&com2, buf, len);
-		}
-
-		ProcessRxFifo(&com2);
-		while (!QueueEmpty(&(com2.rxQueue))) {
-			UINT8 value = DequeueOne(&(com2.rxQueue));
-			Transmit (&com1, &value, 1);
-		}
+		} 
+		if (!QueueEmpty(&(com2.rxQueue))) {
+			UINT8 buf[50];
+			int len = DequeueBuf(&(com2.rxQueue), buf, 50);
+			Transmit (&com1, buf, len);
+		} 
 	}
 }

@@ -162,10 +162,10 @@ void InitializeAllSerialPorts() {
 	InitializePort(&com4);
 
 	// Have to register interrupts out here. -- each handler is port specific
-	/*RegisterEICHandler(EIC_UART0, Com1IRQ, SERIAL_IRQ_PRIORITY);
-	RegisterEICHandler(EIC_UART1, Com1IRQ, SERIAL_IRQ_PRIORITY);
-	RegisterEICHandler(EIC_UART2, Com1IRQ, SERIAL_IRQ_PRIORITY);
-	RegisterEICHandler(EIC_UART3, Com1IRQ, SERIAL_IRQ_PRIORITY);*/
+	RegisterEICHdlr(EIC_UART0, Com1IRQ, SERIAL_IRQ_PRIORITY);
+	RegisterEICHdlr(EIC_UART1, Com1IRQ, SERIAL_IRQ_PRIORITY);
+	RegisterEICHdlr(EIC_UART2, Com1IRQ, SERIAL_IRQ_PRIORITY);
+	RegisterEICHdlr(EIC_UART3, Com1IRQ, SERIAL_IRQ_PRIORITY);
 }
 
 /*******************/
@@ -332,7 +332,9 @@ void DebugPrint(char *formatStr, ...) {
 /* Com1IRQ */
 /**********/
 void Com1IRQ() {
+	EICDisableIRQ(EIC_UART0);
 	HandleComIRQ(&com1);
+	EICEnableIRQ(EIC_UART0);
 	EICClearIRQ(EIC_UART0);
 }
 
@@ -340,7 +342,9 @@ void Com1IRQ() {
 /* Com2IRQ */
 /**********/
 void Com2IRQ() {
+	EICDisableIRQ(EIC_UART1);
 	HandleComIRQ(&com2);
+	EICEnableIRQ(EIC_UART1);
 	EICClearIRQ(EIC_UART1);
 }
 
@@ -348,7 +352,9 @@ void Com2IRQ() {
 /* Com3IRQ */
 /**********/
 void Com3IRQ() {
+	EICDisableIRQ(EIC_UART2);
 	HandleComIRQ(&com3);
+	EICEnableIRQ(EIC_UART2);
 	EICClearIRQ(EIC_UART2);
 }
 
@@ -356,7 +362,9 @@ void Com3IRQ() {
 /* COM4IRQ */
 /**********/
 void COM4IRQ() {
+	EICDisableIRQ(EIC_UART3);
 	HandleComIRQ(&com4);
+	EICEnableIRQ(EIC_UART3);
 	EICClearIRQ(EIC_UART3);
 }
 
@@ -364,5 +372,32 @@ void COM4IRQ() {
 /* HandleComIRQ */
 /***************/
 void HandleComIRQ(SerialPort *port) {
+	//port->port->intEnable = (RxHalfFullIE | TimeoutNotEmptyIE | OverrunErrorIE | FrameErrorIE | ParityErrorIE | TxHalfEmptyIE);
 
+
+	// Data received
+	if ((port->port->status & (RxHalfFull | TimeoutNotEmtpy)) != 0) {
+		ProcessRxFifo(port);
+	}
+
+	// Tx Fifo partially empty
+	if ((port->port->status & TxHalfEmpty) != 0) {
+		StuffTxFifo(port);
+	}
+
+#ifdef DEBUG_SERIAL
+	// Overrun
+	if ((port->port->status & OverrunError) != 0) {
+		DebugPrint ("Serial overrun error");
+	}
+
+	// Framing error
+	if ((port->port->status & FrameError) != 0) {
+		DebugPrint ("Framing error");
+	}
+
+	if ((port->port->status & ParityError) != 0) {
+		DebugPrint ("Parity error");
+	}
+#endif
 }

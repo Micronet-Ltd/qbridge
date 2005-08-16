@@ -151,6 +151,9 @@
 				RelativePath=".\src\common.h">
 			</File>
 			<File
+				RelativePath=".\src\eic.h">
+			</File>
+			<File
 				RelativePath=".\src\queue.h">
 			</File>
 			<File
