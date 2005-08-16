@@ -163,9 +163,9 @@ void InitializeAllSerialPorts() {
 
 	// Have to register interrupts out here. -- each handler is port specific
 	RegisterEICHdlr(EIC_UART0, Com1IRQ, SERIAL_IRQ_PRIORITY);
-	RegisterEICHdlr(EIC_UART1, Com1IRQ, SERIAL_IRQ_PRIORITY);
-	RegisterEICHdlr(EIC_UART2, Com1IRQ, SERIAL_IRQ_PRIORITY);
-	RegisterEICHdlr(EIC_UART3, Com1IRQ, SERIAL_IRQ_PRIORITY);
+	RegisterEICHdlr(EIC_UART1, Com2IRQ, SERIAL_IRQ_PRIORITY);
+	RegisterEICHdlr(EIC_UART2, Com3IRQ, SERIAL_IRQ_PRIORITY);
+	RegisterEICHdlr(EIC_UART3, Com4IRQ, SERIAL_IRQ_PRIORITY);
 }
 
 /*******************/
@@ -332,9 +332,7 @@ void DebugPrint(char *formatStr, ...) {
 /* Com1IRQ */
 /**********/
 void Com1IRQ() {
-	EICDisableIRQ(EIC_UART0);
 	HandleComIRQ(&com1);
-	EICEnableIRQ(EIC_UART0);
 	EICClearIRQ(EIC_UART0);
 }
 
@@ -342,9 +340,7 @@ void Com1IRQ() {
 /* Com2IRQ */
 /**********/
 void Com2IRQ() {
-	EICDisableIRQ(EIC_UART1);
 	HandleComIRQ(&com2);
-	EICEnableIRQ(EIC_UART1);
 	EICClearIRQ(EIC_UART1);
 }
 
@@ -352,19 +348,15 @@ void Com2IRQ() {
 /* Com3IRQ */
 /**********/
 void Com3IRQ() {
-	EICDisableIRQ(EIC_UART2);
 	HandleComIRQ(&com3);
-	EICEnableIRQ(EIC_UART2);
 	EICClearIRQ(EIC_UART2);
 }
 
 /************/
 /* COM4IRQ */
 /**********/
-void COM4IRQ() {
-	EICDisableIRQ(EIC_UART3);
+void Com4IRQ() {
 	HandleComIRQ(&com4);
-	EICEnableIRQ(EIC_UART3);
 	EICClearIRQ(EIC_UART3);
 }
 
