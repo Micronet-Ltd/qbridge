@@ -68,6 +68,10 @@ typedef struct
 } RCCUREGS;
 #endif /* _ASM_ */
 
+/* CFR Register Bits */
+#define LOCK        BIT(1)
+#define CSU_CKSEL   BIT(0)
+
 
 #define PCU_REG_BASE			(PRCCU_REG_BASE + 0x40)
 
@@ -89,6 +93,10 @@ typedef struct
 	volatile unsigned long pwrcr;
 } PCUREGS;
 #endif /* _ASM_ */
+
+
+/* PWRCR Register Bits */
+#define VR_OK       BIT(12)
 
 
 /*******/

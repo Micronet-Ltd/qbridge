@@ -115,10 +115,51 @@ void irq_lockup(void)
 	for(;;) ; 
 }
 
+/********************/
+/* InitializeClocks */
+/********************/
+void InitializeClocks(void)
+{
+	RCCUREGS * const rccu = (RCCUREGS *)RCCU_REG_BASE;
+	PCUREGS * const pcu = (PCUREGS *)PCU_REG_BASE;
+
+	/* Wait for internal voltage regulator to settle */
+	while ((pcu->pwrcr & VR_OK) == 0) ;
+
+	/* 
+	 * Set up the PLL:
+	 * CLK2 = CLK3 = CK/2 (8 MHz for 16 MHz oscillator input)
+	 * MX = 01b (multiply by 12)
+	 * DX = 001b (divide by 2)
+	 * FREF_RANGE = 1 (CLK2 > 3 MHz)
+	 * Therefore, RCLK = 48 MHz
+	 */
+	rccu->pll1cr = 0x51;
+
+	/* Wait for PLL lock */
+	while ((rccu->cfr & LOCK) == 0) ;
+
+	/* Switch to PLL clock */
+	rccu->cfr |= CSU_CKSEL;
+
+	/* 
+	 * Set up peripheral clocks:
+	 * MCLK = 48 MHz (no divisor, default)
+	 * PCLK1 = 16 MHz (divide by 4)
+	 * PCLK2 = 16 MHz (divide by 4)
+	 */
+	pcu->pdivr = 0x0202;
+
+	/* Disable peripheral clocks (External Memory and USB) to save power */
+	rccu->per = 0;
+}
+
 /********/
 /* main */
 /********/
 int main(void) {
+	InitializeClocks();
+
 	InitializeAllSerialPorts();
 	Transmit (&com1, "One World", 9);
 

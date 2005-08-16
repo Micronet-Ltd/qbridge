@@ -56,13 +56,8 @@ Abort_Handler:
    .global __start
 __start:
 Reset_Handler:
-   @ Set up the clocks
+   @ Clock setup is done in InitializeClocks() routine
    
-   @ FIXME:  Add clock init code here
-
-   @ End of clock initialization - individual drivers can enable 
-   @ peripheral clocks as necessary
-
    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
    @@@@ Memory Initialization @@@@
    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
