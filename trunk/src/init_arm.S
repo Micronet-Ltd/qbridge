@@ -26,7 +26,7 @@ vectable:
    LDR	 pc, =Prefetch_Handler   @ 0x0c
    LDR	 pc, =Abort_Handler	 @ 0x10
    NOP				 @ Reserved vector
-   LDR	 pc, =0xfffff818	 @ 0x18 instruction to invoke EIC for IRQ
+   LDR	 pc, [pc, #-0x808] 	 @ 0x18 instruction to invoke VIC for IRQ
 FIQ_Handler:   
    LDR	 pc, =irq_lockup	 @ 0x1c   
 
@@ -49,7 +49,7 @@ Prefetch_Handler:
 
 Abort_Handler:
    B	 irq_lockup
-
+   
    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@
    @@@@ Initialization Code @@@@
    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@

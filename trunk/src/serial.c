@@ -163,9 +163,13 @@ void InitializeAllSerialPorts() {
 
 	// Have to register interrupts out here. -- each handler is port specific
 	RegisterEICHdlr(EIC_UART0, Com1IRQ, SERIAL_IRQ_PRIORITY);
+	EICEnableIRQ(EIC_UART0);
 	RegisterEICHdlr(EIC_UART1, Com2IRQ, SERIAL_IRQ_PRIORITY);
+	EICEnableIRQ(EIC_UART1);
 	RegisterEICHdlr(EIC_UART2, Com3IRQ, SERIAL_IRQ_PRIORITY);
+	EICEnableIRQ(EIC_UART2);
 	RegisterEICHdlr(EIC_UART3, Com4IRQ, SERIAL_IRQ_PRIORITY);
+	EICEnableIRQ(EIC_UART3);
 }
 
 /*******************/
