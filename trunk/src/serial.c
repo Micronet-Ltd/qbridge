@@ -73,7 +73,7 @@ static const BaudTableEntry BaudRateTable[] = {
    { 600l,    bauddiv_600},
 };
 
-static void InitializePort (SerialPort *port);
+static void InitializePort (SerialPort *port, EIC_SOURCE src, void (*hdlr)(void));
 
 SerialPort com1;
 SerialPort com2;
@@ -156,26 +156,17 @@ void InitializeAllSerialPorts() {
 	// Configure the GPIO receive pins as Input Tristate CMOS 
    GPIO_Config(ioPort0, UART0_Rx_Pin | UART1_Rx_Pin | UART2_Rx_Pin | UART3_Rx_Pin, GPIO_IN_TRI_CMOS);
 
-	InitializePort(&com1);
-	InitializePort(&com2);
-	InitializePort(&com3);
-	InitializePort(&com4);
+	InitializePort(&com1, EIC_UART0, Com1IRQ);
+	InitializePort(&com2, EIC_UART1, Com2IRQ);
+	InitializePort(&com3, EIC_UART2, Com3IRQ);
+	InitializePort(&com4, EIC_UART3, Com4IRQ);
 
-	// Have to register interrupts out here. -- each handler is port specific
-	RegisterEICHdlr(EIC_UART0, Com1IRQ, SERIAL_IRQ_PRIORITY);
-	EICEnableIRQ(EIC_UART0);
-	RegisterEICHdlr(EIC_UART1, Com2IRQ, SERIAL_IRQ_PRIORITY);
-	EICEnableIRQ(EIC_UART1);
-	RegisterEICHdlr(EIC_UART2, Com3IRQ, SERIAL_IRQ_PRIORITY);
-	EICEnableIRQ(EIC_UART2);
-	RegisterEICHdlr(EIC_UART3, Com4IRQ, SERIAL_IRQ_PRIORITY);
-	EICEnableIRQ(EIC_UART3);
 }
 
 /*******************/
 /* InitializePort */
 /*****************/
-static void InitializePort (SerialPort *port) {
+static void InitializePort (SerialPort *port, EIC_SOURCE src, void (*hdlr)(void)) {
 	IRQSTATE saveState = 0;
 	DISABLE_IRQ(saveState);
 	InitializeQueue(&(port->rxQueue));
@@ -183,9 +174,12 @@ static void InitializePort (SerialPort *port) {
 	RESTORE_IRQ(saveState);
 
 	SetPortSettings(port, 19200l, 8, 'N', 1);
-	port->port->intEnable = (RxHalfFullIE | TimeoutNotEmptyIE | OverrunErrorIE | FrameErrorIE | ParityErrorIE | TxHalfEmptyIE);
+	port->port->intEnable = (RxHalfFullIE | TimeoutNotEmptyIE | OverrunErrorIE | FrameErrorIE | ParityErrorIE);
 	port->port->guardTime = 0;
 	port->port->timeout = 8;
+
+	RegisterEICHdlr(src, hdlr, SERIAL_IRQ_PRIORITY);
+	EICEnableIRQ(src);
 }
 
 /********************/
@@ -278,6 +272,13 @@ void StuffTxFifo(SerialPort *port) {
 	DISABLE_IRQ(saveState);
 	while (!QueueEmpty(&(port->txQueue)) && !PortTxFifoFull(port)) {
 		port->port->txBuffer = DequeueOne(&port->txQueue);
+	}
+
+	// Enable/Disable the interrupt as appropraite
+	if (QueueEmpty(&(port->txQueue))) {
+		port->port->intEnable &= ~TxHalfEmptyIE;
+	} else {
+		port->port->intEnable |= TxHalfEmptyIE;
 	}
 	RESTORE_IRQ(saveState);
 }
@@ -384,16 +385,16 @@ void HandleComIRQ(SerialPort *port) {
 #ifdef DEBUG_SERIAL
 	// Overrun
 	if ((port->port->status & OverrunError) != 0) {
-		DebugPrint ("Serial overrun error");
+		DebugPrint ("Serial overrun error on com%d", ((UINT32)(port->port)-UART0_REG_BASE)/(UART1_REG_BASE-UART0_REG_BASE));
 	}
 
 	// Framing error
 	if ((port->port->status & FrameError) != 0) {
-		DebugPrint ("Framing error");
+		DebugPrint ("Framing error error on com%d", ((UINT32)(port->port)-UART0_REG_BASE)/(UART1_REG_BASE-UART0_REG_BASE));
 	}
 
 	if ((port->port->status & ParityError) != 0) {
-		DebugPrint ("Parity error");
+		DebugPrint ("Parity error on com%d", ((UINT32)(port->port)-UART0_REG_BASE)/(UART1_REG_BASE-UART0_REG_BASE));
 	}
 #endif
 }
