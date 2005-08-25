@@ -113,10 +113,16 @@
 			Filter="cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx"
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}">
 			<File
+				RelativePath=".\src\build.c">
+			</File>
+			<File
 				RelativePath=".\src\eic.c">
 			</File>
 			<File
 				RelativePath=".\src\main.c">
+			</File>
+			<File
+				RelativePath=".\src\protocol232.c">
 			</File>
 			<File
 				RelativePath=".\src\queue.c">
@@ -137,7 +143,13 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath=".\src\snprintf.c">
+			</File>
+			<File
 				RelativePath=".\src\stubs.c">
+			</File>
+			<File
+				RelativePath=".\src\timers.c">
 			</File>
 		</Filter>
 		<Filter
@@ -151,7 +163,13 @@
 				RelativePath=".\src\common.h">
 			</File>
 			<File
+				RelativePath=".\src\crc.h">
+			</File>
+			<File
 				RelativePath=".\src\eic.h">
+			</File>
+			<File
+				RelativePath=".\src\protocol232.h">
 			</File>
 			<File
 				RelativePath=".\src\queue.h">
@@ -160,10 +178,16 @@
 				RelativePath=".\src\serial.h">
 			</File>
 			<File
+				RelativePath=".\src\snprintf.h">
+			</File>
+			<File
 				RelativePath=".\src\stddefs.h">
 			</File>
 			<File
 				RelativePath=".\src\str712.h">
+			</File>
+			<File
+				RelativePath=".\src\timers.h">
 			</File>
 		</Filter>
 		<Filter

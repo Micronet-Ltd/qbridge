@@ -94,6 +94,7 @@ typedef int INT32;
 typedef unsigned char UINT8;
 typedef unsigned short UINT16;
 typedef unsigned int UINT32;
+typedef unsigned long long UINT64;
 
 #ifdef _MSC_VER
 typedef __int64 INT64;

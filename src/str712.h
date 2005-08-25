@@ -293,6 +293,71 @@ typedef enum _Gpio_PinModes {
 /* TIMER */
 /*********/
 
+#define TIMER0_REG_BASE (APB2_REG_BASE + 0x9000)
+#define TIMER1_REG_BASE (APB2_REG_BASE + 0xA000)
+#define TIMER2_REG_BASE (APB2_REG_BASE + 0xB000)
+#define TIMER3_REG_BASE (APB2_REG_BASE + 0xC000)
+
+typedef struct _TimerRegisterMap {
+	volatile UINT16 InputCaptureA;
+	volatile UINT16 padICA;
+	volatile UINT16 InputCaptureB;
+	volatile UINT16 padICB;
+	volatile UINT16 OutputCompareA;
+	volatile UINT16 padOCA;
+	volatile UINT16 OutputCompareB;
+	volatile UINT16 padOCB;
+	volatile UINT16 Counter;
+	volatile UINT16 padCounter;
+	volatile UINT16 ControlRegister1;
+	volatile UINT16 padCR1;
+	volatile UINT16 ControlRegister2;
+	volatile UINT16 padCR2;
+	volatile UINT16 StatusRegister;
+} TimerRegisterMap;
+
+typedef union _TimerControlRegister1 {
+	UINT16 value;
+	struct {
+		UINT16 ExternalClockEnable:1;
+		UINT16 ExternalClockEdge:1;
+		UINT16 InputEdgeA:1;
+		UINT16 InputEdgeB:1;
+		UINT16 PulseWidthModulation:1;
+		UINT16 OnePulseMode:1;
+		UINT16 OutputCompareAEnable:1;
+		UINT16 OutputComapreBEnable:1;
+		UINT16 OutputLevelA:1;
+		UINT16 OutputLevelB:1;
+		UINT16 ForcedOutputComapreA:1;
+		UINT16 ForcedOutputCompareB:1;
+		UINT16 Reserved:2;
+		UINT16 PWMI:1;
+		UINT16 TimerCountEnable:1;
+	};
+} TimerControlRegister1;
+
+typedef union _TimerControlRegister2 {
+	UINT16 value;
+	struct {
+		UINT16 PrescalerDivisionFactor:8;
+		UINT16 Reserved:3;
+		UINT16 OutputCompareBInterruptEnalbe:1;
+		UINT16 InputCaptureBInterruptEnable:1;
+		UINT16 TimerOverflowInterruptEnable:1;
+		UINT16 OutputCompareAInterruptEnalbe:1;
+		UINT16 InputCaptureAInterruptEnable:1;
+	};
+} TimerControlRegister2;
+
+typedef enum _TimerStatusRegisterValues { 
+	InputCaptureFlagA		= BIT(15),
+	OutputCompareFlagA	= BIT(14),
+	TimerOverflow			= BIT(13),
+	InputCaptureFlagB		= BIT(12),
+	OutputCompareFlagB	= BIT(11),
+} _TimerStatusRegisterValues;
+
 /*******/
 /* RTC */
 /*******/

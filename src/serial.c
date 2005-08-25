@@ -24,6 +24,7 @@
 
 #include <stdarg.h>
 #include <string.h>
+#include <stdio.h>
 
 // Assumes a baud clock of 14.7456 MHz
 /*#define bauddiv_460800  0x2
@@ -158,8 +159,8 @@ void InitializeAllSerialPorts() {
 
 	InitializePort(&com1, EIC_UART0, Com1IRQ);
 	InitializePort(&com2, EIC_UART1, Com2IRQ);
-	InitializePort(&com3, EIC_UART2, Com3IRQ);
-	InitializePort(&com4, EIC_UART3, Com4IRQ);
+	//InitializePort(&com3, EIC_UART2, Com3IRQ);
+	//InitializePort(&com4, EIC_UART3, Com4IRQ);
 
 }
 
@@ -259,6 +260,11 @@ UINT32 Transmit (SerialPort *port, UINT8 *data, int leng) {
 	IRQSTATE saveState = 0;
 	DISABLE_IRQ(saveState);
 	UINT32 retVal = Enqueue(&(port->txQueue), data, leng);
+#ifdef DEBUG_SERIAL
+	if (retVal < leng) {
+		DebugPrint ("Serial com%d transmit queue has overrun.", GetPortNumber(port));
+	}
+#endif
 	StuffTxFifo(port);
 	RESTORE_IRQ(saveState);
 	return retVal;
@@ -301,6 +307,11 @@ void ProcessRxFifo (SerialPort *port) {
 		portValue = port->port->rxBuffer;
 		Enqueue (&(port->rxQueue), &portValue, 1);
 	}
+#ifdef DEBUG_SERIAL
+	if (QueueFull(&(port->rxQueue))) {
+		DebugPrint ("Serial com%d receive queue is full.", GetPortNumber(port));
+	}
+#endif
 	RESTORE_IRQ(saveState);
 }
 
@@ -315,12 +326,12 @@ inline bool PortRxFifoNotEmpty(SerialPort *port) {
 /* DebugPrint */
 /*************/
 void DebugPrint(char *formatStr, ...) {
-	char buf[512];
+	char buf[256];
 	int len;
 	va_list ap;
 	va_start(ap, formatStr);
-	strncpy(buf, formatStr, 510);
-	//vsnprintf(buf, 510, formatStr, ap);
+	//strncpy(buf, formatStr, 510);
+	vsnprintf(buf, 510, formatStr, ap);
 	va_end(ap);
 	len = strlen(buf);
 	
@@ -331,6 +342,13 @@ void DebugPrint(char *formatStr, ...) {
 	len += 2;
 
 	Transmit (&com2, buf, len);
+}
+
+/*******************/
+/* DebugCorePrint */
+/*****************/
+void DebugCorePrint(char *toPrint) {
+	Transmit (&com2, toPrint, strlen(toPrint));
 }
 
 /************/
@@ -348,7 +366,6 @@ void Com2IRQ() {
 	HandleComIRQ(&com2);
 	EICClearIRQ(EIC_UART1);
 }
-
 /************/
 /* Com3IRQ */
 /**********/
@@ -369,9 +386,6 @@ void Com4IRQ() {
 /* HandleComIRQ */
 /***************/
 void HandleComIRQ(SerialPort *port) {
-	//port->port->intEnable = (RxHalfFullIE | TimeoutNotEmptyIE | OverrunErrorIE | FrameErrorIE | ParityErrorIE | TxHalfEmptyIE);
-
-
 	// Data received
 	if ((port->port->status & (RxHalfFull | TimeoutNotEmtpy)) != 0) {
 		ProcessRxFifo(port);
@@ -385,16 +399,16 @@ void HandleComIRQ(SerialPort *port) {
 #ifdef DEBUG_SERIAL
 	// Overrun
 	if ((port->port->status & OverrunError) != 0) {
-		DebugPrint ("Serial overrun error on com%d", ((UINT32)(port->port)-UART0_REG_BASE)/(UART1_REG_BASE-UART0_REG_BASE));
+		DebugPrint ("Serial overrun error on com%d", GetPortNumber(port) );
 	}
 
 	// Framing error
 	if ((port->port->status & FrameError) != 0) {
-		DebugPrint ("Framing error error on com%d", ((UINT32)(port->port)-UART0_REG_BASE)/(UART1_REG_BASE-UART0_REG_BASE));
+		DebugPrint ("Framing error error on com%d", GetPortNumber(port));
 	}
 
 	if ((port->port->status & ParityError) != 0) {
-		DebugPrint ("Parity error on com%d", ((UINT32)(port->port)-UART0_REG_BASE)/(UART1_REG_BASE-UART0_REG_BASE));
+		DebugPrint ("Parity error on com%d", GetPortNumber(port));
 	}
 #endif
 }
