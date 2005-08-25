@@ -147,7 +147,10 @@ void EICDisableIRQ(EIC_SOURCE src)
 /***************/
 void EICClearIRQ(EIC_SOURCE src)
 {
+	// according to the docs, we need to globally disable interrupts before clearing one?
+	//eic->icr &= ~IRQ_EN;
 	eic->ipr |= BIT(src);
+	//eic->icr |= IRQ_EN;
 }
 
 /***************/

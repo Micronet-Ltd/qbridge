@@ -29,6 +29,8 @@
 /*******************************/
 #include "serial.h"
 #include "eic.h"
+#include "protocol232.h"
+#include "timers.h"
 
 /***********/
 /* Pragmas */
@@ -155,19 +157,36 @@ void InitializeClocks(void)
 	rccu->per = 0;
 }
 
+void LockProgram();
+
 /********/
 /* main */
 /********/
 int main(void) {
 	InitializeClocks();
 	InitializeEIC();
-
 	InitializeAllSerialPorts();
-	Transmit (&com1, "One World\n", 10);
-	Transmit (&com2, "Two World\n", 10);
-	Transmit (&com2, "Thr World\n", 10);
+	InitializeTimers();
 
-	DebugPrint ("End of program reached. . . . Locking QBridge");
+	extern const unsigned char BuildDateStr[];
+	DebugPrint ("Starting QBridge. Version %s. %s.", VERSION, BuildDateStr);
+	while (1) {
+		ProcessReceived232Data();
+	}
+
+	LockProgram();
+}
+
+/****************/
+/* LockProgram */
+/**************/
+void LockProgram() {
+	extern int allocPoolIdx;
+	extern const int MaxAllocPool;
+
+	DebugPrint ("End of program reached. . . . Entering pass through mode.");
+	DebugPrint ("Allocation Pool at index %d / %d", allocPoolIdx, MaxAllocPool );
+
 	while(1) {
 		if (!QueueEmpty(&(com1.rxQueue))) {
 			UINT8 buf[50];

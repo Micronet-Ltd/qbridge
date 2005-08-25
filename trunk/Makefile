@@ -21,10 +21,15 @@ CFLAGS          := -mcpu=arm7tdmi -mlittle-endian -mapcs-32 -Wall -fno-strict-al
 OPTIMIZE        := 
 IFLAGS          := -Isrc -I/usr/local/arm-elf/include
 
-LIBPATH         := -L/usr/local/arm-elf/lib -L/usr/local/lib/gcc-lib/arm-elf/3.3.1
+#LIBPATH         := -L/usr/local/arm-elf/lib -L/usr/local/lib/gcc-lib/arm-elf/3.3.1
+LIBPATH         := -L/home/simon/qbridge/newlib/arm-elf
 LIBINCLUDES     := -lc -lgcc
 
 SEC_EXCLUDES    := -R .bss -R .stack
+
+version := $(addsuffix $(test_version),$(version))
+defs += -DVERSION=\"$(version)\"
+
 
 ######################
 #  Tool Definitions  #
@@ -93,6 +98,7 @@ $(target).bin: $(target).srec
 	@echo -e '\E[36m'"\033[1m**************Target Made**************\033[0m"
 
 $(target).elf: $(OBJS) $(linkscript)
+	@echo -e '\E[32m'"\033[1mLinking $@\033[0m"
 	$(CC) $(CFLAGS) $(OBJS) -Xlinker -Map -Xlinker $(target).map --warn-common \
 		-T$(linkscript) -nostdlib -static $(LIBPATH) $(LIBINCLUDES) -o $(target).elf
 

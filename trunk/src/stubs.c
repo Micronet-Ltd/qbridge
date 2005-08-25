@@ -23,9 +23,33 @@
 #include <stdio.h>
 #include <string.h>
 #include <limits.h>
+#include "common.h"
+#include "serial.h"
 
-#if 0
 extern int _snprintf_r_ex(struct _reent *data, FILE * fp, _CONST char *fmt0, va_list ap);
+
+const int MaxAllocPool = 128;
+UINT32 allocPool[128];
+int allocPoolIdx = 0;
+
+/*************/
+/* _calloc_r */
+/*************/
+/* This function can be used by mprec - so we'll re-route it */
+void *_calloc_r(struct _reent *r, size_t nobj, size_t n)
+{
+	int oldAllocPoolIdx = allocPoolIdx;
+	// Get the number of 4 byte indexes we need
+	allocPoolIdx += (nobj + sizeof(UINT32)-1) / sizeof(UINT32); 
+	if (allocPoolIdx > MaxAllocPool) {
+		DebugCorePrint ("Out of \"heap\" memory");
+		return NULL;
+	}
+
+		
+	return &(allocPool[oldAllocPoolIdx]);
+}
+
 /*************/
 /* vsnprintf */
 /*************/
@@ -64,19 +88,3 @@ int snprintf(char *buf, size_t n, _CONST char *fmt0, ...)
 
    return ret;
 }
-
-/***********/
-/* sprintf */
-/***********/
-int sprintf(char *buf, _CONST char *fmt0, ...)
-{
-   int ret;
-	va_list ap;
-
-	va_start(ap, fmt0);
-   ret = vsnprintf(buf, INT_MAX, fmt0, ap);
-	va_end(ap);
-
-   return ret;
-}
-#endif

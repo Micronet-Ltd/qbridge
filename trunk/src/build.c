@@ -45,7 +45,7 @@
 /********************/
 /* Global Variables */
 /********************/
-unsigned char BuildDate[] = "Built " __DATE__ " at " __TIME__ "\r\n";
+const unsigned char BuildDateStr[] = "Built " __DATE__ " at " __TIME__;
 
 /************/
 /* Routines */
