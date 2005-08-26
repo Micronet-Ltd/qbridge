@@ -89,6 +89,7 @@ SECTIONS
 		_irqstackend = . ;				
 	} > ram=0
 	_heapBegin = ALIGN(16) ;
+	end = . ;
 
 
 
