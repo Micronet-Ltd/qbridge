@@ -5,7 +5,7 @@
 
 Timer timer1;
 
-void Timer1IRQ();
+void Timer1IRQ() __attribute__((interrupt("IRQ")));
 
 
 /*********************/
