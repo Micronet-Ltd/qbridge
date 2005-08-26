@@ -143,9 +143,6 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath=".\src\snprintf.c">
-			</File>
-			<File
 				RelativePath=".\src\stubs.c">
 			</File>
 			<File
