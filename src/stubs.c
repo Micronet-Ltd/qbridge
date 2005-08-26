@@ -26,7 +26,7 @@
 #include "common.h"
 #include "serial.h"
 
-extern int _snprintf_r_ex(struct _reent *data, FILE * fp, _CONST char *fmt0, va_list ap);
+//extern int _snprintf_r_ex(struct _reent *data, FILE * fp, _CONST char *fmt0, va_list ap);
 
 const int MaxAllocPool = 128;
 UINT32 allocPool[128];
@@ -50,6 +50,7 @@ void *_calloc_r(struct _reent *r, size_t nobj, size_t n)
 	return &(allocPool[oldAllocPoolIdx]);
 }
 
+#if 0
 /*************/
 /* vsnprintf */
 /*************/
@@ -88,3 +89,4 @@ int snprintf(char *buf, size_t n, _CONST char *fmt0, ...)
 
    return ret;
 }
+#endif
