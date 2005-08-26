@@ -22,7 +22,7 @@ OPTIMIZE        :=
 IFLAGS          := -Isrc -I/usr/local/arm-elf/include
 
 #LIBPATH         := -L/usr/local/arm-elf/lib -L/usr/local/lib/gcc-lib/arm-elf/3.3.1
-LIBPATH         := -L/home/simon/qbridge/newlib/arm-elf
+LIBPATH         := -L./newlib/arm-elf
 LIBINCLUDES     := -lc -lgcc
 
 SEC_EXCLUDES    := -R .bss -R .stack
