@@ -4,6 +4,7 @@
 	Version="7.10"
 	Name="qbridge"
 	ProjectGUID="{CAC297B3-2480-4F4B-97D9-22C940933D87}"
+	RootNamespace="qbridge"
 	Keyword="Win32Proj">
 	<Platforms>
 		<Platform
@@ -14,49 +15,33 @@
 			Name="Debug|Win32"
 			OutputDirectory="Debug"
 			IntermediateDirectory="Debug"
-			ConfigurationType="1"
-			CharacterSet="2">
+			ConfigurationType="10"
+			CharacterSet="2"
+			DeleteExtensionsOnClean="*.obj;*.ilk;*.pdb;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.bat;$(TargetPath);*.elf">
 			<Tool
-				Name="VCCLCompilerTool"
-				Optimization="0"
-				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
-				MinimalRebuild="TRUE"
-				BasicRuntimeChecks="3"
-				RuntimeLibrary="5"
-				UsePrecompiledHeader="0"
-				WarningLevel="3"
-				Detect64BitPortabilityProblems="TRUE"
-				DebugInformationFormat="4"/>
-			<Tool
-				Name="VCCustomBuildTool"/>
-			<Tool
-				Name="VCLinkerTool"
-				OutputFile="$(OutDir)/qbridge.exe"
-				LinkIncremental="2"
-				GenerateDebugInformation="TRUE"
-				ProgramDatabaseFile="$(OutDir)/qbridge.pdb"
-				SubSystem="1"
-				TargetMachine="1"/>
+				Name="VCCustomBuildTool"
+				CommandLine="rsh brutus -l simon &quot;make -C qbridge&quot;
+"
+				Outputs="qbridge.elf"/>
 			<Tool
 				Name="VCMIDLTool"/>
 			<Tool
-				Name="VCPostBuildEventTool"/>
+				Name="VCPostBuildEventTool"
+				CommandLine="rsh brutus -l simon &quot;make -C qbridge&quot;
+if exist qbridge.elf goto success
+
+:failure
+echo QBridge.elf file missing
+echo Build:0: error: Errors are present
+exit /B 1
+
+:success
+copy qbridge.elf qbridge2.elf
+del qbridge.elf
+echo Success
+exit /B 0"/>
 			<Tool
 				Name="VCPreBuildEventTool"/>
-			<Tool
-				Name="VCPreLinkEventTool"/>
-			<Tool
-				Name="VCResourceCompilerTool"/>
-			<Tool
-				Name="VCWebServiceProxyGeneratorTool"/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"/>
-			<Tool
-				Name="VCWebDeploymentTool"/>
-			<Tool
-				Name="VCManagedWrapperGeneratorTool"/>
-			<Tool
-				Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
@@ -114,23 +99,69 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}">
 			<File
 				RelativePath=".\src\build.c">
+				<FileConfiguration
+					Name="Debug|Win32"
+					ExcludedFromBuild="TRUE">
+					<Tool
+						Name="VCCustomBuildTool"/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\src\eic.c">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+"
+						Outputs="obj/$(InputName).o"/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\src\init_arm.S">
+			</File>
+			<File
+				RelativePath=".\src\J1708.c">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+"
+						Outputs="obj/$(InputName).o"/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\src\main.c">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+"
+						Outputs="obj/$(InputName).o"/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\src\protocol232.c">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+"
+						Outputs="obj/$(InputName).o"/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\src\queue.c">
 				<FileConfiguration
 					Name="Debug|Win32">
 					<Tool
-						Name="VCCLCompilerTool"
-						CompileAs="2"/>
+						Name="VCCustomBuildTool"
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+"
+						Outputs="obj/$(InputName).o"/>
 				</FileConfiguration>
 			</File>
 			<File
@@ -138,15 +169,33 @@
 				<FileConfiguration
 					Name="Debug|Win32">
 					<Tool
-						Name="VCCLCompilerTool"
-						CompileAs="2"/>
+						Name="VCCustomBuildTool"
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+"
+						Outputs="obj/$(InputName).o"/>
 				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\src\stubs.c">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+"
+						Outputs="obj/$(InputName).o"/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\src\timers.c">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+"
+						Outputs="obj/$(InputName).o"/>
+				</FileConfiguration>
 			</File>
 		</Filter>
 		<Filter
@@ -164,6 +213,9 @@
 			</File>
 			<File
 				RelativePath=".\src\eic.h">
+			</File>
+			<File
+				RelativePath=".\src\J1708.h">
 			</File>
 			<File
 				RelativePath=".\src\protocol232.h">
@@ -194,6 +246,9 @@
 		</Filter>
 		<File
 			RelativePath=".\Makefile">
+		</File>
+		<File
+			RelativePath=".\qbridge_deb.x">
 		</File>
 	</Files>
 	<Globals>

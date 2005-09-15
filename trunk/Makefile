@@ -19,7 +19,8 @@ ARCH            := arm
 COMPILER_PREFIX := arm-elf-
 CFLAGS          := -mcpu=arm7tdmi -mlittle-endian -mapcs-32 -Wall -fno-strict-aliasing -fno-builtin -g
 OPTIMIZE        := 
-IFLAGS          := -Isrc -I/usr/local/arm-elf/include
+#IFLAGS          := -Isrc -I/usr/local/arm-elf/include
+IFLAGS          := -Isrc -I./newlib/arm-elf/include
 
 #LIBPATH         := -L/usr/local/arm-elf/lib -L/usr/local/lib/gcc-lib/arm-elf/3.3.1
 LIBPATH         := -L./newlib/arm-elf

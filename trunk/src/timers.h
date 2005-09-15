@@ -5,12 +5,17 @@
 
 typedef struct _Timer {
    TimerRegisterMap *timer;
-	UINT64 wrapCounter;
+	UINT32 wrapCounter;
 } Timer;
 
-Timer timer1;
+extern Timer MainTimer;
+extern Timer J1708IdleTimer;
 
 void InitializeTimers();
+UINT64 GetTimerTime(Timer *timer);
 
+extern inline UINT32 GetJ1708IdleTime();
+extern inline void StartJ1708IdleTimer();
+extern void CancelJ1708IdleTimer();
 
 #endif // TIMERS_H

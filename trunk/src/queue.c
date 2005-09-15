@@ -20,8 +20,7 @@
 /*******************************************************************/
 
 #include "queue.h"
-
-
+#include "common.h"
 
 /********************/
 /* InitializeQueue */
@@ -99,4 +98,18 @@ int DequeueBuf(CircleQueue *queue, UINT8*buf, int bufLen) {
 	queue->count -= bufLen;
 
 	return bufLen;
+}
+
+/********************/
+/* EnsureQueueFree */
+/******************/
+void EnsureQueueFree(CircleQueue *queue, int count) {
+	if (QUEUE_SIZE - queue->count >= count) {
+		return;
+	}
+
+	int dCount = count - (QUEUE_SIZE - count);
+	for (dCount--; dCount >= 0; dCount--) {
+		DequeueOne(queue);
+	}
 }

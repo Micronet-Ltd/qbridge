@@ -1,6 +1,7 @@
 #include "common.h"
 #include "protocol232.h"
 #include "serial.h"
+#include "timers.h"
 
 #define CRC_CITT_ONLY
 #define INC_CRC_FUNCS
@@ -35,7 +36,10 @@ const int CRCSize = 2;
 static UINT8 packetID = 0;
 static UINT16 crcTable[256] = {0};
 static bool crcTableCreated = false;
+static UINT64 lastDataReceiveTime = 0;
 
+/* approx 1/2 second */
+#define SERIAL_RECV_TIMEOUT 32000
 #define CREATE_TABLE_IF_NECESSARY { if (!crcTableCreated) { \
 													createCITTTable(crcTable); \
 													crcTableCreated = true; } }
@@ -53,12 +57,21 @@ static inline void ShiftCurPacket(int numChars) {
 /* ProcessReceived232Data */
 /*************************/
 void ProcessReceived232Data() {
-	if (QueueEmpty(&com1.rxQueue)) {
+	if (curPacketRecvBytes > 0) {
+		// See if we timed out on data receive.
+		if (lastDataReceiveTime + SERIAL_RECV_TIMEOUT < GetTimerTime(&MainTimer)) {
+			// timeout
+			curPacketRecvBytes = 0;
+			SERIAL_PROTOCOL_DEBUG("Serial 232 data in buffer after timeout");
+		}
+	}
+	if (QueueEmpty(&hostPort->rxQueue)) {
 		return;
 	}
+	lastDataReceiveTime = GetTimerTime(&MainTimer);
 
 	// Append data from serial buffer to packet buffer
-	int len = DequeueBuf(&com1.rxQueue, curPacketBuf+curPacketRecvBytes, MAX_232PACKET-curPacketRecvBytes);
+	int len = DequeueBuf(&hostPort->rxQueue, curPacketBuf+curPacketRecvBytes, MAX_232PACKET-curPacketRecvBytes);
 	curPacketRecvBytes += len;
 
 	while (curPacketRecvBytes > 0) {
@@ -153,6 +166,7 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
 				extern const unsigned char BuildDateStr[];
 
 				DebugPrint ("QBridge firmware version %s.  %s.  Heap in use %d / %d.", VERSION, BuildDateStr, allocPoolIdx, MaxAllocPool);
+				DebugPrint ("  J1708 Idle time=%d", GetJ1708IdleTime());
 				Send232Ack(ACK_OK, id, NULL, 0);
 			}
 			break;
@@ -206,5 +220,5 @@ void TransmitFinal232Packet (UINT8 command, UINT8 packetID, UINT8 *data, UINT32 
 	buf[dataLen+4] = (crc & 0xFF);
 	buf[dataLen+5] = (crc & 0xFF00) >> 8;
 
-	Transmit (&com1, buf, buf[1]);
+	Transmit (hostPort, buf, buf[1]);
 }

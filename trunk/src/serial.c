@@ -26,34 +26,6 @@
 #include <string.h>
 #include <stdio.h>
 
-// Assumes a baud clock of 14.7456 MHz
-/*#define bauddiv_460800  0x2
-#define bauddiv_230400  0x4 
-#define bauddiv_115200  0x8
-#define bauddiv_57600   0x10
-#define bauddiv_38400   0x18
-#define bauddiv_19200   0x30
-#define bauddiv_14400   0x40
-#define bauddiv_9600    0x60
-#define bauddiv_4800    0xc0
-#define bauddiv_2400    0x180
-#define bauddiv_1200    0x300
-#define bauddiv_600     0x600
-*/
-
-// Assumes a baud clock of 16.0 MHz
-#define bauddiv_460800  2
-#define bauddiv_230400  4 
-#define bauddiv_115200  9
-#define bauddiv_57600   17
-#define bauddiv_38400   26
-#define bauddiv_19200   52
-#define bauddiv_14400   69
-#define bauddiv_9600    104
-#define bauddiv_4800    208
-#define bauddiv_2400    417
-#define bauddiv_1200    833
-#define bauddiv_600     1667
 
 
 typedef struct _BaudTableEntry {
@@ -76,12 +48,16 @@ static const BaudTableEntry BaudRateTable[] = {
 
 static void InitializePort (SerialPort *port, EIC_SOURCE src, void (*hdlr)(void));
 
-SerialPort com1;
+//SerialPort com1;
 SerialPort com2;
 SerialPort com3;
 SerialPort com4;
 IOPortRegisterMap * ioPort0;
 IOPortRegisterMap * ioPort1;
+
+SerialPort *debugPort=NULL;
+SerialPort *j1708Port=NULL;
+SerialPort *hostPort=NULL;
 
 void GPIO_Config (IOPortRegisterMap *GPIOx, UINT16 Port_Pins, Gpio_PinModes GPIO_Mode) {
   switch (GPIO_Mode)
@@ -141,10 +117,14 @@ void GPIO_Config (IOPortRegisterMap *GPIOx, UINT16 Port_Pins, Gpio_PinModes GPIO
 /* InitializeAllSerialPorts */
 /***************************/
 void InitializeAllSerialPorts() {
+	debugPort = &com3;
+	hostPort	 = &com4;
+	j1708Port = &com2;
+
 	// These should really be initialized as constants, but something seems broken about doing that
 	ioPort0 = (IOPortRegisterMap *)IOPORT0_REG_BASE;
 	ioPort1 = (IOPortRegisterMap *)IOPORT1_REG_BASE;
-	com1.port = (UARTRegisterMap volatile * const)(UART0_REG_BASE);
+	//com1.port = (UARTRegisterMap volatile * const)(UART0_REG_BASE);
 	com2.port = (UARTRegisterMap volatile * const)(UART1_REG_BASE);
 	com3.port = (UARTRegisterMap volatile * const)(UART2_REG_BASE);
 	com4.port = (UARTRegisterMap volatile * const)(UART3_REG_BASE);
@@ -153,15 +133,14 @@ void InitializeAllSerialPorts() {
 	// code off the internet which set this pins in this manner and it seemed to make everything work.
 	// Note:  We may want to change one of these once we decide on a 485 port.  We should probably 1/2 duplex everything on that port
 	// Configure the GPIO transmit pins as alternate function push pull 
-   GPIO_Config(ioPort0, UART0_Tx_Pin | UART1_Tx_Pin | UART2_Tx_Pin | UART3_Tx_Pin, GPIO_AF_PP);
+   GPIO_Config(ioPort0, /*UART0_Tx_Pin |*/ UART1_Tx_Pin | UART2_Tx_Pin | UART3_Tx_Pin, GPIO_AF_PP);
 	// Configure the GPIO receive pins as Input Tristate CMOS 
-   GPIO_Config(ioPort0, UART0_Rx_Pin | UART1_Rx_Pin | UART2_Rx_Pin | UART3_Rx_Pin, GPIO_IN_TRI_CMOS);
+   GPIO_Config(ioPort0, /*UART0_Rx_Pin |*/ UART1_Rx_Pin | UART2_Rx_Pin | UART3_Rx_Pin, GPIO_IN_TRI_CMOS);
 
-	InitializePort(&com1, EIC_UART0, Com1IRQ);
+	//InitializePort(&com1, EIC_UART0, Com1IRQ);
 	InitializePort(&com2, EIC_UART1, Com2IRQ);
-	//InitializePort(&com3, EIC_UART2, Com3IRQ);
-	//InitializePort(&com4, EIC_UART3, Com4IRQ);
-
+	InitializePort(&com3, EIC_UART2, Com3IRQ);
+	InitializePort(&com4, EIC_UART3, Com4IRQ);
 }
 
 /*******************/
@@ -174,7 +153,7 @@ static void InitializePort (SerialPort *port, EIC_SOURCE src, void (*hdlr)(void)
 	InitializeQueue(&(port->txQueue));
 	RESTORE_IRQ(saveState);
 
-	SetPortSettings(port, 19200l, 8, 'N', 1);
+	SetPortSettings(port, 115200l, 8, 'N', 1);
 	port->port->intEnable = (RxHalfFullIE | TimeoutNotEmptyIE | OverrunErrorIE | FrameErrorIE | ParityErrorIE);
 	port->port->guardTime = 0;
 	port->port->timeout = 8;
@@ -261,7 +240,7 @@ UINT32 Transmit (SerialPort *port, UINT8 *data, int leng) {
 	DISABLE_IRQ(saveState);
 	UINT32 retVal = Enqueue(&(port->txQueue), data, leng);
 #ifdef DEBUG_SERIAL
-	if (retVal < leng) {
+	if ((retVal < leng) && (port != debugPort)) {
 		DebugPrint ("Serial com%d transmit queue has overrun.", GetPortNumber(port));
 	}
 #endif
@@ -326,38 +305,49 @@ inline bool PortRxFifoNotEmpty(SerialPort *port) {
 /* DebugPrint */
 /*************/
 void DebugPrint(char *formatStr, ...) {
-	char buf[256];
+	char buf[256] = "* ";
 	int len;
 	va_list ap;
 	va_start(ap, formatStr);
-	//strncpy(buf, formatStr, 510);
-	vsnprintf(buf, 510, formatStr, ap);
+	//strncpy(buf, formatStr, 255);
+	vsnprintf(buf+2, 249, formatStr, ap);
 	va_end(ap);
 	len = strlen(buf);
 	
+	if (len < 3) {
+		extern const unsigned char BuildDateStr[];
+		strcpy (buf+len, formatStr);
+		len = strlen(buf);
+		strcpy(buf+len, "<need reboot?>  ");
+		len = strlen(buf);
+		strcpy(buf+len, BuildDateStr);
+		len = strlen(buf);
+	}
 	// Append a \r\n to the output
-	buf[len] = '\r';
-	buf[len+1] = '\n';
-	buf[len+2] = '\0';
-	len += 2;
+	buf[len+0] = ' ';
+	buf[len+1] = '*';
+	buf[len+2] = '\r';
+	buf[len+3] = '\n';
+	buf[len+4] = '\0';
+	len += 4;
 
-	Transmit (&com2, buf, len);
+	Transmit (debugPort, buf, len);
 }
 
 /*******************/
 /* DebugCorePrint */
 /*****************/
 void DebugCorePrint(char *toPrint) {
-	Transmit (&com2, toPrint, strlen(toPrint));
+	Transmit (debugPort, toPrint, strlen(toPrint));
 }
 
 /************/
 /* Com1IRQ */
 /**********/
-void Com1IRQ() {
+/*void Com1IRQ() {
 	HandleComIRQ(&com1);
 	EICClearIRQ(EIC_UART0);
-}
+}*/
 
 /************/
 /* Com2IRQ */
@@ -386,29 +376,45 @@ void Com4IRQ() {
 /* HandleComIRQ */
 /***************/
 void HandleComIRQ(SerialPort *port) {
+	bool handled = false;
 	// Data received
 	if ((port->port->status & (RxHalfFull | TimeoutNotEmtpy)) != 0) {
 		ProcessRxFifo(port);
+		handled = true;
 	}
 
 	// Tx Fifo partially empty
 	if ((port->port->status & TxHalfEmpty) != 0) {
 		StuffTxFifo(port);
+		handled = true;
 	}
 
-#ifdef DEBUG_SERIAL
 	// Overrun
 	if ((port->port->status & OverrunError) != 0) {
 		DebugPrint ("Serial overrun error on com%d", GetPortNumber(port) );
+		handled = true;
 	}
 
 	// Framing error
 	if ((port->port->status & FrameError) != 0) {
 		DebugPrint ("Framing error error on com%d", GetPortNumber(port));
+		handled = true;
 	}
 
 	if ((port->port->status & ParityError) != 0) {
 		DebugPrint ("Parity error on com%d", GetPortNumber(port));
+		handled = true;
 	}
-#endif
+
+	if (!handled) {
+		DebugPrint ("Unknown interrupt on com%d.  IntEnable=%04X  Status=%04X", GetPortNumber(port), port->port->intEnable, port->port->status);
+	}
+
+}
+
+/******************/
+/* IsTxFifoEmpty */
+/****************/
+inline bool IsTxFifoEmpty(SerialPort *port) {
+	return (port->port->status & TxEmpty) != 0;
 }
