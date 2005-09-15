@@ -1,0 +1,263 @@
+#STPBuilderApp
+#hide #option _TOOL_TOUCHSCREEN
+#option _SS_Lines
+#option _SS_Marquee
+
+dim CRCTable[] as integer
+
+func Startup ()
+    handles MSG_INIT
+
+    'SetSystemSetting (SYS_COM1BAUD, 19200, SYSACT_DONOW)
+    SetSerialTimeout(COM1, 1)
+
+    CRCTable = CreateCRCTable (16, 0x1021, false)
+
+    SetSerialRecvSize(COM2, 512)
+    SetSerialTimeout(COM2, 1)
+
+    RegisterMsgHandler (default, msg_comm_receive, com1)
+
+    return
+endfunc
+
+
+const STX := 2 as byte
+dim packetID as byte
+func TransmitPacket (cmd as byte, data[] as byte, truncate as boolean)
+    dim packet[] as byte
+    dim crc as unibyte
+
+    packetID := packetID + 1
+    redim (packet, len(data) + 4)
+    packet[0] = STX
+    packet[1] := len(data) + 6
+    packet[2] := cmd
+    packet[3] := packetID
+    SetArrayData(packet, 4, data, 0, -1)
+
+    crc = CalculateCRC(crcTable, 16, false, 0xFFFF, false, 0x0000, packet)
+    if truncate then
+        packet = left(packet, len(packet)-2)
+    endif
+    Transmit (COM1, packet + GetBytes (crc, false), false)
+    _print ("Transmitting packet.  Command=" + mid(packet, 2, 1) + " datalen = "  +str(len(data)) + "  overall len=" + str(packet[1]) + " PacketID=" + str(packet[3]))
+endfunc
+
+dim recv[] as byte
+const STXStr := "\x02"
+func CommReceive (data[] as byte) returns boolean
+    handles MSG_COMM_RECEIVE
+
+    dim pos, oldPos as integer
+    dim recvLeng as integer
+    dim pktLeng as integer
+    dim calcCRC as integer
+    recv := recv + data
+
+    label TryAgain
+    pos = find (recv, oldPos, -1, stxStr)
+    if pos < 0 then
+        recv = "" 'Clear out the buffer -- no STX received
+        return true
+    endif
+
+    recvLeng = len(data)
+    if pos >= recvLeng-1 then
+        goto ShiftAndExit
+    endif
+
+    pktLeng := data[pos+1]
+    if pos + pktLeng > recvLeng then
+        goto ShiftAndExit
+    endif
+
+    calcCRC = CalculateCRC(crcTable, 16, false, 0xFFFF, false, 0x0000, mid(recv, pos, pktLeng-2))
+    if GetBytes(unibyte(calcCRC), false) <> mid(recv, pos+pktLeng-2, 2) then
+        _PRint ("Invalid CRC received")
+        oldPos := pos+1
+        goto tryAgain
+    endif
+
+    ProcessPacket (recv[pos+2], recv[pos+3], mid(recv, pos+4, pktLeng-6))
+
+
+    return true
+
+    label ShiftAndExit
+    if pos > 0 then
+        recv := mid(recv, pos, -1)
+    endif
+    return true
+endfunc
+
+func ProcessPacket (cmd as byte, pktID as byte, data[] as byte)
+    dim cmdStr[1] as byte
+    cmdStr[0] := cmd
+    _print ("Received Packet: " + cmdStr + " ID=" + str(pktID) + " dataLen=" + str(len(data)))
+endfunc
+Declare BasicSerial_1 as BasicSerialV2
+Level 249999
+#Visible True
+#Lock False
+init parent := default
+init comport := com2
+
+func datareceived(data[] as byte)
+    _print (data)
+endfunc
+Enddec
+Declare BrokenPacket as ButtonV2
+Level 249996
+#Visible True
+#Lock False
+init value := "Broken Packet"
+init parent := screen_1
+init xpos := 11
+init ypos := 85
+init width := 62
+init height := 31
+
+func click()
+    TransmitPacket ('@', "adfasdfasdf", true)
+endfunc
+init repeatrate := 100
+init repeatwait := 500
+init tone := note_none
+Enddec
+Declare DebugInfoPacket as ButtonV2
+Level 249995
+#Visible True
+#Lock False
+init value := "Get Info"
+init parent := screen_1
+init xpos := 11
+init ypos := 47
+init width := 62
+init height := 31
+
+func click()
+    dim bytes[] as byte
+    dim i as integer
+
+    TransmitPacket ('*', "", false)
+endfunc
+init repeatrate := 100
+init repeatwait := 500
+init tone := note_none
+Enddec
+Declare ExceptionDisplay as ExceptionDisplayV2
+Level 250000
+#Visible False
+#Lock False
+
+Enddec
+Declare Screen_1 as ScreenV2
+Level 249998
+#Visible True
+#Lock False
+init parent := default
+init xpos := 0
+init ypos := 0
+init width := 320
+init height := 240
+Enddec
+Declare ScreenSaver as ScreenSaverV2
+Level 249993
+#Visible False
+#Lock False
+
+Enddec
+Declare SendRandomButton as ButtonV2
+Level 249997
+#Visible True
+#Lock False
+init value := "Random Button"
+init parent := screen_1
+init xpos := 83
+init ypos := 9
+init width := 62
+init height := 31
+
+func click()
+    dim buttons[] as objref buttonv2
+    init buttons := [brokenPacket, DebugInfoPacket, SendRandomPacket]
+    dim i as integer
+    i = GetRandomNum() * len(buttons)
+    buttons[i].click()
+endfunc
+
+init repeatrate := 100
+init repeatwait := 500
+init tone := note_none
+Enddec
+Declare SendRandomPacket as ButtonV2
+Level 249994
+#Visible True
+#Lock False
+init value := "Random Packet"
+init parent := screen_1
+init xpos := 11
+init ypos := 9
+init width := 62
+init height := 31
+
+func click()
+    dim bytes[] as byte
+    dim i as integer
+    redim (bytes, 200*GetRandomNum())
+
+    for i = len(bytes)-1 to 0 step -1
+        bytes[i] = integer(256*GetRandomNum())
+    next
+
+    TransmitPacket (integer(65 + (GetRandomNum() * 26)), bytes, false)
+endfunc
+init repeatrate := 100
+init repeatwait := 500
+init tone := note_none
+Enddec
+#Hide Library DataProc Source BasicSerialV2
+#Hide Library Basic Source ButtonV2
+#Hide Library Basic Source ExceptionDisplayV2
+#Hide Library Basic Source ScreenSaverV2
+#Hide Library Basic Source ScreenV2
+#SetFile -1 "*l%global%"
+Includesys Library "basic.qlib"
+Includesys Library "dataproc.qlib"
+Includesys Library "extra.qlib"
+#hide Includesys reference to Library "Galil_mcV2.qlib"
+#hide Includesys reference to Library "j1708V1.qlib"
+#hide Includesys reference to Library "K65EmulationV2.qlib"
+#hide Includesys reference to Library "MitsubishiFX.qlib"
+#hide Includesys reference to Library "ModbusV2.qlib"
+#hide Includesys reference to Library "multilingual.qlib"
+#hide Includesys reference to Library "NIObjsV2.qlib"
+#hide Includesys reference to Library "Opto22MemMapV2.qlib"
+#hide Includesys reference to Library "OptoUIO.qlib"
+#hide Includesys reference to Library "OrbComm.qlib"
+#hide Includesys reference to Library "zworld.qlib"
+#hide Includesys reference to Library "core.qlib.qhide"
+#hide Includesys reference to Library "progobjs.lib"
+#hide Includesys reference to Library "common.lib"
+#hide library basic source necessary
+#SetFile -1 "*r%global%"
+Includesys Bitmap "qlarity.bmp" As default
+Includesys BDFfont "helvR08.bdf" As default
+Includesys BDFfont "helvR14.bdf" As Helv14
+Includesys BDFfont "5x7.bdf" As Small
+Includesys TTfont "vera.ttf" As default
+#config colormap "Clr_ButtonBackground := 219;Clr_ButtonBackgroundAlt := 223;Clr_ButtonForeground := 0;Clr_ButtonForegroundAlt := 2;Clr_FillColor := 15;Clr_LabelBackground := 223;Clr_LabelForeground := 2;Clr_ScreenBackground := 255;Clr_ScreenForeground := 2;Clr_SoftkeybarBackground := 183;Clr_SoftkeybarButtonBg := 255;Clr_SoftkeybarButtonFg := 2;"
+#hide #ifnot opt_colormap%
+#hide #option opt_colormap%
+#hide enum colormap% as Clr_ButtonBackground:=258, Clr_ButtonBackgroundAlt:=260, Clr_ButtonForeground:=259, Clr_ButtonForegroundAlt:=261, Clr_FillColor:=264, Clr_LabelBackground:=256, Clr_LabelForeground:=257, Clr_ScreenBackground:=262, Clr_ScreenForeground:=263, Clr_SoftkeybarBackground:=265, Clr_SoftkeybarButtonBg:=266, Clr_SoftkeybarButtonFg:=267
+#hide #hidden dim _colorMap[] as color
+#hide init _colorMap := [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255, 223, 2, 219, 0, 223, 2, 255, 2, 15, 183, 255, 2]
+#hide #endif
+#config stylemap "Bdr_BumpBorder := 33895724;Bdr_ButtonBorder := 33890340;Bdr_CheckBoxBorder := 654643206;Bdr_CompositeObject := 33890340;Bdr_CompositeSunken := 33890342;Bdr_InnerButton := 637865988;Bdr_InnerLabel := 1862602758;Bdr_LabelBorder := 33886214;Bdr_None := 0;Bdr_Scrollbar := 1325731844;Bdr_Softkey := 33760548;Bdr_TabBorder := 34222116;"
+#hide #ifnot opt_stylemap%
+#hide #option opt_stylemap%
+#hide enum stylemap% as Bdr_BumpBorder:=4, Bdr_ButtonBorder:=0, Bdr_CheckBoxBorder:=6, Bdr_CompositeObject:=9, Bdr_CompositeSunken:=10, Bdr_InnerButton:=7, Bdr_InnerLabel:=8, Bdr_LabelBorder:=1, Bdr_None:=2, Bdr_Scrollbar:=3, Bdr_Softkey:=11, Bdr_TabBorder:=5
+#hide #hidden dim _styleMap[] as integer
+#hide init _styleMap := [33890340, 33886214, 0, 1325731844, 33895724, 34222116, 654643206, 637865988, 1862602758, 33890340, 33890342, 33760548]
+#hide #endif

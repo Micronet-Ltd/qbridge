@@ -31,6 +31,7 @@
 #include "eic.h"
 #include "protocol232.h"
 #include "timers.h"
+#include "J1708.h"
 
 /***********/
 /* Pragmas */
@@ -51,14 +52,13 @@
 /********************/
 /* Global Variables */
 /********************/
-extern unsigned char BuildDate[];
 
 const char CopyrightMsg[] __attribute__((section(".Copyright"))) = {
 	"Copyright 2005 QSI Corporation - all rights reserved"
 };
 
 /* The qbridge stack */
-unsigned long qbridge_stack[1024] __attribute__((section(".stack"))) = { 0 };
+unsigned long qbridge_stack[2048] __attribute__((section(".stack"))) = { 0 };
 
 /* 
  * The interrupt stack for the arm processors - since all exceptions except Rx receive
@@ -67,12 +67,14 @@ unsigned long qbridge_stack[1024] __attribute__((section(".stack"))) = { 0 };
  *
  * Jeremy, fix the comment above if necessary. - MKE
  */
-unsigned long irq_stack[256] __attribute__((section(".irqstack"))) = { 0 };
+unsigned long irq_stack[1024] __attribute__((section(".irqstack"))) = { 0 };
 
 
 /************/
 /* Routines */
 /************/
+void ValidateProgramState();
+
 
 /**************/
 /* irq_lockup */
@@ -89,6 +91,9 @@ void irq_lockup(void)
 	cpsr = ARM_GET_CPSR();
 	lr = ARM_GET_LR();
 	mode = cpsr & ARM_MODE_MASK;
+
+	extern SerialPort *debugPort;
+	EnsureQueueFree(&debugPort->txQueue, 80);
 
 	switch (mode) {
 	case ARM_MODE_FIQ:
@@ -112,10 +117,16 @@ void irq_lockup(void)
 		for(;;) ; /* Lock up here for default case */
 	}
 
-	DebugPrint("Unhandled exception: cpsr=0x%x lr=0x%x\r\n", cpsr, lr);
+	DebugPrint("Unhandled exception: cpsr=0x%x lr=0x%x", cpsr, lr);
 
 	/* Now lock the machine */
-	for(;;) ; 
+	// We want to ensure that the debug serial port has been flushed
+	IRQSTATE saveState = 0;
+	DISABLE_IRQ(saveState);
+
+	while (true) {
+		StuffTxFifo(debugPort);
+	}
 }
 
 /********************/
@@ -166,15 +177,36 @@ int main(void) {
 	InitializeClocks();
 	InitializeEIC();
 	InitializeAllSerialPorts();
+	InitializeJ1708();
 	InitializeTimers();
 
 	extern const unsigned char BuildDateStr[];
 	DebugPrint ("Starting QBridge. Version %s. %s.", VERSION, BuildDateStr);
 	while (1) {
+		ValidateProgramState();
 		ProcessReceived232Data();
 	}
 
 	LockProgram();
+}
+
+
+/*************************/
+/* ValidateProgramState */
+/***********************/
+void ValidateProgramState() {
+	static bool stackWarned = false;
+
+	if (!stackWarned) {
+		if (qbridge_stack[sizeof(qbridge_stack) / (10*sizeof(qbridge_stack[0]))] != 0xAABBCCDD) {
+			DebugPrint ("Warning:  Main stack is almost or completely full");
+			stackWarned = true;
+		}
+		if (irq_stack[sizeof(irq_stack) / (10*sizeof(irq_stack[0]))] != 0xAABBCCDD) {
+			DebugPrint ("Warning:  IRQ stack is almost or completely full");
+			stackWarned = true;
+		}
+	}
 }
 
 /****************/
@@ -188,15 +220,15 @@ void LockProgram() {
 	DebugPrint ("Allocation Pool at index %d / %d", allocPoolIdx, MaxAllocPool );
 
 	while(1) {
-		if (!QueueEmpty(&(com1.rxQueue))) {
+		if (!QueueEmpty(&(hostPort->rxQueue))) {
 			UINT8 buf[50];
-			int len = DequeueBuf(&(com1.rxQueue), buf, 50);
-			Transmit (&com2, buf, len);
+			int len = DequeueBuf(&(hostPort->rxQueue), buf, 50);
+			Transmit (debugPort, buf, len);
 		} 
-		if (!QueueEmpty(&(com2.rxQueue))) {
+		if (!QueueEmpty(&(debugPort->rxQueue))) {
 			UINT8 buf[50];
-			int len = DequeueBuf(&(com2.rxQueue), buf, 50);
-			Transmit (&com1, buf, len);
+			int len = DequeueBuf(&(debugPort->rxQueue), buf, 50);
+			Transmit (hostPort, buf, len);
 		} 
 	}
 }

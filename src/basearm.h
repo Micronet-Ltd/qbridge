@@ -47,11 +47,11 @@
 									 "\tMRS  r0, CPSR\n"		\
 									 "\tSTR  r0, %0\n"			\
 									 "\tORR	 r0, r0, #0xc0\n" \
-									 "\tMSR	 CPSR_cf, r0\n" \
+									 "\tMSR	 CPSR_c, r0\n" \
 									 : : "m" (saveState) : "r0", "memory" ); }
 #define RESTORE_IRQ(saveState)  { asm volatile ( \
 									 "\tLDR  r0, %0\n"			\
-									 "\tMSR	 CPSR_cf, r0\n" \
+									 "\tMSR	 CPSR_c, r0\n" \
 									 : : "m" (saveState) : "r0", "memory" ); }
 
 #define ARM_GET_CP15() ({ unsigned long cpval=0; \

@@ -105,6 +105,27 @@ init_stacks:
    @ Set up the System mode stack (run in System mode from here on)
    MSR	 CPSR_c, #(ARM_MODE_SYS | ARM_IRQ | ARM_FIQ)
    LDR	 sp, =_stackend
+   
+   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   @@@@ Fill Stack with known values @@@@
+   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+fill_stacks:
+   @ Fill the user and IRQ stacks with a known value to help detect overruns
+   @ NOTE:  This routine clobbers r0-r6 and r12!!
+   LDR	 r1, =_stackbegin
+   LDR	 r2, =_irqstackend @ The IRQ stack immediately follows the main stack
+   LDR	 r0, =0xAABBCCDD
+   MOV	 r4, r0
+   MOV	 r5, r0
+   MOV	 r6, r0
+   
+   @ Fill stack with the static value
+fill_sysstack:  
+   STMIA  r1!, {r0, r4, r5, r6}
+   CMP	 r2, r1
+   BNE	 fill_sysstack
+   
+   
 
    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@
    @@@@ Initialize sections @@@@
