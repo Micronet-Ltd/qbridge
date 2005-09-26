@@ -30,7 +30,7 @@ enum J1708CollisionReason { JCR_Framing = 1, JCR_FullComp = 0, JCR_FirstByteMism
 enum J1708State { JST_Passive, JST_Transmitting, JST_IgnoreRxData };
 extern enum J1708State j1708State;
 extern bool j1708RetransmitNeeded;
-extern bool j1708CheckingMIDCharForCollision;
+extern int  j1708CheckingMIDCharForCollision;
 extern int  j1708RetransmitIdleTime;
 
 #ifdef _DEBUG

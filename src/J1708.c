@@ -20,7 +20,7 @@ enum J1708State j1708State;
 int j1708CurCollisionCount;
 bool j1708RetransmitNeeded;
 int  j1708RetransmitIdleTime;
-bool j1708CheckingMIDCharForCollision;
+int  j1708CheckingMIDCharForCollision = -1;
 
 #ifdef _DEBUG
 static char msgIdx;
@@ -47,7 +47,7 @@ void InitializeJ1708() {
 	j1708CurCollisionCount = 0;
 	j1708RetransmitNeeded = 0;
 	j1708RetransmitIdleTime = 0;
-	j1708CheckingMIDCharForCollision = false;
+	//j1708CheckingMIDCharForCollision = -1;
 
 #ifdef _DEBUG
 	msgIdx = 0;
@@ -164,9 +164,10 @@ void ProcessJ1708TransmitQueue() {
 			return;
 		}
 		j1708State = JST_Transmitting;
-		j1708CheckingMIDCharForCollision = true;
+		j1708CheckingMIDCharForCollision = 0;
 		J1708LogEventIdle(JEV_Retry, j1708CurCollisionCount, idleTime);
 		j1708Port->port->intEnable |= RxBufNotEmptyIE;
+DebugPrint ("Retransmit");
 		Transmit (j1708Port, j1708CurTxMessage.data, j1708CurTxMessage.len);
 		j1708RetransmitNeeded = false;
 	} else {
@@ -189,7 +190,7 @@ void ProcessJ1708TransmitQueue() {
 		}
 
 		j1708State= JST_Transmitting;
-		j1708CheckingMIDCharForCollision = true;
+		j1708CheckingMIDCharForCollision = 0;
 		J1708LogEventIdle(JEV_Transmit, 0, idleTime);
 		j1708Port->port->intEnable |= RxBufNotEmptyIE;
 		Transmit (j1708Port, msg->data, msg->len);
@@ -259,18 +260,26 @@ void J1708ComIRQHandle() {
 		j1708Port->port->intEnable &= ~TimeoutIdleIE;
 	}
 
-	// If we are transmitting, we want to interrupt on the first character only and check it for a collision
-	if (j1708CheckingMIDCharForCollision && (j1708Port->port->status & RxBufNotEmtpy) && !(j1708Port->port->status & FrameError)) {
+	// If we are transmitting, we want to interrupt on the first couple of characters only and check it for a collision
+	while ((j1708CheckingMIDCharForCollision >= 0) && (j1708Port->port->status & RxBufNotEmtpy) && !(j1708Port->port->status & FrameError)) {
 		UINT8 rxChar;
 		// we were double checking the first character of a transmission for a collision
-		j1708Port->port->intEnable &= ~RxBufNotEmptyIE; // first of all turn this interrupt off, we don't need it anymore
 		rxChar = j1708Port->port->rxBuffer;
 		Enqueue(&j1708Port->rxQueue, &rxChar, 1);
-		if (rxChar != j1708CurTxMessage.data[0]) {
-DebugPrint ("Collision (1st byte mismatch)");
+		if (rxChar != j1708CurTxMessage.data[j1708CheckingMIDCharForCollision]) {
+DebugPrint ("Collision (mismatch at byte %d -- was %02X, expecting %02X)", j1708CheckingMIDCharForCollision, rxChar, j1708CurTxMessage.data[j1708CheckingMIDCharForCollision]);
 			J1708EnterCollisionState(JCR_FirstByteMismatch);
+			ClearQueue(&j1708Port->rxQueue);
+			j1708Port->port->rxReset = 0; // Clear out the RxFifo
+			ClearQueue (&j1708Port->txQueue);
+			j1708Port->port->txReset = 0;
+			j1708Port->port->intEnable &= ~TxHalfEmptyIE;
 		}
-		j1708CheckingMIDCharForCollision = false;
+		j1708CheckingMIDCharForCollision++;
+		if (j1708CheckingMIDCharForCollision > 0) {
+			j1708CheckingMIDCharForCollision = -1;
+			j1708Port->port->intEnable &= ~RxBufNotEmptyIE; // first of all turn this interrupt off, we don't need it anymore
+		}
 	}
 
 	// if we got a framing error, then treat as a collision, otherwise normal processing
@@ -420,6 +429,8 @@ void J1708EnterCollisionState(enum J1708CollisionReason reason) {
 		j1708RetransmitNeeded = true;
 	}
 	j1708State = JST_IgnoreRxData;
+	j1708CheckingMIDCharForCollision = -1;
+	j1708Port->port->intEnable &= ~RxBufNotEmptyIE; // first of all turn this interrupt off, we don't need it anymore
 	
 	DebugPrint ("Collision %d, reason %d, total %d", j1708CurCollisionCount, reason, j1708CollisionCount);
 	ClearQueue (&j1708Port->txQueue);
