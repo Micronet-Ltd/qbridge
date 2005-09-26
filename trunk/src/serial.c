@@ -21,6 +21,7 @@
 
 #include "serial.h"
 #include "eic.h"
+#include "J1708.h"
 
 #include <stdarg.h>
 #include <string.h>
@@ -301,6 +302,34 @@ inline bool PortRxFifoNotEmpty(SerialPort *port) {
 	return (port->port->status & RxBufNotEmtpy) != 0; 
 }
 
+#ifdef _DEBUG
+/****************/
+/* AssertPrint */
+/**************/
+void _AssertPrint (bool assertExpression, char *assertStr, char *file, int line, char *formatStr, ...) {
+	if (assertExpression) {
+		return;
+	}
+	char buf[256] = "    #";
+	int len;
+
+	DebugPrint ("Assert warning: (%s) tested false (%s line %d)", assertStr, file, line);
+	len = strlen(buf);
+	va_list ap;
+	va_start(ap, formatStr);
+	vsnprintf (buf+len, 251, formatStr, ap);
+	len = strlen(buf);
+	va_end(ap);
+	buf[len+0] = '#';
+	buf[len+1] = '\r';
+	buf[len+2] = '\n';
+	buf[len+3] = '\0';
+	len += 3;
+
+	Transmit (debugPort, buf, len);
+}
+#endif
+
 /***************/
 /* DebugPrint */
 /*************/
@@ -353,7 +382,7 @@ void DebugCorePrint(char *toPrint) {
 /* Com2IRQ */
 /**********/
 void Com2IRQ() {
-	HandleComIRQ(&com2);
+	J1708ComIRQHandle();
 	EICClearIRQ(EIC_UART1);
 }
 /************/
@@ -407,7 +436,9 @@ void HandleComIRQ(SerialPort *port) {
 	}
 
 	if (!handled) {
-		DebugPrint ("Unknown interrupt on com%d.  IntEnable=%04X  Status=%04X", GetPortNumber(port), port->port->intEnable, port->port->status);
+		if (port != debugPort) {
+			DebugPrint ("Unknown interrupt on com%d.  IntEnable=%04X  Status=%04X", GetPortNumber(port), port->port->intEnable, port->port->status);
+		}
 	}
 
 }

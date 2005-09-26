@@ -64,7 +64,7 @@ int vsnprintf(char *buf, size_t n, _CONST char *fmt0, va_list ap)
 
 	tmpCopy[TMPSIZE-1] = '\0';
 	//va_start(ap, formatStr);
-	while ((count < n-1) && (p != '\0')) {
+	while ((count < n-1) && (*p != '\0')) {
 		if (*p == '%') {
 			// We support only a simplified subset of snprintf
 			// %d
@@ -90,10 +90,28 @@ retry:
 			} else if ((*p >= '1') && (*p <= '9')) {
 				fieldSize = *p - '0';
 				goto retry;
+			} else if (*p == 'u') {
+				unsigned int value = va_arg(ap, int);
+				int pos = TMPSIZE-2;
+				memset(tmpCopy, '*', TMPSIZE-1);
+				while (value != 0) {
+					tmpCopy[pos] = (value % 10)  + '0';
+					value /= 10;
+					pos--;
+				}
+				if (fieldSize > (TMPSIZE-2-pos)) {
+					pos = TMPSIZE-2-fieldSize;
+				}
+				int inc = strlen(strncpy(b, tmpCopy+pos+1, (n-1)-count));
+				count += inc;
+				b += inc;
 			} else if (*p == 'd') {
 				int value = va_arg(ap, int);
 				int pos = TMPSIZE-2;
 				bool neg = value < 0;
+				if (neg) {
+					value = -value;
+				}
 				memset(tmpCopy, fillChar, TMPSIZE-1);
 				while (value != 0) {
 					tmpCopy[pos] = (value % 10)  + '0';

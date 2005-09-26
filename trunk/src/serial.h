@@ -54,7 +54,13 @@ void ProcessRxFifo (SerialPort *port);
 
 extern inline bool IsTxFifoEmpty(SerialPort *port);
 
+#ifdef _DEBUG
+#define AssertPrint(assertExpression, args...) _AssertPrint (assertExpression, #assertExpression, __FILE__, __LINE__, args)
+#else
+#define AssertPrint(assertExpression, args...)
+#endif
 
+void _AssertPrint (bool assertExpression, char *assertStr, char *file, int line, char *formatStr, ...);
 void DebugPrint(char *formatStr, ...);
 void DebugCorePrint(char *toPrint);
 

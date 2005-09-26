@@ -21,7 +21,7 @@ extern inline UINT8 DequeueOne (CircleQueue *queue);
 int DequeueBuf(CircleQueue *queue, UINT8*buf, int bufLen);
 void EnsureQueueFree(CircleQueue *queue, int count);
 
-
+#define ClearQueue(queue) InitializeQueue(queue)
 
 #endif // QUEUE_H
 

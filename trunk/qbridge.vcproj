@@ -36,10 +36,12 @@ echo Build:0: error: Errors are present
 exit /B 1
 
 :success
-copy qbridge.elf qbridge2.elf
+echo copying qbridge.elf to qbridge2.elf
+copy qbridge.elf qbridge2.elf &gt;nul
 del qbridge.elf
 echo Success
-exit /B 0"/>
+exit /B 0
+"/>
 			<Tool
 				Name="VCPreBuildEventTool"/>
 		</Configuration>
