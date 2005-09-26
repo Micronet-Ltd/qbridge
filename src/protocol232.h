@@ -8,11 +8,13 @@ typedef enum _ACKCodes {
 	ACK_INVALID_PACKET		= '2',
 	ACK_INVALID_COMMAND		= '3',
 	ACK_INVALID_DATA			= '4',
+	ACK_UNABLE_TO_PROCESS	= '5',
 } ACKCodes;
 
 typedef enum _Commands {
 	ACK							= 'A',
 	InfoReq						= '*',
+	RawJ1708						= 'r',
 } Commands;
 
 void ProcessReceived232Data();

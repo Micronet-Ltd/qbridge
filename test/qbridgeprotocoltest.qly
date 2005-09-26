@@ -5,11 +5,17 @@
 
 dim CRCTable[] as integer
 
+enum AckTypes as ACK_OK := '0', ACK_DUPLICATE_PACKET := '1', ACK_INVALID_PACKET := '2', ->
+    ACK_INVALID_COMMAND := '3', ACK_INVALID_DATA := '4', ACK_UNABLE_TO_PROCESS := '5'
+
+enum Commands as ACK := 'A', InfoReq := '*', RawJ1708 := 'r'
+
 func Startup ()
     handles MSG_INIT
 
     'SetSystemSetting (SYS_COM1BAUD, 19200, SYSACT_DONOW)
     SetSerialTimeout(COM1, 1)
+    SetSerialRecvSize(COM1, 512)
 
     CRCTable = CreateCRCTable (16, 0x1021, false)
 
@@ -18,7 +24,17 @@ func Startup ()
 
     RegisterMsgHandler (default, msg_comm_receive, com1)
 
+    UserDirectMsg (default, _msg_post_init, 0, false)
+
     return
+endfunc
+
+func PostInit (parm as integer) returns boolean
+    handles _msg_post_init
+
+    InitIBridge.click()
+    InitIBridge2.click()
+    return true
 endfunc
 
 
@@ -40,6 +56,9 @@ func TransmitPacket (cmd as byte, data[] as byte, truncate as boolean)
     if truncate then
         packet = left(packet, len(packet)-2)
     endif
+
+    expectAckType = cmd
+    expectAckPktID = packetID
     Transmit (COM1, packet + GetBytes (crc, false), false)
     _print ("Transmitting packet.  Command=" + mid(packet, 2, 1) + " datalen = "  +str(len(data)) + "  overall len=" + str(packet[1]) + " PacketID=" + str(packet[3]))
 endfunc
@@ -62,25 +81,30 @@ func CommReceive (data[] as byte) returns boolean
         return true
     endif
 
-    recvLeng = len(data)
+    recvLeng = len(recv)
     if pos >= recvLeng-1 then
         goto ShiftAndExit
     endif
 
-    pktLeng := data[pos+1]
+    pktLeng := recv[pos+1]
     if pos + pktLeng > recvLeng then
         goto ShiftAndExit
     endif
 
-    calcCRC = CalculateCRC(crcTable, 16, false, 0xFFFF, false, 0x0000, mid(recv, pos, pktLeng-2))
+    check error
+        calcCRC = CalculateCRC(crcTable, 16, false, 0xFFFF, false, 0x0000, mid(recv, pos, pktLeng-2))
+    on error
+        pos = pos
+    enderr
     if GetBytes(unibyte(calcCRC), false) <> mid(recv, pos+pktLeng-2, 2) then
-        _PRint ("Invalid CRC received")
+        _PRint ("Invalid CRC received.  Expected=" + cprintf("%04X", calcCRC) + "  Received=" + cprintf("%02X", recv[pos+pktLeng-2]) + cprintf("%02X", recv[pos+pktLeng-1]))
         oldPos := pos+1
         goto tryAgain
     endif
 
     ProcessPacket (recv[pos+2], recv[pos+3], mid(recv, pos+4, pktLeng-6))
-
+    oldPos := pos+pktLeng
+    goto TryAgain
 
     return true
 
@@ -88,14 +112,171 @@ func CommReceive (data[] as byte) returns boolean
     if pos > 0 then
         recv := mid(recv, pos, -1)
     endif
+    if len(recv) > 0 then
+        _print ("Exiting CommReceive with data in buffer:  " + hexPrint(recv))
+    endif
     return true
 endfunc
 
+func HexPrint(data[] as byte) returns byte[]
+    dim retVal[] as byte
+    dim i, max as integer
+    max = len(data)-1
+    for i = 0 to max
+        retVal = retVal + cprintf("%02X", data[i]) + " "
+    next
+    return trim(retVal)
+endfunc
+
+dim expectAckType as byte
+dim expectAckPktID as byte
 func ProcessPacket (cmd as byte, pktID as byte, data[] as byte)
     dim cmdStr[1] as byte
-    cmdStr[0] := cmd
-    _print ("Received Packet: " + cmdStr + " ID=" + str(pktID) + " dataLen=" + str(len(data)))
+    dim tmpInt as integer
+
+    if cmd == ACK then
+        if expectAckPktID <> pktID then
+            _Print ("Unexpected packet ID in ACK -- see below")
+            goto oops
+        endif
+        if data[0] <> ACK_OK then
+            _Print ("Received NAK.  See below")
+            goto oops
+        endif
+        if expectAckType == RawJ1708 then
+            check error
+                FromBytes (tmpInt, mid(data, 2, 4), false)
+            on error
+                tmpInt = tmpInt
+            enderr
+            _Print ("J1708 Ack: " + GetAckString(data[0]) + "   Free Bufs=" + str(data[1]) + "   J1708 msg ID=" + str(tmpInt) + "   packetID=" + str(pktID))
+        else
+            label oops
+            cmdStr[0] = expectAckType
+            if cmdStr[0] == '\x00' then
+                cmdStr[0] = '~'
+            endif
+            _Print ("Received Ack (" + cmdStr + "): " + GetAckString(data[0]) + " id=" + str(pktID))
+        endif
+        expectAckType = 0
+        expectAckPktID = 0
+    else
+        cmdStr[0] := cmd
+        _print ("Received Packet: " + cmdStr + " ID=" + str(pktID) + " dataLen=" + str(len(data)))
+    endif
 endfunc
+
+func GetAckString(code as byte) returns string
+    if code == ACK_OK then
+        return "OK"
+    elseif code == ACK_DUPLICATE_PACKET then
+        return "Duplicate"
+    elseif code == ACK_INVALID_PACKET Then
+        return "Invalid Packet"
+    elseif code == ACK_INVALID_COMMAND then
+        return "Invalid Command"
+    elseif code == ACK_INVALID_DATA then
+        return "Invalid data"
+    elseif code == ACK_UNABLE_TO_PROCESS then
+        return "Unable to process"
+    else
+        return "<unknown ack code>"
+    endif
+endfunc
+
+func CreateJ1708Packet (msgID as byte, data[] as byte) returns byte[]
+    dim toTx[] as byte
+    dim i as integer
+    dim checksum as byte
+    redim (toTx, len(data)+2)
+    toTx[0] := msgID
+    SetArrayData (toTx, 1, data, 0, -1)
+
+    for i = len(data) to 0 step -1
+        checksum = checksum + toTx[i]
+    next
+    toTx[len(data)+1] = -integer(checksum)
+
+    return toTx
+endfunc
+
+dim suppress as objref basicserialv2
+init suppress := basicserial_1
+func IBridgeRX(data[] as byte, bs as objref basicserialv2)
+    dim cmd as byte
+    dim leng, subLen as integer
+
+    if suppress == bs then
+        return
+    endif
+
+    bs.Buffer = bs.Buffer + data
+
+    label top
+    leng = len(bs.Buffer)
+    if leng == 0 then
+        return
+    endif
+
+    cmd = bs.Buffer[0]
+    if cmd == 'I' then
+        if leng >= 3 then
+            bs.Buffer = mid(bs.buffer, 3, -1)
+            goto top
+        else
+            return
+        endif
+    elseif cmd == 'S' then
+        bs.buffer = mid(bs.buffer, 1, -1)
+        _Print ("IBridge(" + right(str(bs), 1) + "): Ack")
+        goto top
+    elseif cmd == '#' then
+        bs.buffer = mid(bs.buffer, 1, -1)
+        _Print ("IBridge(" + right(str(bs), 1) + "): Nak")
+        goto top
+    elseif cmd == 'M' then
+        if leng > 2 then
+            subLen = bs.buffer[2]
+        else
+            return
+        endif
+        if leng >= subLen+3 then
+            _Print ("IBridge(" + right(str(bs), 1) + "): Packet (" + str(subLen) + " bytes): " + HexPrint(mid(bs.buffer, 3, subLen)))
+            bs.buffer = mid(bs.buffer, subLen+3, -1)
+            goto top
+        else
+            return
+        endif
+    endif
+
+
+
+
+endfunc
+Declare AttemptCollision as ButtonV2
+Level 249986
+#Visible True
+#Lock False
+init value := "Attempt Collision"
+init parent := screen_1
+init xpos := 72
+init ypos := 46
+init width := 62
+init height := 31
+
+func click()
+    SendRandomPacket.click()
+    ManualTx.click()
+    J1708Packet.click()
+    ManualTx.click()
+    J1708Packet.click()
+    ManualTx.click()
+    J1708Packet.click()
+endfunc
+init repeatrate := 100
+init repeatwait := 500
+init tone := note_none
+Enddec
 Declare BasicSerial_1 as BasicSerialV2
 Level 249999
 #Visible True
@@ -104,16 +285,40 @@ init parent := default
 init comport := com2
 
 func datareceived(data[] as byte)
-    _print (data)
+    IBridgeRx(data, me)
 endfunc
 Enddec
+Declare BasicSerial_2 as BasicSerialV2
+Level 249998
+#Visible True
+#Lock False
+init parent := default
+
+func datareceived(data[] as byte)
+    IBridgeRx(data, me)
+endfunc
+
+init comport := com3
+Enddec
+Declare BridgeGrp1 as GroupBoxV2
+Level 249992
+#Visible True
+#Lock False
+init parent := screen_1
+init xpos := 137
+init ypos := 3
+init width := 86
+init height := 176
+init borderstyle := bdr_compositeobject
+init value := "IBridge 1"
+Enddec
 Declare BrokenPacket as ButtonV2
-Level 249996
+Level 249983
 #Visible True
 #Lock False
 init value := "Broken Packet"
 init parent := screen_1
-init xpos := 11
+init xpos := 4
 init ypos := 85
 init width := 62
 init height := 31
@@ -126,12 +331,12 @@ init repeatwait := 500
 init tone := note_none
 Enddec
 Declare DebugInfoPacket as ButtonV2
-Level 249995
+Level 249982
 #Visible True
 #Lock False
 init value := "Get Info"
 init parent := screen_1
-init xpos := 11
+init xpos := 4
 init ypos := 47
 init width := 62
 init height := 31
@@ -140,7 +345,7 @@ func click()
     dim bytes[] as byte
     dim i as integer
 
-    TransmitPacket ('*', "", false)
+    TransmitPacket (InfoReq, "", false)
 endfunc
 init repeatrate := 100
 init repeatwait := 500
@@ -152,8 +357,178 @@ Level 250000
 #Lock False
 
 Enddec
+Declare IBridgeGrp2 as GroupBoxV2
+Level 249996
+#Visible True
+#Lock False
+init parent := screen_1
+init xpos := 227
+init ypos := 3
+init width := 86
+init height := 176
+init borderstyle := bdr_compositeobject
+init value := "IBridge 2"
+Enddec
+Declare InitIBridge as ButtonV2
+Level 249990
+#Visible True
+#Lock False
+init value := "Init I-Bridge"
+init parent := bridgegrp1
+init xpos := 10
+init ypos := 25
+init width := 64
+init height := 27
+
+func click()
+    Transmit (COM2, "IQD", true)
+    Transmit (COM2, "n", true)
+    Transmit (COM2, "B\x00", true)
+    Transmit (COM2, "a\x01", true)
+endfunc
+Enddec
+Declare InitIBridge2 as ButtonV2
+Level 249995
+#Visible True
+#Lock False
+init value := "Init I-Bridge"
+init parent := ibridgegrp2
+init xpos := 11
+init ypos := 27
+init width := 64
+init height := 27
+
+func click()
+    Transmit (COM3, "IQD", true)
+    Transmit (COM3, "n", true)
+    Transmit (COM3, "B\x00", true)
+    Transmit (COM3, "a\x01", true)
+endfunc
+Enddec
+Declare J1708Packet as ButtonV2
+Level 249985
+#Visible True
+#Lock False
+init value := "J1708 Raw"
+init parent := screen_1
+init xpos := 4
+init ypos := 125
+init width := 62
+init height := 31
+
+func click()
+    TransmitPacket (RawJ1708, CreateJ1708Packet (112, "\x41\x42\x43\x44\x45\x46\x47"), false)
+endfunc
+init repeatrate := 100
+init repeatwait := 500
+init tone := note_none
+Enddec
+Declare ManualQuery as ButtonV2
+Level 249989
+#Visible True
+#Lock False
+init value := "Manual Query"
+init parent := bridgegrp1
+init xpos := 10
+init ypos := 58
+init width := 64
+init height := 27
+
+func click()
+    Transmit (COM2, "G", true)
+endfunc
+Enddec
+Declare ManualQuery2 as ButtonV2
+Level 249993
+#Visible True
+#Lock False
+init value := "Manual Query"
+init parent := ibridgegrp2
+init xpos := 11
+init ypos := 60
+init width := 64
+init height := 27
+
+func click()
+    Transmit (COM3, "G", true)
+endfunc
+Enddec
+Declare ManualTx as ButtonV2
+Level 249988
+#Visible True
+#Lock False
+init value := "Manual TX to IBridge"
+init parent := bridgegrp1
+init xpos := 10
+init ypos := 92
+init width := 64
+init height := 27
+
+func click()
+    Transmit (COM2, "C\x04\x71\x01\xF3\x9B", false)
+    Transmit (COM2, "C\x06\x72\x10\x20\x30\xF3\x3B", true)
+endfunc
+Enddec
+Declare ManualTx2 as ButtonV2
+Level 249994
+#Visible True
+#Lock False
+init value := "Manual TX to IBridge"
+init parent := ibridgegrp2
+init xpos := 11
+init ypos := 94
+init width := 64
+init height := 27
+
+func click()
+    Transmit (COM3, "C\x04\x70\x00\xF3\x9D", true)
+endfunc
+Enddec
+Declare Rapid_Tx_to_IBridge as ButtonV2
+Level 249991
+#Visible True
+#Lock False
+init value := "Rapid Tx to IBridge"
+init parent := bridgegrp1
+init xpos := 10
+init ypos := 124
+init width := 64
+init height := 27
+
+func click()
+    ManualTx.click()
+    ManualTx.click()
+    ManualTx.click()
+    ManualTx.click()
+endfunc
+
+init repeatrate := 100
+init repeatwait := 500
+init tone := note_none
+Enddec
+Declare RapidJ1708Tx as ButtonV2
+Level 249987
+#Visible True
+#Lock False
+init value := "Rapid J1708 Tx"
+init parent := screen_1
+init xpos := 4
+init ypos := 163
+init width := 62
+init height := 31
+
+func click()
+    J1708Packet.click()
+    J1708Packet.click()
+    J1708Packet.click()
+    J1708Packet.click()
+endfunc
+init repeatrate := 100
+init repeatwait := 500
+init tone := note_none
+Enddec
 Declare Screen_1 as ScreenV2
-Level 249998
+Level 249997
 #Visible True
 #Lock False
 init parent := default
@@ -163,18 +538,18 @@ init width := 320
 init height := 240
 Enddec
 Declare ScreenSaver as ScreenSaverV2
-Level 249993
+Level 249980
 #Visible False
 #Lock False
 
 Enddec
 Declare SendRandomButton as ButtonV2
-Level 249997
+Level 249984
 #Visible True
 #Lock False
 init value := "Random Button"
 init parent := screen_1
-init xpos := 83
+init xpos := 72
 init ypos := 9
 init width := 62
 init height := 31
@@ -192,12 +567,12 @@ init repeatwait := 500
 init tone := note_none
 Enddec
 Declare SendRandomPacket as ButtonV2
-Level 249994
+Level 249981
 #Visible True
 #Lock False
 init value := "Random Packet"
 init parent := screen_1
-init xpos := 11
+init xpos := 4
 init ypos := 9
 init width := 62
 init height := 31
@@ -220,6 +595,7 @@ Enddec
 #Hide Library DataProc Source BasicSerialV2
 #Hide Library Basic Source ButtonV2
 #Hide Library Basic Source ExceptionDisplayV2
+#Hide Library Extra Source GroupBox
 #Hide Library Basic Source ScreenSaverV2
 #Hide Library Basic Source ScreenV2
 #SetFile -1 "*l%global%"

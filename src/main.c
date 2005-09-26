@@ -177,14 +177,16 @@ int main(void) {
 	InitializeClocks();
 	InitializeEIC();
 	InitializeAllSerialPorts();
-	InitializeJ1708();
 	InitializeTimers();
+	InitializeJ1708();
 
 	extern const unsigned char BuildDateStr[];
 	DebugPrint ("Starting QBridge. Version %s. %s.", VERSION, BuildDateStr);
 	while (1) {
 		ValidateProgramState();
 		ProcessReceived232Data();
+		ProcessJ1708TransmitQueue();
+		ProcessJ1708RecvPacket();
 	}
 
 	LockProgram();

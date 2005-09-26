@@ -336,7 +336,7 @@ typedef union _TimerControlRegister1 {
 		UINT16 TimerCountEnable:1;
 	};
 } TimerControlRegister1;
-#define TIMER_COUNT_ENABLE BIT(1)
+#define TIMER_COUNT_ENABLE BIT(15)
 
 typedef union _TimerControlRegister2 {
 	UINT16 value;

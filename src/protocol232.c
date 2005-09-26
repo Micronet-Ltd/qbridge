@@ -2,6 +2,7 @@
 #include "protocol232.h"
 #include "serial.h"
 #include "timers.h"
+#include "J1708.h"
 
 #define CRC_CITT_ONLY
 #define INC_CRC_FUNCS
@@ -166,8 +167,19 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
 				extern const unsigned char BuildDateStr[];
 
 				DebugPrint ("QBridge firmware version %s.  %s.  Heap in use %d / %d.", VERSION, BuildDateStr, allocPoolIdx, MaxAllocPool);
-				DebugPrint ("  J1708 Idle time=%d", GetJ1708IdleTime());
+				DebugPrint ("  J1708 Idle time=%d, TxPacketID=%d, Rx count=%d.  BusBusy=%d, Collision=%d", GetJ1708IdleTime(), j1708IDCounter, j1708RecvPacketCount, j1708WaitForBusyBusCount, j1708CollisionCount);
+				J1708PrintEventLog();
 				Send232Ack(ACK_OK, id, NULL, 0);
+			}
+			break;
+		case RawJ1708:
+			{
+				int j1708PacketId =J1708AddFormattedTxPacket (data, dataLen);
+				char ackBuf[5];
+				ACKCodes code = (j1708PacketId == -1) ? ACK_UNABLE_TO_PROCESS : ACK_OK;
+				ackBuf[0] = GetFreeJ1708TxBuffers();
+				memcpy (ackBuf+1, &j1708PacketId, sizeof(int));
+				Send232Ack(code, id, ackBuf, 5);
 			}
 			break;
 		default:
