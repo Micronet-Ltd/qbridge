@@ -131,6 +131,7 @@ fill_sysstack:
    @@@@ Initialize sections @@@@
    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
+#ifndef RVDEBUG
    @ Copy the data section from flash to RAM
    @ _dataRAMBegin and _dataRAMEnd are should both be 4 byte aligned
    @ FIXME: optimize for block moves?
@@ -157,12 +158,15 @@ bss_cpy:
    STR	 r0, [r1], #4
    CMP	 r2, r1
    BNE	 bss_cpy
-init_bss_done: 
+init_bss_done:
+
+#endif /* RVDEBUG */
 
    @ Enable Interrupts
    MSR	 CPSR_c, #(ARM_MODE_SYS)
 
    @ Now jump to main (use link in case main returns)
+jump_to_main:  
    BL	 main
 
    @ NO CODE BELOW THIS JUMP IS EXECUTED UNLESS MAIN RETURNS!
