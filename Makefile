@@ -13,23 +13,23 @@ versdash        := -
 
 target	  	:= qbridge
 
-linkscript 	:= $(target)_deb.x
+linkscript 	:= $(target).x
 
 ARCH            := arm
 COMPILER_PREFIX := arm-elf-
 CFLAGS          := -mcpu=arm7tdmi -mlittle-endian -mapcs-32 -Wall -fno-strict-aliasing -fno-builtin -g
 OPTIMIZE        := 
-#IFLAGS          := -Isrc -I/usr/local/arm-elf/include
 IFLAGS          := -Isrc -I./newlib/arm-elf/include
 
-#LIBPATH         := -L/usr/local/arm-elf/lib -L/usr/local/lib/gcc-lib/arm-elf/3.3.1
 LIBPATH         := -L./newlib/arm-elf
 LIBINCLUDES     := -lc -lgcc
 
 SEC_EXCLUDES    := -R .bss -R .stack
 
-version := $(addsuffix $(test_version),$(version))
-defs += -DVERSION=\"$(version)\"
+version 	:= $(addsuffix $(test_version),$(version))
+defs 		+= -DVERSION=\"$(version)\"
+
+targettxt       := (ROM image)
 
 
 ######################
@@ -68,6 +68,15 @@ HOUSEKEEPGOALS  := clean realclean listsrc listdep listobj doecho showoptions ta
 ####################
 
 all : doecho $(target).bin
+
+####################################################
+#  REALVIEW DEBUG TARGET (execute from SRAM only)  #
+####################################################
+
+rvdebug: linkscript := $(target)_deb.x
+rvdebug: defs += -DRVDEBUG
+rvdebug: targettxt := (RVDEBUG image)
+rvdebug: doecho $(target).bin
 
 ###################
 #  Pattern Rules  #
@@ -148,7 +157,7 @@ tags:
 
 doecho:
 	@echo -e '\E[37m'"\033[1m#################################################"
-	@echo -e '### Building $(target)'
+	@echo -e '### Building $(target) $(targettxt)'
 	@echo -e '#################################################'"\033[0m"
 	@echo
 	@$(RM) obj/build.o #This throws in the current date and time every time.
