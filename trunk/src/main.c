@@ -181,7 +181,7 @@ int main(void) {
 	InitializeJ1708();
 
 	extern const unsigned char BuildDateStr[];
-	DebugPrint ("Starting QBridge. Version %s. %s.", VERSION, BuildDateStr);
+	DebugPrint ("Starting QBridge. Version %s. %s. j1708CheckingMIDCharForCollision =%d", VERSION, BuildDateStr, j1708CheckingMIDCharForCollision );
 	while (1) {
 		ValidateProgramState();
 		ProcessReceived232Data();
