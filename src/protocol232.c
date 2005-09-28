@@ -37,8 +37,8 @@ const int CRCSize = 2;
 static int lastPacketID = -1;
 static UINT8 packetID = 0;
 static UINT64 lastDataReceiveTime = 0;
-bool dummyBool = false;
 static UINT16 crcTable[256] = {0, 0};
+bool dummyBool = false;
 
 /* approx 1/2 second */
 #define SERIAL_RECV_TIMEOUT 32000

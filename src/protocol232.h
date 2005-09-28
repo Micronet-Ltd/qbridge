@@ -12,11 +12,20 @@ typedef enum _ACKCodes {
 } ACKCodes;
 
 typedef enum _Commands {
+	Init232						= '@',
 	ACK							= 'A',
 	InfoReq						= '*',
-	RawJ1708						= 'r',
+	RawJ1708						= '+',
+	PIDFilterEnable			= 'B',
+	SetPIDState					= 'C',
+	SendJ1708Packet			= 'D',
+	ReceiveJ1708Packet		= 'E',
+	EnableJ1708TxConfirm		= 'F',
+	J1708TransmitConfirm		= 'G',
+	UpgradeFirmware			= 'H',
 } Commands;
 
+void Initialize232Protocol();
 void ProcessReceived232Data();
 bool VerifyCITTCRC (UINT16 *calculatedCRC, UINT8 *buf, int leng, UINT16 crc);
 void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen);

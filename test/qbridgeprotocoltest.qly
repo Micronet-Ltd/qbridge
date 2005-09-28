@@ -8,7 +8,8 @@ dim CRCTable[] as integer
 enum AckTypes as ACK_OK := '0', ACK_DUPLICATE_PACKET := '1', ACK_INVALID_PACKET := '2', ->
     ACK_INVALID_COMMAND := '3', ACK_INVALID_DATA := '4', ACK_UNABLE_TO_PROCESS := '5'
 
-enum Commands as ACK := 'A', InfoReq := '*', RawJ1708 := 'r'
+enum Commands as InitComm := '@', ACK := 'A', InfoReq := '*', RawJ1708 := '+', ->
+    PIDFilterEnable := 'B', SetPIDState := 'C'
 
 func Startup ()
     handles MSG_INIT
@@ -26,6 +27,8 @@ func Startup ()
 
     UserDirectMsg (default, _msg_post_init, 0, false)
 
+    TransmitPacket (Initcomm, "", false)
+
     return
 endfunc
 
@@ -40,6 +43,7 @@ endfunc
 
 const STX := 2 as byte
 dim packetID as byte
+'Truncate should normally be set to false.  It is used to create bad packets
 func TransmitPacket (cmd as byte, data[] as byte, truncate as boolean)
     dim packet[] as byte
     dim crc as unibyte
@@ -254,7 +258,7 @@ func IBridgeRX(data[] as byte, bs as objref basicserialv2)
 
 endfunc
 Declare AttemptCollision as ButtonV2
-Level 249986
+Level 249981
 #Visible True
 #Lock False
 init value := "Attempt Collision"
@@ -278,7 +282,7 @@ init repeatwait := 500
 init tone := note_none
 Enddec
 Declare BasicSerial_1 as BasicSerialV2
-Level 249999
+Level 249974
 #Visible True
 #Lock False
 init parent := default
@@ -289,7 +293,7 @@ func datareceived(data[] as byte)
 endfunc
 Enddec
 Declare BasicSerial_2 as BasicSerialV2
-Level 249998
+Level 249973
 #Visible True
 #Lock False
 init parent := default
@@ -301,7 +305,7 @@ endfunc
 init comport := com3
 Enddec
 Declare BridgeGrp1 as GroupBoxV2
-Level 249992
+Level 249987
 #Visible True
 #Lock False
 init parent := screen_1
@@ -313,7 +317,7 @@ init borderstyle := bdr_compositeobject
 init value := "IBridge 1"
 Enddec
 Declare BrokenPacket as ButtonV2
-Level 249983
+Level 249978
 #Visible True
 #Lock False
 init value := "Broken Packet"
@@ -331,7 +335,7 @@ init repeatwait := 500
 init tone := note_none
 Enddec
 Declare DebugInfoPacket as ButtonV2
-Level 249982
+Level 249977
 #Visible True
 #Lock False
 init value := "Get Info"
@@ -345,20 +349,43 @@ func click()
     dim bytes[] as byte
     dim i as integer
 
-    TransmitPacket (InfoReq, "", false)
+    TransmitPacket (InfoReq, "\x00", false)
+    TransmitPacket (InfoReq, "\x01", false)
 endfunc
 init repeatrate := 100
 init repeatwait := 500
 init tone := note_none
 Enddec
 Declare ExceptionDisplay as ExceptionDisplayV2
-Level 250000
+Level 249975
 #Visible False
 #Lock False
 
 Enddec
+Declare GetInfo as ButtonV2
+Level 249994
+#Visible True
+#Lock False
+init value := "Get Info"
+init parent := tab_2
+init xpos := 5
+init ypos := 9
+init width := 62
+init height := 31
+
+func click()
+    dim bytes[] as byte
+    dim i as integer
+
+    TransmitPacket (InfoReq, "\x00", false)
+    TransmitPacket (InfoReq, "\x02", false)
+endfunc
+init repeatrate := 100
+init repeatwait := 500
+init tone := note_none
+Enddec
 Declare IBridgeGrp2 as GroupBoxV2
-Level 249996
+Level 249991
 #Visible True
 #Lock False
 init parent := screen_1
@@ -370,7 +397,7 @@ init borderstyle := bdr_compositeobject
 init value := "IBridge 2"
 Enddec
 Declare InitIBridge as ButtonV2
-Level 249990
+Level 249985
 #Visible True
 #Lock False
 init value := "Init I-Bridge"
@@ -388,7 +415,7 @@ func click()
 endfunc
 Enddec
 Declare InitIBridge2 as ButtonV2
-Level 249995
+Level 249990
 #Visible True
 #Lock False
 init value := "Init I-Bridge"
@@ -406,7 +433,7 @@ func click()
 endfunc
 Enddec
 Declare J1708Packet as ButtonV2
-Level 249985
+Level 249980
 #Visible True
 #Lock False
 init value := "J1708 Raw"
@@ -424,7 +451,7 @@ init repeatwait := 500
 init tone := note_none
 Enddec
 Declare ManualQuery as ButtonV2
-Level 249989
+Level 249984
 #Visible True
 #Lock False
 init value := "Manual Query"
@@ -439,7 +466,7 @@ func click()
 endfunc
 Enddec
 Declare ManualQuery2 as ButtonV2
-Level 249993
+Level 249988
 #Visible True
 #Lock False
 init value := "Manual Query"
@@ -454,7 +481,7 @@ func click()
 endfunc
 Enddec
 Declare ManualTx as ButtonV2
-Level 249988
+Level 249983
 #Visible True
 #Lock False
 init value := "Manual TX to IBridge"
@@ -470,7 +497,7 @@ func click()
 endfunc
 Enddec
 Declare ManualTx2 as ButtonV2
-Level 249994
+Level 249989
 #Visible True
 #Lock False
 init value := "Manual TX to IBridge"
@@ -484,8 +511,30 @@ func click()
     Transmit (COM3, "C\x04\x70\x00\xF3\x9D", true)
 endfunc
 Enddec
+Declare MyTab as TabV2
+Level 249993
+#Visible False
+#Lock False
+init parent := tabcontainer_1
+init xpos := 2
+init ypos := 26
+init width := 316
+init height := 212
+init caption := "Base Test"
+init taborder := 0
+Enddec
+Declare NumberKeypad_1 as NumberKeypadV2
+Level 249997
+#Visible True
+#Lock False
+init parent := tab_2
+init xpos := 192
+init ypos := 4
+init width := 119
+init height := 107
+Enddec
 Declare Rapid_Tx_to_IBridge as ButtonV2
-Level 249991
+Level 249986
 #Visible True
 #Lock False
 init value := "Rapid Tx to IBridge"
@@ -507,7 +556,7 @@ init repeatwait := 500
 init tone := note_none
 Enddec
 Declare RapidJ1708Tx as ButtonV2
-Level 249987
+Level 249982
 #Visible True
 #Lock False
 init value := "Rapid J1708 Tx"
@@ -528,23 +577,23 @@ init repeatwait := 500
 init tone := note_none
 Enddec
 Declare Screen_1 as ScreenV2
-Level 249997
+Level 249992
 #Visible True
 #Lock False
-init parent := default
+init parent := mytab
 init xpos := 0
 init ypos := 0
 init width := 320
-init height := 240
+init height := 209
 Enddec
 Declare ScreenSaver as ScreenSaverV2
-Level 249980
+Level 249972
 #Visible False
 #Lock False
 
 Enddec
 Declare SendRandomButton as ButtonV2
-Level 249984
+Level 249979
 #Visible True
 #Lock False
 init value := "Random Button"
@@ -567,7 +616,7 @@ init repeatwait := 500
 init tone := note_none
 Enddec
 Declare SendRandomPacket as ButtonV2
-Level 249981
+Level 249976
 #Visible True
 #Lock False
 init value := "Random Packet"
@@ -592,12 +641,106 @@ init repeatrate := 100
 init repeatwait := 500
 init tone := note_none
 Enddec
+Declare SetPIDOff as ButtonV2
+Level 249998
+#Visible True
+#Lock False
+init value := "Set PID Off"
+init parent := tab_2
+init xpos := 124
+init ypos := 73
+init width := 62
+init height := 31
+
+func click()
+    dim bytes[] as byte
+    bytes = GetBytes(unibyte(integer(numberkeypad_1.value)), false)
+
+    TransmitPacket (SetPIDState, bytes + "\x00", false)
+endfunc
+init repeatrate := 100
+init repeatwait := 500
+init tone := note_none
+Enddec
+Declare SetPIDOn as ButtonV2
+Level 249996
+#Visible True
+#Lock False
+init value := "Set PID On"
+init parent := tab_2
+init xpos := 124
+init ypos := 38
+init width := 62
+init height := 31
+
+func click()
+    dim bytes[] as byte
+    bytes = GetBytes(unibyte(integer(numberkeypad_1.value)), false)
+
+    TransmitPacket (SetPIDState, bytes + "\x01", false)
+endfunc
+init repeatrate := 100
+init repeatwait := 500
+init tone := note_none
+Enddec
+Declare Tab_2 as TabV2
+Level 249999
+#Visible True
+#Lock False
+init parent := tabcontainer_1
+init xpos := 2
+init ypos := 26
+init width := 316
+init height := 212
+init caption := "232 Protocol"
+init taborder := 1
+Enddec
+Declare TabContainer_1 as TabContainerV2
+Level 250000
+#Visible True
+#Lock False
+init parent := default
+init xpos := 0
+init ypos := 0
+init width := 320
+init height := 240
+init activetab := mytab
+Enddec
+Declare TogglePIDS as CheckBoxV2
+Level 249995
+#Visible True
+#Lock False
+init value := "Toggle PID Filters"
+init parent := tab_2
+init xpos := 124
+init ypos := 4
+init width := 62
+init height := 31
+
+init tone := note_none
+init ischecked := true
+init style := _crb_button
+
+func OnStateChange()
+    dim data[1] as byte
+    if isChecked then
+        data[0] = 1
+    else
+        data[0] = 0
+    endif
+    TransmitPacket(PIDFilterEnable, data, false)
+endfunc
+Enddec
 #Hide Library DataProc Source BasicSerialV2
 #Hide Library Basic Source ButtonV2
+#Hide Library Basic Source CheckBoxV2
 #Hide Library Basic Source ExceptionDisplayV2
 #Hide Library Extra Source GroupBox
+#Hide Library Basic Source NumberKeypadV2
 #Hide Library Basic Source ScreenSaverV2
 #Hide Library Basic Source ScreenV2
+#Hide Library Basic Source tabV2
+#Hide Library Basic Source tabV2
 #SetFile -1 "*l%global%"
 Includesys Library "basic.qlib"
 Includesys Library "dataproc.qlib"
