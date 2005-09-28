@@ -34,17 +34,23 @@ n bytes:	Data (length-MinPacketSize bytes of data)
 
 const int MinPacketSize = 6;
 const int CRCSize = 2;
+static int lastPacketID = -1;
 static UINT8 packetID = 0;
-static UINT16 crcTable[256] = {0};
-static bool crcTableCreated = false;
 static UINT64 lastDataReceiveTime = 0;
+bool dummyBool = false;
+static UINT16 crcTable[256] = {0, 0};
 
 /* approx 1/2 second */
 #define SERIAL_RECV_TIMEOUT 32000
-#define CREATE_TABLE_IF_NECESSARY { if (!crcTableCreated) { \
-													createCITTTable(crcTable); \
-													crcTableCreated = true; } }
 
+/**************************/
+/* Initialize232Protocol */
+/************************/
+void Initialize232Protocol() {
+	createCITTTable(crcTable);
+	lastPacketID = -1;
+	packetID = 0;
+}
 
 /*******************/
 /* ShiftCurPacket */
@@ -143,7 +149,6 @@ void ProcessReceived232Data() {
 /* VerifyCITTCRC */
 /****************/
 bool VerifyCITTCRC(UINT16 *calculatedCRC, UINT8 *buf, int leng, UINT16 crc) {
-	CREATE_TABLE_IF_NECESSARY;
 	*calculatedCRC = calcCITT(crcTable, buf, leng);
 	return  *calculatedCRC == crc;
 }
@@ -152,7 +157,6 @@ bool VerifyCITTCRC(UINT16 *calculatedCRC, UINT8 *buf, int leng, UINT16 crc) {
 /* Process232Packet */
 /*******************/
 void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
-	static int lastPacketID = -1;
 	if (id == lastPacketID) {
 		Send232Ack (ACK_DUPLICATE_PACKET, id, NULL, 0);
 		return;
@@ -160,15 +164,36 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
 	lastPacketID = id;
 
 	switch (cmd) {
+		case Init232:
+			lastPacketID = -1;
+			packetID = 0;
+			J1708ResetDefaultPrefs();
+			Send232Ack(ACK_OK, id, NULL, 0);
+			break;
 		case InfoReq:
 			{
 				extern int allocPoolIdx;
 				extern const int MaxAllocPool;
 				extern const unsigned char BuildDateStr[];
 
-				DebugPrint ("QBridge firmware version %s.  %s.  Heap in use %d / %d.", VERSION, BuildDateStr, allocPoolIdx, MaxAllocPool);
-				DebugPrint ("  J1708 Idle time=%d, TxPacketID=%d, Rx count=%d.  BusBusy=%d, Collision=%d", GetJ1708IdleTime(), j1708IDCounter, j1708RecvPacketCount, j1708WaitForBusyBusCount, j1708CollisionCount);
-				J1708PrintEventLog();
+				if (dataLen != 1) {
+					Send232Ack (ACK_INVALID_DATA, id, NULL, 0);
+					break;
+				}
+
+				if (data[0] == 0) {
+					DebugPrint ("QBridge firmware version %s.  %s.  Heap in use %d / %d.", VERSION, BuildDateStr, allocPoolIdx, MaxAllocPool);
+					DebugPrint ("  J1708 Idle time=%d, TxPacketID=%d, Rx count=%d.  BusBusy=%d, Collision=%d", GetJ1708IdleTime(), j1708IDCounter, j1708RecvPacketCount, j1708WaitForBusyBusCount, j1708CollisionCount);
+#ifdef _DEBUG
+				} else if (data[0] == 1) {
+					DebugPrint ("J1708 Event Log: ");
+					J1708PrintEventLog();
+				} else if (data[0] == 2) {
+					J1708PrintPIDInfo();
+#endif
+				} else {
+					DebugPrint ("Unknown info request (%d), or only available in debug builds", data[0]);
+				}
 				Send232Ack(ACK_OK, id, NULL, 0);
 			}
 			break;
@@ -181,6 +206,39 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
 				memcpy (ackBuf+1, &j1708PacketId, sizeof(int));
 				Send232Ack(code, id, ackBuf, 5);
 			}
+			break;
+		case PIDFilterEnable:
+			if ((dataLen != 1) || (data[0] > 1)) {
+				Send232Ack (ACK_INVALID_DATA, id, NULL, 0);
+				break;
+			}
+			j1708PIDFilterEnabled = data[0];
+			Send232Ack(ACK_OK, id, NULL, 0);
+			break;
+		case SetPIDState:
+			if ((dataLen != 3) || (data[2] > 1)) {
+				Send232Ack (ACK_INVALID_DATA, id, NULL, 0);
+				break;
+			}
+			{ 
+				UINT16 pid = BufToUINT16(data);
+				if (pid > 511) {
+					Send232Ack (ACK_INVALID_DATA, id, NULL, 0);
+					break;
+				}
+				J1708SetPIDState(pid, data[2]);
+				Send232Ack(ACK_OK, id, NULL, 0);
+			}
+			break;
+		case SendJ1708Packet:
+			break;
+		case ReceiveJ1708Packet:
+			break;
+		case EnableJ1708TxConfirm:
+			break;
+		case J1708TransmitConfirm:
+			break;
+		case UpgradeFirmware:
 			break;
 		default:
 			SERIAL_PROTOCOL_DEBUG ("Received unknown packet.  Command=%c.  DataLen=%d.  ID=%d", cmd, dataLen, id);
@@ -227,7 +285,6 @@ void TransmitFinal232Packet (UINT8 command, UINT8 packetID, UINT8 *data, UINT32 
 	memcpy (buf+4, data, dataLen);
 
 	// CRC here
-	CREATE_TABLE_IF_NECESSARY;
 	UINT16 crc = calcCITT(crcTable, buf, dataLen+MinPacketSize-CRCSize);
 	buf[dataLen+4] = (crc & 0xFF);
 	buf[dataLen+5] = (crc & 0xFF00) >> 8;
