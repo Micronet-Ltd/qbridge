@@ -27,7 +27,7 @@
 				Name="VCMIDLTool"/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="rsh brutus -l simon &quot;make -C qbridge&quot;
+				CommandLine="rsh brutus -l simon &quot;make -C qbridge rvdebug&quot;
 if exist qbridge.elf goto success
 
 :failure
@@ -114,7 +114,7 @@ exit /B 0
 					Name="Debug|Win32">
 					<Tool
 						Name="VCCustomBuildTool"
-						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o rvdebug&quot;
 "
 						Outputs="obj/$(InputName).o"/>
 				</FileConfiguration>
@@ -128,7 +128,7 @@ exit /B 0
 					Name="Debug|Win32">
 					<Tool
 						Name="VCCustomBuildTool"
-						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o rvdebug&quot;
 "
 						Outputs="obj/$(InputName).o"/>
 				</FileConfiguration>
@@ -139,7 +139,7 @@ exit /B 0
 					Name="Debug|Win32">
 					<Tool
 						Name="VCCustomBuildTool"
-						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o rvdebug&quot;
 "
 						Outputs="obj/$(InputName).o"/>
 				</FileConfiguration>
@@ -150,7 +150,7 @@ exit /B 0
 					Name="Debug|Win32">
 					<Tool
 						Name="VCCustomBuildTool"
-						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o rvdebug&quot;
 "
 						Outputs="obj/$(InputName).o"/>
 				</FileConfiguration>
@@ -161,7 +161,7 @@ exit /B 0
 					Name="Debug|Win32">
 					<Tool
 						Name="VCCustomBuildTool"
-						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o rvdebug&quot;
 "
 						Outputs="obj/$(InputName).o"/>
 				</FileConfiguration>
@@ -172,7 +172,7 @@ exit /B 0
 					Name="Debug|Win32">
 					<Tool
 						Name="VCCustomBuildTool"
-						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o rvdebug&quot;
 "
 						Outputs="obj/$(InputName).o"/>
 				</FileConfiguration>
@@ -183,7 +183,7 @@ exit /B 0
 					Name="Debug|Win32">
 					<Tool
 						Name="VCCustomBuildTool"
-						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o rvdebug&quot;
 "
 						Outputs="obj/$(InputName).o"/>
 				</FileConfiguration>
@@ -194,7 +194,7 @@ exit /B 0
 					Name="Debug|Win32">
 					<Tool
 						Name="VCCustomBuildTool"
-						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o rvdebug&quot;
 "
 						Outputs="obj/$(InputName).o"/>
 				</FileConfiguration>

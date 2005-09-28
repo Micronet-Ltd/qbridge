@@ -179,6 +179,7 @@ int main(void) {
 	InitializeAllSerialPorts();
 	InitializeTimers();
 	InitializeJ1708();
+	Initialize232Protocol();
 
 	extern const unsigned char BuildDateStr[];
 	DebugPrint ("Starting QBridge. Version %s. %s. j1708CheckingMIDCharForCollision =%d", VERSION, BuildDateStr, j1708CheckingMIDCharForCollision );

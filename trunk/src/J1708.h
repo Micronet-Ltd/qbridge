@@ -10,6 +10,9 @@ extern int j1708IDCounter;
 extern int j1708WaitForBusyBusCount;
 extern int j1708CollisionCount;
 extern int j1708RecvPacketLen;
+extern bool j1708PIDFilterEnabled;
+extern UINT8 j1708EnabledPIDs[64];
+
 
 typedef struct _J1708Message {
 	UINT8 priority;
@@ -34,6 +37,10 @@ extern int  j1708CheckingMIDCharForCollision;
 extern int  j1708RetransmitIdleTime;
 
 #ifdef _DEBUG
+#define _J1708DEBUG
+#endif
+
+#ifdef _J1708DEBUG
 void J1708LogEventIdle (UINT8 event, UINT16 flags, UINT32 idleTime);
 #define J1708LogEvent(event, flags) J1708LogEventIdle(event, flags, GetJ1708IdleTime())
 enum J1708DebugEvents { JEV_None = 0, JEV_RecvFromHost, JEV_Transmit, JEV_SerIRQ, JEV_RecvFromBus, JEV_RecvFromBusProc, JEV_Collision, 
@@ -48,9 +55,12 @@ typedef struct _J1708EventLog {
 extern J1708EventLog j1708EventLog[256];
 extern UINT8 j1708EventLogIndex;
 void J1708PrintEventLog();
+#define J1708DebugPrint(args...) DebugPrint(args)
+void J1708PrintPIDInfo();
 #else
 #define J1708LogEvent(event, flags)
 #define J1708PrintEventLog()
+#define J1708DebugPrint(args...)
 #endif
 
 void InitializeJ1708();
@@ -61,6 +71,8 @@ J1708Message *GetNextJ1708Message();
 int J1708AddFormattedTxPacket (UINT8 *data, UINT8 len);
 int GetFreeJ1708TxBuffers();
 
+void J1708SetPIDState(UINT16 pid, bool state);
+void J1708ResetDefaultPrefs();
 void J1708ComIRQHandle();
 void J1708EnterCollisionState(enum J1708CollisionReason reason);
 

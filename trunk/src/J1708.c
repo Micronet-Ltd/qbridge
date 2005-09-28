@@ -22,7 +22,10 @@ bool j1708RetransmitNeeded;
 int  j1708RetransmitIdleTime;
 int  j1708CheckingMIDCharForCollision = -1;
 
-#ifdef _DEBUG
+bool j1708PIDFilterEnabled = true;
+UINT8 j1708EnabledPIDs[64] = {0};
+
+#ifdef _J1708DEBUG
 static char msgIdx;
 J1708EventLog j1708EventLog[256];
 UINT8 j1708EventLogIndex;
@@ -47,9 +50,12 @@ void InitializeJ1708() {
 	j1708CurCollisionCount = 0;
 	j1708RetransmitNeeded = 0;
 	j1708RetransmitIdleTime = 0;
-	//j1708CheckingMIDCharForCollision = -1;
+	j1708CheckingMIDCharForCollision = -1;
 
-#ifdef _DEBUG
+	//j1708PIDFilterEnabled = true;
+	//memset (j1708EnabledPIDs, 0, sizeof(j1708EnabledPIDs));
+
+#ifdef _J1708DEBUG
 	msgIdx = 0;
 	int i;
 	j1708EventLogIndex = 0;
@@ -72,7 +78,7 @@ J1708Message * GetNextJ1708Message() {
 	return &(j1708Queue.msgs[j1708Queue.tail]);
 }
 
-#ifdef _DEBUG
+#ifdef _J1708DEBUG
 /********************************/
 /* J1708DebugPrintRxPacketInfo */
 /******************************/
@@ -92,7 +98,7 @@ void J1708DebugPrintRxPacketInfo(char *msg) {
 	}
 	snprintf (tbuf+idx, 256-idx, " Checksum=%d", (int)sum);
 	idx = strlen(tbuf);
-	DebugPrint (tbuf);
+	J1708DebugPrint (tbuf);
 }
 #else
 #define J1708DebugPrintRxPacketInfo(msg)
@@ -111,7 +117,7 @@ void ProcessJ1708RecvPacket() {
 
 	if (j1708State == JST_Transmitting) {
 		if (memcmp(j1708RecvPacket, j1708CurTxMessage.data, j1708RecvPacketLen) != 0) {
-DebugPrint ("Full Compare Collision");
+			J1708DebugPrint ("Full Compare Collision");
 			J1708EnterCollisionState(JCR_FullComp);
 			J1708DebugPrintRxPacketInfo("col");
 			j1708RetransmitNeeded = true;
@@ -167,7 +173,7 @@ void ProcessJ1708TransmitQueue() {
 		j1708CheckingMIDCharForCollision = 0;
 		J1708LogEventIdle(JEV_Retry, j1708CurCollisionCount, idleTime);
 		j1708Port->port->intEnable |= RxBufNotEmptyIE;
-DebugPrint ("Retransmit");
+		J1708DebugPrint ("Retransmit");
 		Transmit (j1708Port, j1708CurTxMessage.data, j1708CurTxMessage.len);
 		j1708RetransmitNeeded = false;
 	} else {
@@ -240,7 +246,7 @@ int GetFreeJ1708TxBuffers() {
 /********************/
 // There is an implicit assumption here that a framing error == a bus collision
 void J1708ComIRQHandle() {
-#ifdef _DEBUG
+#ifdef _J1708DEBUG
 	if (j1708Port->port->status & ~(TxFull | TxHalfEmpty | TxEmpty)) {
 		J1708LogEvent(JEV_SerIRQ, j1708Port->port->status);
 	}
@@ -267,16 +273,17 @@ void J1708ComIRQHandle() {
 		rxChar = j1708Port->port->rxBuffer;
 		Enqueue(&j1708Port->rxQueue, &rxChar, 1);
 		if (rxChar != j1708CurTxMessage.data[j1708CheckingMIDCharForCollision]) {
-DebugPrint ("Collision (mismatch at byte %d -- was %02X, expecting %02X)", j1708CheckingMIDCharForCollision, rxChar, j1708CurTxMessage.data[j1708CheckingMIDCharForCollision]);
+			J1708DebugPrint ("Collision (mismatch at byte %d -- was %02X, expecting %02X)", j1708CheckingMIDCharForCollision, rxChar, j1708CurTxMessage.data[j1708CheckingMIDCharForCollision]);
 			J1708EnterCollisionState(JCR_FirstByteMismatch);
 			ClearQueue(&j1708Port->rxQueue);
 			j1708Port->port->rxReset = 0; // Clear out the RxFifo
 			ClearQueue (&j1708Port->txQueue);
 			j1708Port->port->txReset = 0;
 			j1708Port->port->intEnable &= ~TxHalfEmptyIE;
+			break;
 		}
 		j1708CheckingMIDCharForCollision++;
-		if (j1708CheckingMIDCharForCollision > 0) {
+		if (j1708CheckingMIDCharForCollision > 1) {
 			j1708CheckingMIDCharForCollision = -1;
 			j1708Port->port->intEnable &= ~RxBufNotEmptyIE; // first of all turn this interrupt off, we don't need it anymore
 		}
@@ -288,7 +295,7 @@ DebugPrint ("Collision (mismatch at byte %d -- was %02X, expecting %02X)", j1708
 			// 2 other devices collided -- nothing for me to worry about
 		} else if (j1708State == JST_Transmitting) {
 			// A packet I was transmitting was involved in a collision
-DebugPrint ("Framing Collision");
+			J1708DebugPrint ("Framing Collision");
 			J1708EnterCollisionState(JCR_Framing);
 		} else {
 			// already in a collision state -- we really shouldn't be transmitting anything at this point, but just in case...
@@ -318,7 +325,7 @@ DebugPrint ("Framing Collision");
 }
 
 
-#ifdef _DEBUG
+#ifdef _J1708DEBUG
 /**********************/
 /* J1708LogEventIdle */
 /********************/
@@ -432,10 +439,60 @@ void J1708EnterCollisionState(enum J1708CollisionReason reason) {
 	j1708CheckingMIDCharForCollision = -1;
 	j1708Port->port->intEnable &= ~RxBufNotEmptyIE; // first of all turn this interrupt off, we don't need it anymore
 	
-	DebugPrint ("Collision %d, reason %d, total %d", j1708CurCollisionCount, reason, j1708CollisionCount);
+	J1708DebugPrint ("Collision %d, reason %d, total %d", j1708CurCollisionCount, reason, j1708CollisionCount);
 	ClearQueue (&j1708Port->txQueue);
 	j1708Port->port->txReset = 0;
 	j1708Port->port->intEnable &= ~TxHalfEmptyIE;
 
 	RESTORE_IRQ(saveState);
 }
+
+/*********************/
+/* J1708SetPIDState */
+/*******************/
+void J1708SetPIDState(UINT16 pid, bool state) {
+	int idx = pid/8;
+	int bit = pid%8;
+	if (state) {
+		j1708EnabledPIDs[idx] |= BIT(bit);
+	} else {
+		j1708EnabledPIDs[idx] &= ~BIT(bit);
+	}
+}
+
+/***************************/
+/* J1708ResetDefaultPrefs */
+/*************************/
+void J1708ResetDefaultPrefs() {
+	memset (j1708EnabledPIDs, 0, sizeof(j1708EnabledPIDs));
+	j1708PIDFilterEnabled = true;
+}
+
+#ifdef _DEBUG
+/**********************/
+/* J1708PrintPIDInfo */
+/********************/
+void J1708PrintPIDInfo() {
+	char tbuf[256];
+	int idx = 0;
+	int i = 0;
+	msgIdx++;
+	snprintf (tbuf, 256, "PID filters are %s.\r\n", j1708PIDFilterEnabled ? "enabled" : "disabled");
+	idx = strlen(tbuf);
+	for (i = 0; i < 64; i+=2) {
+		snprintf (tbuf+idx, 6, "%02X%02X.", j1708EnabledPIDs[i], j1708EnabledPIDs[i+1]);
+		idx += 5;
+
+		if (((i % 16) >= 6)  && ((i % 16) < 8)){
+			snprintf (tbuf+idx, 3, "..");
+			idx += 2;
+		}
+		if (((i % 16) >= 14) && (i < 60)) {
+			snprintf (tbuf+idx, 3, "\r\n");
+			idx += 2;
+		}
+	}
+	J1708DebugPrint (tbuf);
+
+}
+#endif // _DEBUG
