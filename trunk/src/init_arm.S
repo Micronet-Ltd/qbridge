@@ -146,6 +146,7 @@ data_cpy:
    STR	 r0, [r1], #4
    CMP	 r2, r1
    BNE	 data_cpy
+#endif /* RVDEBUG */
       
    @ Clear the bss section in RAM
 init_bss:
@@ -160,7 +161,6 @@ bss_cpy:
    BNE	 bss_cpy
 init_bss_done:
 
-#endif /* RVDEBUG */
 
    @ Enable Interrupts
    MSR	 CPSR_c, #(ARM_MODE_SYS)
