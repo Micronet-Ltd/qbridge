@@ -9,7 +9,8 @@ enum AckTypes as ACK_OK := '0', ACK_DUPLICATE_PACKET := '1', ACK_INVALID_PACKET 
     ACK_INVALID_COMMAND := '3', ACK_INVALID_DATA := '4', ACK_UNABLE_TO_PROCESS := '5'
 
 enum Commands as InitComm := '@', ACK := 'A', InfoReq := '*', RawJ1708 := '+', ->
-    PIDFilterEnable := 'B', SetPIDState := 'C'
+    PIDFilterEnable := 'B', SetPIDState := 'C', SendJ1708Packet := 'D', ->
+    ReceiveJ1708Packet := 'E', EnableJ1708TxConfirm := 'F', J1708TransmitConfirm := 'G'
 
 func Startup ()
     handles MSG_INIT
@@ -147,7 +148,7 @@ func ProcessPacket (cmd as byte, pktID as byte, data[] as byte)
             _Print ("Received NAK.  See below")
             goto oops
         endif
-        if expectAckType == RawJ1708 then
+        if (expectAckType == RawJ1708) or (expectAckType == SendJ1708Packet) then
             check error
                 FromBytes (tmpInt, mid(data, 2, 4), false)
             on error
@@ -164,10 +165,66 @@ func ProcessPacket (cmd as byte, pktID as byte, data[] as byte)
         endif
         expectAckType = 0
         expectAckPktID = 0
+        return
+    endif
+
+    if cmd == ReceiveJ1708Packet then
+        _Print ("Received J1708 Packet. " + str(len(data)) + " bytes. " + HexPrint(data))
+        SendAck(ACK_OK, pktID)
+    elseif cmd == J1708TransmitConfirm then
+        FromBytes(tmpInt, mid(data, 1, 4), false)
+        _Print ("Received J1708 Packet Confirmation.  Success=" + str(data[0]) + "  ID=" + str(tmpInt))
+        SendAck(ACK_OK, pktID)
     else
         cmdStr[0] := cmd
         _print ("Received Packet: " + cmdStr + " ID=" + str(pktID) + " dataLen=" + str(len(data)))
     endif
+endfunc
+
+dim testAck as boolean
+init testack := false
+
+dim option as integer
+dim lastRxPacketID as integer
+init lastRxPacketID := -1
+func SendAck(ackCode as byte, pktID as byte)
+    dim code[1] as byte
+    dim packet[] as byte
+    dim crc as unibyte
+
+    redim (packet, 1 + 4)
+    packet[0] := STX
+    packet[1] := 1 + 6
+    packet[2] := ACK
+    packet[3] := pktID
+
+    if pktID == lastRxPacketID then
+        packet[4] := ACK_DUPLICATE_PACKET
+    else
+        packet[4] := ackCode
+    endif
+
+    if testAck then
+        if GetRandomNum() < .5 then
+            'Going to sabotoge the ACK somehow
+            option = 5*GetRandomNum()
+            if option == 0 then
+                _Print ("Not going to send the ACK")
+                return 'Don't send the ACK
+            else
+                packet[4] = '0' + option 'Spurious ACK code
+                _print ("Sending Ack Code: " + str(packet[4]))
+            endif
+        endif
+    endif
+
+    if (packet[4] <> ACK_INVALID_PACKET) then
+        lastRxPacketID = pktID
+    endif
+
+    crc = CalculateCRC(crcTable, 16, false, 0xFFFF, false, 0x0000, packet)
+
+    Transmit (COM1, packet + GetBytes (crc, false), false)
 endfunc
 
 func GetAckString(code as byte) returns string
@@ -258,7 +315,7 @@ func IBridgeRX(data[] as byte, bs as objref basicserialv2)
 
 endfunc
 Declare AttemptCollision as ButtonV2
-Level 249981
+Level 249979
 #Visible True
 #Lock False
 init value := "Attempt Collision"
@@ -282,7 +339,7 @@ init repeatwait := 500
 init tone := note_none
 Enddec
 Declare BasicSerial_1 as BasicSerialV2
-Level 249974
+Level 249972
 #Visible True
 #Lock False
 init parent := default
@@ -293,7 +350,7 @@ func datareceived(data[] as byte)
 endfunc
 Enddec
 Declare BasicSerial_2 as BasicSerialV2
-Level 249973
+Level 249971
 #Visible True
 #Lock False
 init parent := default
@@ -305,7 +362,7 @@ endfunc
 init comport := com3
 Enddec
 Declare BridgeGrp1 as GroupBoxV2
-Level 249987
+Level 249985
 #Visible True
 #Lock False
 init parent := screen_1
@@ -317,7 +374,7 @@ init borderstyle := bdr_compositeobject
 init value := "IBridge 1"
 Enddec
 Declare BrokenPacket as ButtonV2
-Level 249978
+Level 249976
 #Visible True
 #Lock False
 init value := "Broken Packet"
@@ -335,7 +392,7 @@ init repeatwait := 500
 init tone := note_none
 Enddec
 Declare DebugInfoPacket as ButtonV2
-Level 249977
+Level 249975
 #Visible True
 #Lock False
 init value := "Get Info"
@@ -357,13 +414,13 @@ init repeatwait := 500
 init tone := note_none
 Enddec
 Declare ExceptionDisplay as ExceptionDisplayV2
-Level 249975
+Level 249973
 #Visible False
 #Lock False
 
 Enddec
 Declare GetInfo as ButtonV2
-Level 249994
+Level 249992
 #Visible True
 #Lock False
 init value := "Get Info"
@@ -385,7 +442,7 @@ init repeatwait := 500
 init tone := note_none
 Enddec
 Declare IBridgeGrp2 as GroupBoxV2
-Level 249991
+Level 249989
 #Visible True
 #Lock False
 init parent := screen_1
@@ -397,7 +454,7 @@ init borderstyle := bdr_compositeobject
 init value := "IBridge 2"
 Enddec
 Declare InitIBridge as ButtonV2
-Level 249985
+Level 249983
 #Visible True
 #Lock False
 init value := "Init I-Bridge"
@@ -415,7 +472,7 @@ func click()
 endfunc
 Enddec
 Declare InitIBridge2 as ButtonV2
-Level 249990
+Level 249988
 #Visible True
 #Lock False
 init value := "Init I-Bridge"
@@ -433,7 +490,7 @@ func click()
 endfunc
 Enddec
 Declare J1708Packet as ButtonV2
-Level 249980
+Level 249978
 #Visible True
 #Lock False
 init value := "J1708 Raw"
@@ -450,8 +507,25 @@ init repeatrate := 100
 init repeatwait := 500
 init tone := note_none
 Enddec
+Declare J1708Transmit as ButtonV2
+Level 249997
+#Visible True
+#Lock False
+init value := "Normal J1708Tx"
+init parent := tab_2
+init xpos := 5
+init ypos := 48
+init width := 62
+init height := 31
+init repeatrate := 100
+init repeatwait := 500
+
+func click()
+    TransmitPacket(SendJ1708Packet, "\x07\x75\x99\x88\x77\x66\x55\x44\x33\x22\x11\x00", false)
+endfunc
+Enddec
 Declare ManualQuery as ButtonV2
-Level 249984
+Level 249982
 #Visible True
 #Lock False
 init value := "Manual Query"
@@ -466,7 +540,7 @@ func click()
 endfunc
 Enddec
 Declare ManualQuery2 as ButtonV2
-Level 249988
+Level 249986
 #Visible True
 #Lock False
 init value := "Manual Query"
@@ -481,7 +555,7 @@ func click()
 endfunc
 Enddec
 Declare ManualTx as ButtonV2
-Level 249983
+Level 249981
 #Visible True
 #Lock False
 init value := "Manual TX to IBridge"
@@ -493,11 +567,11 @@ init height := 27
 
 func click()
     Transmit (COM2, "C\x04\x71\x01\xF3\x9B", false)
-    Transmit (COM2, "C\x06\x72\x10\x20\x30\xF3\x3B", true)
+    'Transmit (COM2, "C\x06\x72\x10\x20\x30\xF3\x3B", true)
 endfunc
 Enddec
 Declare ManualTx2 as ButtonV2
-Level 249989
+Level 249987
 #Visible True
 #Lock False
 init value := "Manual TX to IBridge"
@@ -512,7 +586,7 @@ func click()
 endfunc
 Enddec
 Declare MyTab as TabV2
-Level 249993
+Level 249991
 #Visible False
 #Lock False
 init parent := tabcontainer_1
@@ -524,7 +598,7 @@ init caption := "Base Test"
 init taborder := 0
 Enddec
 Declare NumberKeypad_1 as NumberKeypadV2
-Level 249997
+Level 249995
 #Visible True
 #Lock False
 init parent := tab_2
@@ -534,7 +608,7 @@ init width := 119
 init height := 107
 Enddec
 Declare Rapid_Tx_to_IBridge as ButtonV2
-Level 249986
+Level 249984
 #Visible True
 #Lock False
 init value := "Rapid Tx to IBridge"
@@ -556,7 +630,7 @@ init repeatwait := 500
 init tone := note_none
 Enddec
 Declare RapidJ1708Tx as ButtonV2
-Level 249982
+Level 249980
 #Visible True
 #Lock False
 init value := "Rapid J1708 Tx"
@@ -577,7 +651,7 @@ init repeatwait := 500
 init tone := note_none
 Enddec
 Declare Screen_1 as ScreenV2
-Level 249992
+Level 249990
 #Visible True
 #Lock False
 init parent := mytab
@@ -587,13 +661,13 @@ init width := 320
 init height := 209
 Enddec
 Declare ScreenSaver as ScreenSaverV2
-Level 249972
+Level 249970
 #Visible False
 #Lock False
 
 Enddec
 Declare SendRandomButton as ButtonV2
-Level 249979
+Level 249977
 #Visible True
 #Lock False
 init value := "Random Button"
@@ -616,7 +690,7 @@ init repeatwait := 500
 init tone := note_none
 Enddec
 Declare SendRandomPacket as ButtonV2
-Level 249976
+Level 249974
 #Visible True
 #Lock False
 init value := "Random Packet"
@@ -642,7 +716,7 @@ init repeatwait := 500
 init tone := note_none
 Enddec
 Declare SetPIDOff as ButtonV2
-Level 249998
+Level 249996
 #Visible True
 #Lock False
 init value := "Set PID Off"
@@ -663,7 +737,7 @@ init repeatwait := 500
 init tone := note_none
 Enddec
 Declare SetPIDOn as ButtonV2
-Level 249996
+Level 249994
 #Visible True
 #Lock False
 init value := "Set PID On"
@@ -707,7 +781,7 @@ init height := 240
 init activetab := mytab
 Enddec
 Declare TogglePIDS as CheckBoxV2
-Level 249995
+Level 249993
 #Visible True
 #Lock False
 init value := "Toggle PID Filters"
@@ -729,6 +803,31 @@ func OnStateChange()
         data[0] = 0
     endif
     TransmitPacket(PIDFilterEnable, data, false)
+endfunc
+Enddec
+Declare ToggleTxConfirm as CheckBoxV2
+Level 249998
+#Visible True
+#Lock False
+init value := "Toggle Tx Confirm"
+init parent := tab_2
+init xpos := 248
+init ypos := 117
+init width := 62
+init height := 31
+
+init tone := note_none
+init ischecked := false
+init style := _crb_button
+
+func OnStateChange()
+    dim data[1] as byte
+    if isChecked then
+        data[0] = 1
+    else
+        data[0] = 0
+    endif
+    TransmitPacket(EnableJ1708TxConfirm, data, false)
 endfunc
 Enddec
 #Hide Library DataProc Source BasicSerialV2
