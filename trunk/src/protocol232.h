@@ -31,7 +31,9 @@ bool VerifyCITTCRC (UINT16 *calculatedCRC, UINT8 *buf, int leng, UINT16 crc);
 void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen);
 void Send232Ack(ACKCodes code, UINT8 id, UINT8* data, UINT32 dataLen);
 
-extern inline void Transmit232Packet (UINT8 command, UINT8 *data, UINT32 dataLen);
-void TransmitFinal232Packet (UINT8 command, UINT8 packetID, UINT8 *data, UINT32 dataLen);
-
+extern inline void QueueTx232Packet (UINT8 command, UINT8 *data, UINT32 dataLen);
+void QueueTxFinal232Packet (UINT8 command, UINT8 packetID, UINT8 *data, UINT32 dataLen);
+void TransmitFinal232Packet(UINT8 command, UINT8 packetID, UINT8 *data, UINT32 dataLen);
+void Transmit232IfReady();
+void RetryLast232();
 #endif // PROTOCOL232_H

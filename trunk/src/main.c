@@ -182,10 +182,11 @@ int main(void) {
 	Initialize232Protocol();
 
 	extern const unsigned char BuildDateStr[];
-	DebugPrint ("Starting QBridge. Version %s. %s. j1708CheckingMIDCharForCollision =%d", VERSION, BuildDateStr, j1708CheckingMIDCharForCollision );
+	DebugPrint ("Starting QBridge. Version %s. %s.", VERSION, BuildDateStr);
 	while (1) {
 		ValidateProgramState();
 		ProcessReceived232Data();
+		Transmit232IfReady();
 		ProcessJ1708TransmitQueue();
 		ProcessJ1708RecvPacket();
 	}

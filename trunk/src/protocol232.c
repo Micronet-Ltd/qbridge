@@ -40,8 +40,14 @@ static UINT64 lastDataReceiveTime = 0;
 static UINT16 crcTable[256] = {0, 0};
 bool dummyBool = false;
 
-/* approx 1/2 second */
-#define SERIAL_RECV_TIMEOUT 32000
+static CircleQueue txPackets;
+static bool awaiting232Ack;
+static UINT64 awaiting232TxTime = 0; 
+static int awaiting232FailCount = 0;
+
+#define SERIAL_RECV_TIMEOUT 9600 // 1/2 second
+#define SERIAL_TX_TIMEOUT	38400 // 1 second
+#define MAX_232_RETRIES 3
 
 /**************************/
 /* Initialize232Protocol */
@@ -50,6 +56,7 @@ void Initialize232Protocol() {
 	createCITTTable(crcTable);
 	lastPacketID = -1;
 	packetID = 0;
+	InitializeQueue(&txPackets);
 }
 
 /*******************/
@@ -157,7 +164,7 @@ bool VerifyCITTCRC(UINT16 *calculatedCRC, UINT8 *buf, int leng, UINT16 crc) {
 /* Process232Packet */
 /*******************/
 void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
-	if (id == lastPacketID) {
+	if ((id == lastPacketID) && (cmd != ACK)) {
 		Send232Ack (ACK_DUPLICATE_PACKET, id, NULL, 0);
 		return;
 	}
@@ -169,6 +176,38 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
 			packetID = 0;
 			J1708ResetDefaultPrefs();
 			Send232Ack(ACK_OK, id, NULL, 0);
+			break;
+		case ACK:
+			if (dataLen >= 1) {
+				switch (data[0]) {
+				case ACK_INVALID_PACKET:
+					awaiting232FailCount++;
+					SERIAL_PROTOCOL_DEBUG("Received ACK_INVALID_PACKET %d response from host", awaiting232FailCount);
+					if (awaiting232FailCount > MAX_232_RETRIES) {
+						SERIAL_PROTOCOL_DEBUG("Max etries exceeded.  Giving up");
+						awaiting232Ack = false;
+					} else {
+//DebugPrint ("Calling Retry (ack error)");
+						RetryLast232();
+					}
+					break;
+				case ACK_INVALID_DATA:
+				case ACK_INVALID_COMMAND:
+					SERIAL_PROTOCOL_DEBUG("Received ACK_INVALID_COMMAND or ACK_INVALID_DATA (%d) response from host", data[0]);
+					awaiting232Ack = false;
+					break;
+				case ACK_DUPLICATE_PACKET:
+					SERIAL_PROTOCOL_DEBUG("Received duplicate packet notification from host");
+					// fall through
+				case ACK_OK:
+					awaiting232Ack = false;
+					break;
+				default:
+					SERIAL_PROTOCOL_DEBUG("Received unknown ACK code from host");
+					awaiting232Ack = false;
+					break;
+				}
+			}
 			break;
 		case InfoReq:
 			{
@@ -199,7 +238,7 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
 			break;
 		case RawJ1708:
 			{
-				int j1708PacketId =J1708AddFormattedTxPacket (data, dataLen);
+				int j1708PacketId =J1708AddFormattedTxPacket (J1708_DEFAULT_PRIORITY, data, dataLen);
 				char ackBuf[5];
 				ACKCodes code = (j1708PacketId == -1) ? ACK_UNABLE_TO_PROCESS : ACK_OK;
 				ackBuf[0] = GetFreeJ1708TxBuffers();
@@ -231,15 +270,29 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
 			}
 			break;
 		case SendJ1708Packet:
-			break;
-		case ReceiveJ1708Packet:
+			if ((dataLen < 2) || (dataLen > 21) || (data[0] == 0) || (data[0] > 8)) {
+				Send232Ack (ACK_INVALID_DATA, id, NULL, 0);
+				break;
+			} else {
+				int j1708PacketId =J1708AddUnFormattedTxPacket (data[0], data+1, dataLen-1);
+				char ackBuf[5];
+				ACKCodes code = (j1708PacketId == -1) ? ACK_UNABLE_TO_PROCESS : ACK_OK;
+				ackBuf[0] = GetFreeJ1708TxBuffers();
+				memcpy (ackBuf+1, &j1708PacketId, sizeof(int));
+				Send232Ack(code, id, ackBuf, 5);
+			}
 			break;
 		case EnableJ1708TxConfirm:
-			break;
-		case J1708TransmitConfirm:
+			if (dataLen != 1) {
+				Send232Ack(ACK_INVALID_DATA, id, NULL, 0);
+				break;
+			}
+			j1708TransmitConfirm = data[0];
+			Send232Ack(ACK_OK, id, NULL, 0);
 			break;
 		case UpgradeFirmware:
-			break;
+		case J1708TransmitConfirm:
+		case ReceiveJ1708Packet:
 		default:
 			SERIAL_PROTOCOL_DEBUG ("Received unknown packet.  Command=%c.  DataLen=%d.  ID=%d", cmd, dataLen, id);
 			Send232Ack (ACK_INVALID_COMMAND, id, NULL, 0);
@@ -255,28 +308,92 @@ void Send232Ack(ACKCodes code, UINT8 id, UINT8* data, UINT32 dataLen) {
 	UINT8 * buf = (UINT8 *)alloca(dataLen+1);
 	memcpy (buf+1, data, dataLen);
 	buf[0] = code;
+//DebugPrint ("Sending Ack to packet %d from host",id);
 	TransmitFinal232Packet(ACK, id, buf, dataLen+1);
 }
 
-/**********************/
-/* Transmit232Packet */
-/********************/
-void Transmit232Packet (UINT8 command, UINT8 *data, UINT32 dataLen) {
+/*********************/
+/* QueueTx232Packet */
+/*******************/
+void QueueTx232Packet (UINT8 command, UINT8 *data, UINT32 dataLen) {
 	packetID++;
 	if (packetID == 0) {
 		packetID++;
 	}
-	TransmitFinal232Packet (command, packetID, data, dataLen);
+	QueueTxFinal232Packet (command, packetID, data, dataLen);
+}
+
+/**************************/
+/* QueueTxFinal232Packet */
+/************************/
+void QueueTxFinal232Packet (UINT8 command, UINT8 packetID, UINT8 *data, UINT32 dataLen) {
+	if (dataLen >= MAX_232PACKET - MinPacketSize) {
+		return;
+	}
+	AssertPrint (dataLen < 64, "Serial transmission request too long");
+
+	UINT8 len = dataLen;
+	Enqueue(&txPackets, &len, 1);
+	Enqueue(&txPackets, &command, 1);
+	Enqueue(&txPackets, &packetID, 1);
+	int addedLen = Enqueue(&txPackets, data, dataLen);
+	AssertPrint (addedLen == dataLen, "Error adding data to 232 tx buffer");
+
+	Transmit232IfReady();
+}
+
+static UINT8 last232DataLen = 0;
+static UINT8 last232Command = 0;
+static UINT8 last232PacketID = 0;
+static UINT8 last232Data[64];
+
+/***********************/
+/* Transmit232IfReady */
+/*********************/
+void Transmit232IfReady() {
+	if (awaiting232Ack) {
+		if (GetTimerTime(&MainTimer) > awaiting232TxTime + SERIAL_TX_TIMEOUT) {
+			awaiting232FailCount++;
+			if (awaiting232FailCount > MAX_232_RETRIES) {
+				SERIAL_PROTOCOL_DEBUG("Host device failed to respond to request.  Giving up");
+				awaiting232Ack = false;
+			} else {
+				SERIAL_PROTOCOL_DEBUG("Host device timeout. Retry %d", awaiting232FailCount);
+//DebugPrint ("Calling Retry (timeout)");
+				RetryLast232();
+			}
+		}
+		return;
+	}
+	if (QueueEmpty(&txPackets)) {
+		return;
+	}
+
+	last232DataLen  = DequeueOne(&txPackets);
+	last232Command = DequeueOne(&txPackets);
+	last232PacketID = DequeueOne(&txPackets);
+	int retreivedLen = DequeueBuf(&txPackets, last232Data, last232DataLen);
+	AssertPrint (retreivedLen == last232DataLen, "Error retreiving data from buffer");
+
+	RetryLast232();
+	awaiting232FailCount = 0;
+}
+
+/*****************/
+/* RetryLast232 */
+/***************/
+void RetryLast232() {
+//DebugPrint ("RetryLast232 %02X, retrycount=%d", last232Command, awaiting232FailCount);
+	TransmitFinal232Packet (last232Command, last232PacketID, last232Data, last232DataLen);
+	awaiting232Ack = true;
+	awaiting232TxTime = GetTimerTime(&MainTimer);
 }
 
 /***************************/
 /* TransmitFinal232Packet */
 /*************************/
-void TransmitFinal232Packet (UINT8 command, UINT8 packetID, UINT8 *data, UINT32 dataLen) {
-	if (dataLen >= MAX_232PACKET - MinPacketSize) {
-		return;
-	}
-
+void TransmitFinal232Packet(UINT8 command, UINT8 packetID, UINT8 *data, UINT32 dataLen) {
+//DebugPrint ("Transmitting final packet %02X", command);
 	UINT8 *buf = (UINT8 *)alloca(dataLen + MinPacketSize);
 	buf[0] = STX;
 	buf[1] = dataLen + MinPacketSize;
@@ -291,3 +408,4 @@ void TransmitFinal232Packet (UINT8 command, UINT8 packetID, UINT8 *data, UINT32 
 
 	Transmit (hostPort, buf, buf[1]);
 }
+

@@ -1,10 +1,12 @@
 #include <string.h>
+#include <alloca.h>
 
 #include "common.h"
 #include "J1708.h"
 #include "serial.h"
 #include "timers.h"
 #include "stdio.h"
+#include "protocol232.h"
 
 J1708Queue j1708Queue;
 int j1708IDCounter = 1;
@@ -24,6 +26,7 @@ int  j1708CheckingMIDCharForCollision = -1;
 
 bool j1708PIDFilterEnabled = true;
 UINT8 j1708EnabledPIDs[64] = {0};
+bool j1708TransmitConfirm = false;
 
 #ifdef _J1708DEBUG
 static char msgIdx;
@@ -122,6 +125,12 @@ void ProcessJ1708RecvPacket() {
 			J1708DebugPrintRxPacketInfo("col");
 			j1708RetransmitNeeded = true;
 		} else {
+			if (j1708TransmitConfirm) {
+				UINT8 buf[5];
+				buf[0] = 1;
+				memcpy(buf+1, &j1708CurTxMessage.id, 4);
+				QueueTx232Packet(J1708TransmitConfirm, buf, 5);
+			}
 			J1708DebugPrintRxPacketInfo("tx ");
 			j1708CurCollisionCount = 0;
 			j1708RetransmitNeeded = false;
@@ -135,14 +144,34 @@ void ProcessJ1708RecvPacket() {
 		}
 		if (sum != 0) {
 			J1708LogEvent(JEV_ChecksumErr, 0);
+			J1708DebugPrint ("Invalid checksum received on inbound packet");
+		} else {
+			AssertPrint (j1708State != JST_IgnoreRxData, "Error -- received packet while in collision state");
+			j1708RecvPacketCount++;
+			J1708DebugPrintRxPacketInfo("rx ");
+			if (PIDPassesFilter()) {
+				QueueTx232Packet (ReceiveJ1708Packet, j1708RecvPacket, j1708RecvPacketLen);
+			}
 		}
-		AssertPrint (j1708State != JST_IgnoreRxData, "Error -- received packet while in collision state");
-		j1708RecvPacketCount++;
-		J1708DebugPrintRxPacketInfo("rx ");
 	}
 
 }
 
+/********************/
+/* PIDPassesFilter */
+/******************/
+bool PIDPassesFilter () {
+	if (!j1708PIDFilterEnabled) {
+		return true;
+	}
+
+	int pid = j1708RecvPacket[0];
+	if (pid == 255) {
+		pid = 256 + j1708RecvPacket[1];
+	}
+
+	return (j1708EnabledPIDs[pid/8] & BIT(pid%8)) != 0;
+}
 
 
 /******************************/
@@ -207,7 +236,7 @@ void ProcessJ1708TransmitQueue() {
 /******************************/
 /* J1708AddFormattedTxPacket */
 /****************************/
-int J1708AddFormattedTxPacket (UINT8 *data, UINT8 len) {
+int J1708AddFormattedTxPacket (UINT8 priority, UINT8 *data, UINT8 len) {
 	J1708LogEvent(JEV_RecvFromHost, len);
 	if (len > 21) {
 		return -1;
@@ -220,13 +249,30 @@ int J1708AddFormattedTxPacket (UINT8 *data, UINT8 len) {
 	}
 
 	int curHead = j1708Queue.head;
-	j1708Queue.msgs[curHead].priority = J1708_DEFAULT_PRIORITY;
+	j1708Queue.msgs[curHead].priority = priority;
 	j1708Queue.msgs[curHead].len = len;
 	memcpy(j1708Queue.msgs[curHead].data, data, len);
 	j1708Queue.msgs[curHead].id = j1708IDCounter++;
 	j1708Queue.head = nextHead;
 	return j1708Queue.msgs[curHead].id;
 }
+
+/********************************/
+/* J1708AddUnFormattedTxPacket */
+/******************************/
+int J1708AddUnFormattedTxPacket(UINT8 priority, UINT8 *data, UINT8 len) {
+	UINT8 *buf = (UINT8*)alloca(len+1);
+	int i;
+	UINT8 sum = 0;
+	for (i = 0; i < len; i++) {
+		sum += data[i];
+		buf[i] = data[i];
+	}
+
+	buf[len] = 256-sum;
+	return J1708AddFormattedTxPacket(priority, buf, len+1);
+}
+
 
 /**************************/
 /* GetFreeJ1708TxBuffers */
@@ -306,7 +352,7 @@ void J1708ComIRQHandle() {
 		ClearQueue(&j1708Port->rxQueue);
 		j1708Port->port->rxReset = 0; // Clear out the RxFifo
 
-	} else {
+	} else if (j1708Port->port->status != 0) {
 		HandleComIRQ(j1708Port);
 	}
 
@@ -466,6 +512,7 @@ void J1708SetPIDState(UINT16 pid, bool state) {
 void J1708ResetDefaultPrefs() {
 	memset (j1708EnabledPIDs, 0, sizeof(j1708EnabledPIDs));
 	j1708PIDFilterEnabled = true;
+	j1708TransmitConfirm = false;
 }
 
 #ifdef _DEBUG
@@ -477,7 +524,7 @@ void J1708PrintPIDInfo() {
 	int idx = 0;
 	int i = 0;
 	msgIdx++;
-	snprintf (tbuf, 256, "PID filters are %s.\r\n", j1708PIDFilterEnabled ? "enabled" : "disabled");
+	snprintf (tbuf, 256, "PID filters are %s.  Transmit confirm is %s\r\n", j1708PIDFilterEnabled ? "enabled" : "disabled", j1708TransmitConfirm ? "enabled" : "disabled");
 	idx = strlen(tbuf);
 	for (i = 0; i < 64; i+=2) {
 		snprintf (tbuf+idx, 6, "%02X%02X.", j1708EnabledPIDs[i], j1708EnabledPIDs[i+1]);

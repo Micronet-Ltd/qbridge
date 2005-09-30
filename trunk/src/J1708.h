@@ -3,7 +3,7 @@
 
 #define J1708_IDLE_TIME 10
 #define J1708_QUEUE_SIZE 16
-#define J1708_DEFAULT_PRIORITY 7
+#define J1708_DEFAULT_PRIORITY 8
 
 extern int j1708RecvPacketCount;
 extern int j1708IDCounter;
@@ -12,6 +12,7 @@ extern int j1708CollisionCount;
 extern int j1708RecvPacketLen;
 extern bool j1708PIDFilterEnabled;
 extern UINT8 j1708EnabledPIDs[64];
+extern bool j1708TransmitConfirm;
 
 
 typedef struct _J1708Message {
@@ -68,9 +69,11 @@ void ProcessJ1708TransmitQueue();
 void ProcessJ1708RecvPacket();
 
 J1708Message *GetNextJ1708Message();
-int J1708AddFormattedTxPacket (UINT8 *data, UINT8 len);
+int J1708AddFormattedTxPacket (UINT8 priority, UINT8 *data, UINT8 len);
+int J1708AddUnFormattedTxPacket(UINT8 priority, UINT8 *data, UINT8 len);
 int GetFreeJ1708TxBuffers();
 
+bool PIDPassesFilter();
 void J1708SetPIDState(UINT16 pid, bool state);
 void J1708ResetDefaultPrefs();
 void J1708ComIRQHandle();
