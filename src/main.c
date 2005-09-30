@@ -48,6 +48,7 @@
 /**********/
 /* Macros */
 /**********/
+#define ARM_GET_USER_PC() ({ unsigned long cpc=0; asm volatile("STMFD sp!, {r15}^\nNOP\nLDMFD sp!, {%0}\n" : "=r" (cpc) :); cpc; })
 
 /********************/
 /* Global Variables */
@@ -85,12 +86,13 @@ void irq_lockup(void)
 	 * Jeremy, you can re-enable the print code when you have a serial
 	 * driver working.
 	 */
-	unsigned long cpsr, lr;
+	unsigned long cpsr, lr, pc;
 	int mode;
 
 	cpsr = ARM_GET_CPSR();
 	lr = ARM_GET_LR();
 	mode = cpsr & ARM_MODE_MASK;
+	pc = ARM_GET_USER_PC();
 
 	extern SerialPort *debugPort;
 	EnsureQueueFree(&debugPort->txQueue, 80);
@@ -117,7 +119,7 @@ void irq_lockup(void)
 		for(;;) ; /* Lock up here for default case */
 	}
 
-	DebugPrint("Unhandled exception: cpsr=0x%x lr=0x%x", cpsr, lr);
+	DebugPrint("Unhandled exception: cpsr=0x%x lr=0x%x pc=0x%x", cpsr, lr, pc);
 
 	/* Now lock the machine */
 	// We want to ensure that the debug serial port has been flushed
