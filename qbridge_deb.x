@@ -1,6 +1,7 @@
 /**********************/
 /* Linker Script File */
 /* for STR712 QBridge */
+/* Execute from SRAM  */
 /**********************/
 
 OUTPUT_FORMAT("elf32-littlearm")
