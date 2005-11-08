@@ -1,7 +1,7 @@
-/**********************/
-/* Linker Script File */
-/* for STR712 QBridge */
-/**********************/
+/**************************/
+/* Linker Script File     */
+/* for Qbridge Bootloader */
+/**************************/
 
 OUTPUT_FORMAT("elf32-littlearm")
 OUTPUT_ARCH(arm)
@@ -15,11 +15,12 @@ MEMORY
 }
 
 /* Address Definitions */
-_RamStartAddr       = 0x20000000;
-_RamEndAddr         = 0x20010000;
+_RamStartAddr        = 0x20000000;
+_RamEndAddr          = 0x20010000;
 
-_RomStartAddr       = 0x40000000;
-_FirmwareStartAddr  = 0x40002000;
+_RomStartAddr        = 0x40000000;
+_FirmwareStartAddr   = 0x40002000;
+_BootloaderStartAddr = 0x400C2000; /* Store text/data in Bank 1 Sector 1 */
 
 SECTIONS
 {
@@ -27,10 +28,10 @@ SECTIONS
 	/***** Sections in ROM only ******/
 	/*********************************/
 
-	/* Firmware header */
-	.firmwarehdr _FirmwareStartAddr :
+	/* Exception Vector Table */
+	.vectors _RomStartAddr :
 	{
-		*(.firmwarehdr)
+		*(.vectors)
 	} >rom=0xff
 
 	.Copyright ALIGN(4) : { *(.Copyright) } >rom=0xff
@@ -41,7 +42,7 @@ SECTIONS
 	} >rom=0xff
 
 	/* Init Code */
-	.arminit ALIGN(4) : { *(.arminit) } >rom=0xff
+	.arminit _BootloaderStartAddr : { *(.arminit) } >rom=0xff
 
   	.text ALIGN(4) :
   	{
@@ -59,23 +60,13 @@ SECTIONS
 	/***** Sections in ROM and RAM *****/
 	/***********************************/
 
-	_vectorROM = ALIGN(4);
-	/* Exception Vector Table */
-	.vectors _RamStartAddr : AT ( _vectorROM )
-	{
-	        _vectorRAMBegin = . ;
-		*(.vectors)
-		. = ALIGN(16) ; /* Keep the following .data section 16-byte aligned */
-		_vectorRAMEnd = . ;
-	} >rom=0xff
-
-	_dataROM = LOADADDR(.vectors) + SIZEOF(.vectors) ;
-	.data _RamStartAddr + SIZEOF(.vectors) : AT ( _dataROM )
+	_dataROM = ALIGN(4);
+	.data _RamStartAddr : AT ( _dataROM )
 	{
 		_dataRAMBegin = . ;
 		/* _fdata = . ; */
  		*(.data)
-		_dataRAMEnd = . ;
+		_dataRAMEnd = ALIGN(4) ;
 	} >rom=0xff
 
 	/*********************************/
@@ -83,7 +74,7 @@ SECTIONS
 	/*********************************/
 
 	/* Uninitialized data has no address in ROM */
-	.bss ALIGN(4) (NOLOAD) :
+	.bss ALIGN(16) (NOLOAD) :
 	{
 		_bss_start = . ;
 		*(.bss)
@@ -102,6 +93,9 @@ SECTIONS
 	_heapBegin = ALIGN(16) ;
 	end = . ;
 
-
-
 } /*SECTIONS*/
+
+/***************************************/
+/****** The files to link go here ******/
+/***************************************/
+

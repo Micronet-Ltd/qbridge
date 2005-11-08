@@ -1,6 +1,6 @@
 ##################################################
-#       Makefile for Qbridge                     #
-#       MKE - Aug 2005                           #
+#       Makefile for Qbridge Bootloader          #
+#       MKE - Oct 2005                           #
 ##################################################
 
 #############
@@ -11,17 +11,17 @@ version	        := V0.001
 test_version    := 
 versdash        := -
 
-target	  	:= qbridge
+target	  	:= qbboot
 
-linkscript 	:= $(target).x
+linkscript 	:= $(target)_rel.x
 
 ARCH            := arm
 COMPILER_PREFIX := arm-elf-
 CFLAGS          := -mcpu=arm7tdmi -mlittle-endian -mapcs-32 -Wall -fno-strict-aliasing -fno-builtin -g
 OPTIMIZE        := -Os
-IFLAGS          := -Isrc -Icommon -I./newlib/arm-elf/include
+IFLAGS          := -Isrc -I../common -I../newlib/arm-elf/include
 
-LIBPATH         := -L./newlib/arm-elf
+LIBPATH         := -L../newlib/arm-elf
 LIBINCLUDES     := -lc -lgcc
 
 SEC_EXCLUDES    := -R .bss -R .stack
@@ -105,7 +105,6 @@ $(target).srec: $(target).elf
 
 $(target).bin: $(target).srec
 	$(OBJCPY) -v -I symbolsrec -O binary $(target).srec $(target).bin
-	@crc -b$(target).bin:0 -l
 	@echo -e '\E[36m'"\033[1m**************Target Made**************\033[0m"
 
 $(target).elf: $(OBJS) $(linkscript)
@@ -154,7 +153,7 @@ listobj:
 	@echo 'Objs are: $(OBJS)'
 
 tags:
-	@etags src/*.c src/*.h
+	@etags src/*.c src/*.h ../common/*.h
 
 doecho:
 	@echo -e '\E[37m'"\033[1m#################################################"

@@ -20,18 +20,20 @@ _RamStartAddr       = 0x20000000;
 _RamEndAddr         = 0x20010000;
 
 _RomStartAddr       = 0x40000000;
-_bootFlashStartAddr = 0x40000000;
+
+/* Firmware linked to RAM */
+_FirmwareStartAddr  = 0x20002000;
 
 SECTIONS
 {
-	/*********************************/
-	/***** Sections in ROM only ******/
-	/*********************************/
+	/***********************************/
+	/***** Sections in "ROM" only ******/
+	/***********************************/
 
-	/* Exception Vector Table */
-	.vectors _RamStartAddr :
+	/* Firmware header */
+	.firmwarehdr _FirmwareStartAddr :
 	{
-		*(.vectors)
+		*(.firmwarehdr)
 	} >ram=0xff
 
 	.Copyright ALIGN(4) : { *(.Copyright) } >ram=0xff
@@ -55,17 +57,28 @@ SECTIONS
 	} >ram=0xff
 
 	PROVIDE (etext = .);
-	/***********************************/
-	/***** Sections in ROM and RAM *****/
-	/***********************************/
+	/*************************************/
+	/***** Sections in "ROM" and RAM *****/
+	/*************************************/
 
-	_dataROM = ALIGN(4);
-	.data _RamStartAddr + 0x00008000 : AT ( _dataROM )
+	_vectorROM = ALIGN(4);
+	/* Exception Vector Table */
+	.vectors _RamStartAddr : AT ( _vectorROM )
+	{
+	        _vectorRAMBegin = . ;
+		*(.vectors)
+		. = ALIGN(16) ; /* Keep the following .data section 16-byte aligned */
+		_vectorRAMEnd = . ;
+	} >ram=0xff
+
+	_dataROM = LOADADDR(.vectors) + SIZEOF(.vectors) ;
+	. = _vectorROM + SIZEOF(.vectors) ;
+	.data ALIGN(0x2000) : AT ( _dataROM )
 	{
 		_dataRAMBegin = . ;
 		/* _fdata = . ; */
  		*(.data)
-		_dataRAMEnd = ALIGN(4) ;
+		_dataRAMEnd = . ;
 	} >ram=0xff
 
 	/*********************************/
