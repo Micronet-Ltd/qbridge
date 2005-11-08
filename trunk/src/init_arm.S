@@ -11,6 +11,7 @@
 
 #include "stddefs.h"
 #include "basearm.h"
+#include "str712.h"
 
    .section .vectors,"ax"
 vectable:
@@ -56,14 +57,33 @@ Abort_Handler:
    .global __start
 __start:
 Reset_Handler:
-   @ Clock setup is done in InitializeClocks() routine
-   
-   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-   @@@@ Memory Initialization @@@@
-   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-   
-   @ Initialize the static memory controller (if necessary)
+   @ Clock setup is done in InitializeClocks() routine of bootloader
 
+   @ Interrupts must be disabled on Reset_Handler entry!!
+   
+   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   @@@@ Vector Initialization @@@@
+   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   
+init_vectors:  
+   LDR	 r1, =_vectorRAMBegin
+   LDR	 r2, =_vectorRAMEnd
+   LDR	 r3, =_vectorROM
+   CMP	 r2, r1
+   BEQ	 map_sram_to_zero
+vector_cpy:
+   LDR	 r0, [r3], #4
+   STR	 r0, [r1], #4
+   CMP	 r2, r1
+   BNE	 vector_cpy
+
+map_sram_to_zero:
+   LDR	 r1, =PCU_REG_BASE
+   LDR	 r2, [r1, #PCU_BOOTCR_OFFSET]
+   ORR	 r2, r2, #0x2		@ Should be safe since we will most likely enter in flash or sram mode
+   STR	 r2, [r1, #PCU_BOOTCR_OFFSET]
+   
+   
    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
    @@@@ Set up temporary stack in IRAM @@@@
    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -131,7 +151,7 @@ fill_sysstack:
    @@@@ Initialize sections @@@@
    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-#ifndef RVDEBUG
+//#ifndef RVDEBUG
    @ Copy the data section from flash to RAM
    @ _dataRAMBegin and _dataRAMEnd are should both be 4 byte aligned
    @ FIXME: optimize for block moves?
@@ -146,7 +166,7 @@ data_cpy:
    STR	 r0, [r1], #4
    CMP	 r2, r1
    BNE	 data_cpy
-#endif /* RVDEBUG */
+//#endif /* RVDEBUG */
       
    @ Clear the bss section in RAM
 init_bss:
@@ -175,98 +195,3 @@ jump_to_main:
 
 Init_literals:
    .ltorg
-
-   
-   .text
-
-#if 0
-@@@@@@@@@@@@@@@@@
-@@@@ delayMS @@@@   
-@@@@@@@@@@@@@@@@@
-delayMS:
-   .global delayMS
-   @ Uses Timer1 in LH79520 for the delay
-   @ Assumes HCLK is 52 MHz
-   @ r0 contains the desired delay in msec
-
-   @ Calculate delay*(52000/prescale 256) =~ delay*202
-   MOV	 r1, #202
-   MUL	 r1, r0, r1
-   MOVS	 r2, r1, lsr #15  @ Number of timer half-periods
-   MOV	 r1, r1, lsl #17
-   MOV	 r1, r1, lsr #17  @ Fractional half-period (last cycle)
-   LDR	 r0, =TIMER1_REG_BASE
-
-   @ Now set up the timer for the full half-period (if required)
-1:
-   BEQ	 3f
-   LDR	 r3, =0x7fff      @ Load value for entire half-period
-   STR	 r3, [r0, #TIMER_LOAD_OFFSET]
-   MOV	 r3, #0x88   @ Enable timer, free running, prescale by 256
-   STR	 r3, [r0, #TIMER_CONTROL_OFFSET]
-
-   @ Timer setup for half-period, now watch for underflow
-2:
-   LDR	 r3, [r0, #TIMER_VALUE_OFFSET]
-   TST	 r3, #0x8000
-   BEQ	 2b
-
-   @ Disable timer, decrement half-periods count, and loop
-   MOV	 r3, #0
-   STR	 r3, [r0, #TIMER_CONTROL_OFFSET]
-   SUBS	 r2, r2, #1
-   B	 1b
-  
-   @ Now do the last (fractional) timer count 
-3:
-   STR	 r1, [r0, #TIMER_LOAD_OFFSET]
-   MOV	 r3, #0x88   @ Enable timer, free running, prescale by 256
-   STR	 r3, [r0, #TIMER_CONTROL_OFFSET]
-
-   @ Timer setup for half-period, now watch for underflow
-4:
-   LDR	 r3, [r0, #TIMER_VALUE_OFFSET]
-   TST	 r3, #0x8000
-   BEQ	 4b
-
-   @ Disable timer and return
-   MOV	 r3, #0
-   STR	 r3, [r0, #TIMER_CONTROL_OFFSET]
-   MOV	 pc, lr
-@ End of delayMS
-      
-@@@@@@@@@@@@@@@@@
-@@@@ delayUS @@@@   
-@@@@@@@@@@@@@@@@@
-delayUS:
-   .global delayUS
-   @ Uses Timer1 in LH79520 for the delay
-   @ Assumes HCLK is 52 MHz
-   @ r0 contains the desired delay in usec
-
-   @ Calculate (delay*52)/prescale (16 in this case) - lower 15 bits
-   MOV	 r1, #52
-   MUL	 r1, r0, r1
-   MOV	 r1, r1, lsl #13
-   MOV	 r1, r1, lsr #17
-   LDR	 r0, =TIMER1_REG_BASE
-   STR	 r1, [r0, #TIMER_LOAD_OFFSET]
-   MOV	 r1, #0x84    @ Enable timer, free running, prescale by 16
-   STR	 r1, [r0, #TIMER_CONTROL_OFFSET]
-
-   @ Timer is set up, now watch for underflow
-1:
-   LDR	 r1, [r0, #TIMER_VALUE_OFFSET]
-   TST	 r1, #0x8000
-   BEQ	 1b
-
-   @ if underflow, disable timer and return
-   MOV	 r1, #0
-   STR	 r1, [r0, #TIMER_CONTROL_OFFSET]
-   MOV	 pc, lr
-@ End of delayUS
-
-ASM_literals:   
-   .ltorg
-
-#endif /* #if 0 */

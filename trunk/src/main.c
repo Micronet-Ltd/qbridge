@@ -69,6 +69,12 @@ unsigned long qbridge_stack[2048] __attribute__((section(".stack"))) = { 0 };
  */
 unsigned long irq_stack[1024] __attribute__((section(".irqstack"))) = { 0 };
 
+/* The firmware entry point */
+void __start(void);
+
+/* Firmware CRC table.  This table has to be filled in later by the crc tool */
+crcROMHdrDefn crcTbl __attribute__ ((section(".firmwarehdr"))) = { 0, 0, 0, 0, __start };
+
 
 /************/
 /* Routines */
@@ -129,52 +135,13 @@ void irq_lockup(void)
 	}
 }
 
-/********************/
-/* InitializeClocks */
-/********************/
-void InitializeClocks(void)
-{
-	RCCUREGS * const rccu = (RCCUREGS *)RCCU_REG_BASE;
-	PCUREGS * const pcu = (PCUREGS *)PCU_REG_BASE;
-
-	/* Wait for internal voltage regulator to settle */
-	while ((pcu->pwrcr & VR_OK) == 0) ;
-
-	/* 
-	 * Set up the PLL:
-	 * CLK2 = CLK3 = CK/2 (8 MHz for 16 MHz oscillator input)
-	 * MX = 01b (multiply by 16)
-	 * DX = 001b (divide by 4)
-	 * FREF_RANGE = 1 (CLK2 > 3 MHz)
-	 * Therefore, RCLK = 32 MHz
-	 */
-	rccu->pll1cr = 0x73;
-
-	/* Wait for PLL lock */
-	while ((rccu->cfr & LOCK) == 0) ;
-
-	/* Switch to PLL clock */
-	rccu->cfr |= CSU_CKSEL;
-
-	/* 
-	 * Set up peripheral clocks:
-	 * MCLK = 32 MHz (no divisor, default)
-	 * PCLK1 = 16 MHz (divide by 2)
-	 * PCLK2 = 16 MHz (divide by 2)
-	 */
-	pcu->pdivr = 0x0101;
-
-	/* Disable peripheral clocks (External Memory and USB) to save power */
-	rccu->per = 0;
-}
-
 void LockProgram();
 
 /********/
 /* main */
 /********/
 int main(void) {
-	InitializeClocks();
+	/* Clocks already setup by bootloader */
 	InitializeEIC();
 	InitializeAllSerialPorts();
 	InitializeTimers();
