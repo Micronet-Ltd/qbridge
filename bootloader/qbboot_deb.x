@@ -21,6 +21,7 @@ _RamEndAddr         = 0x20010000;
 
 _RomStartAddr       = 0x40000000;
 _FirmwareStartAddr  = 0x40002000;
+_BootloaderStartAddr = 0x400C2000; /* Store text/data in Bank 1 Sector 1 */
 
 SECTIONS
 {

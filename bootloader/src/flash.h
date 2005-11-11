@@ -49,10 +49,8 @@
 /**************/
 /* Prototypes */
 /**************/
-unsigned long ReadFlashID(void);
-int BootldrUpgrade(unsigned char *BootRamPtr, unsigned long BootLen);
-int ParmUpgrade(unsigned char *ParmRamPtr, unsigned long ParmLen);
-void KRNLUpgrade(unsigned char *KRNLRamPtr, unsigned long KRNLLen);
-void EraseSection(unsigned char *section, unsigned char *name);
+int FlashEraseSector(unsigned long addr);
+int FlashEraseRegion(unsigned char *addrptr, int len);
+int FlashWriteBuffer(unsigned char *data, unsigned char *addrptr, int len);
 
 #endif /* FLASH_H */

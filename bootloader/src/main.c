@@ -10,12 +10,14 @@
 /* Standard Library Includes */
 /*****************************/
 #include <stdlib.h>
+#include <string.h>
 
 /*******************************/
 /* Programmer Library Includes */
 /*******************************/
 #include "stddefs.h"
 #include "str712.h"
+#include "common.h"
 
 #include "misc.h"
 #include "serial.h"
@@ -28,6 +30,11 @@
 /***********/
 /* Defines */
 /***********/
+#define MAXLINE   256
+
+#define CR        0x0d
+#define LF        0x0a
+#define ACK       0x06
 
 /************/
 /* TypeDefs */
@@ -105,21 +112,214 @@ void InitializeClocks(void)
 	rccu->per = 0;
 }
 
+/**********************/
+/* S-Record Functions */
+/**********************/
+
+/***********/
+/* hex2val */
+/***********/
+UINT32 hex2val(char *buf, int digitlen)
+{
+	UINT32 val = 0;
+	UINT8 hexdigit;
+	int i;
+
+	/* Two hex chars per byte */
+	for (i = 0; i < digitlen; ++i) {
+		hexdigit = *buf++;
+		if ((hexdigit >= 'a') && (hexdigit <= 'z')) {
+			hexdigit -= ('a' - 'A');
+		}
+		if ((hexdigit >= '0') && (hexdigit <= '9')) {
+			hexdigit -= '0';
+		} else if ((hexdigit >= 'A') && (hexdigit <= 'F')) {
+			hexdigit = hexdigit - 'A' + 10;
+		} else {
+			/* Illegal value */
+			return 0;
+		}
+		val = (UINT32) (hexdigit | (val << 4));
+	}
+
+	return val;
+}
+
+/***********/
+/* hex2str */
+/***********/
+void hex2str(char *buf, int len, char *strbuf)
+{
+	while (len > 0) {
+		*strbuf++ = (char)hex2val(buf, 2);
+		buf += 2;
+		len -= 2;
+	}
+	*strbuf = 0;
+}
+
+/****************/
+/* CheckSRecord */
+/****************/
+int CheckSRecord(UINT8 *buf, int len)
+{
+	int sreclen;
+	UINT8 checksum = 0;
+
+	/* Check for S-record sanity */
+	if ((buf[0] != 'S' && buf[0] != 's') || (len % 2)) {
+		return -1;
+	}
+
+	/* Check length */
+	sreclen = (int)hex2val(&buf[2], 2);
+	if (sreclen * 2 != len - 4) {
+		return -2;
+	}
+
+	/* Check checksum */
+	for (checksum = 0, buf += 2, len -= 2; len > 0; len -= 2, buf += 2) {
+		checksum += (UINT8)hex2val(buf, 2);
+	}
+	if (checksum != 0xff) {
+		return -3;
+	}
+
+	return 0;
+}
+
+
+/******************/
+/* ProcessSRecord */
+/******************/
+int ProcessSRecord(UINT8 *buf, int len)
+{
+	UINT8 srecbuf[32];
+	UINT8 *address;
+	int bytecount;
+	int i;
+	UINT8 *dptr;
+
+	switch (buf[1]) {
+	case '0': /* S-record header */
+		/* Erase sections according to what is being sent */
+		hex2str(&buf[8], len - 10, srecbuf);
+			
+		if (strcmp(srecbuf,"qbridge.srec") == 0) {
+			FlashEraseRegion(_FirmwareStartAddr, 128 * 1024);
+		}
+#ifdef RVDEBUG
+		if (strcmp(srecbuf,"qbboot.srec") == 0) {
+			FlashEraseSector((UINT32)_RomStartAddr);
+			FlashEraseSector((UINT32)_BootloaderStartAddr);
+		}
+#endif /* RVDEBUG */
+		break;
+	case '3': /* S-record data (4 byte address) */
+		/* Burn it to flash */
+		bytecount = (int)hex2val(&buf[2], 2);
+		bytecount -= 5; /* Subtract address and checksum */
+		address = (UINT8 *)hex2val(&buf[4], 8);
+
+		/* Get srec data into buffer */
+		for (dptr = &buf[12], i = 0; i < bytecount; ++i) {
+			srecbuf[i] = (UINT8)hex2val(dptr, 2);
+			dptr += 2;
+		}
+		
+		if (FlashWriteBuffer(srecbuf, address, bytecount) != 0) {
+			print("Flash Write Error!\r\n");
+		}
+
+		break;
+	case '7': /* S-record termination (4 byte address) */
+		bootKRNL(0, (void *) _FirmwareStartAddr);
+		break;
+	default:
+		return -2;
+	}
+
+	return 0;
+}
+
+/***********/
+/* GetLine */
+/***********/
+/* Expects that lines will end with LF or CRLF and host will wait for ACK after each line */
+int GetLine(UINT8 *buf, int maxlen)
+{
+	UINT8 *cptr = buf;
+	UINT8 len = 0;
+	int numchars = 0;
+
+	/* Clear the buffer */
+	bzero(buf, maxlen);
+
+	/* Get characters up to CRLF */
+	while (memchr(buf, LF, len) == NULL && len < maxlen) {
+		PollReceive(hostPort, cptr, maxlen - len, &numchars);
+		cptr += numchars;
+		len += numchars;
+	}
+
+	if (len == maxlen) {
+		/* Line too long, dump it */
+		return 0;
+	}
+
+	/* Terminate line */
+	if (*(cptr-2) == CR) {
+		len -= 2;
+	} else if (*(cptr-1) == LF) {
+		--len;
+	} else {
+		return 0; /* Didn't end in LF or CRLF */
+	}
+
+	return len;
+
+}
+
+/***********/
+/* SendACK */
+/***********/
+void SendACK(void)
+{
+	UINT8 ack[1];
+
+	ack[0] = ACK;
+	Transmit(hostPort, ack, 1);
+}
+
 /**************/
 /* bootloader */
 /**************/
 void bootloader(void) {
-   UINT8 rxbuf[16];
-	int numchars = 0;
+	UINT8 linebuf[MAXLINE];
+	int len;
 
 	print("Entering QSI Qbridge Bootloader " VERSION "\r\n");
+	print(BuildDate);
 
 	for (;;) {
-		/* Loopback mode */
-		PollReceive(hostPort, rxbuf, sizeof(rxbuf), &numchars);
-		if (numchars) {
-			Transmit(hostPort, rxbuf, numchars);
+		len = GetLine(linebuf, MAXLINE);
+		if (len) {
+			if (CheckSRecord(linebuf, len) == 0) {
+				ProcessSRecord(linebuf, len);
+			}
+			SendACK();
 		}
+#if 0
+		{
+			/* Loopback mode */
+			UINT8 rxbuf[16];
+			int numchars = 0;
+			PollReceive(hostPort, rxbuf, sizeof(rxbuf), &numchars);
+			if (numchars) {
+				Transmit(hostPort, rxbuf, numchars);
+			}
+		}
+#endif /* #if 0 */
 	}
 	
 	/* Never executes to here!!!! */
@@ -146,7 +346,7 @@ int main(void) {
 	}
 
 	/* Invalid kernels will return from this function */
-	bootKRNL(0, (void *) _FirmwareStartAddr);
+ 	bootKRNL(0, (void *) _FirmwareStartAddr);
 
 	/* Bootloader */
 EnterBootloader:
