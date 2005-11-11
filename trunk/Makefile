@@ -105,7 +105,7 @@ $(target).srec: $(target).elf
 
 $(target).bin: $(target).srec
 	$(OBJCPY) -v -I symbolsrec -O binary $(target).srec $(target).bin
-	@crc -b$(target).bin:0 -l
+	@crc -l -b$(target).bin:0
 	@echo -e '\E[36m'"\033[1m**************Target Made**************\033[0m"
 
 $(target).elf: $(OBJS) $(linkscript)
