@@ -54,7 +54,7 @@
 /******************/
 /* FlashWriteWord */
 /******************/
-int FlashWriteWord(unsigned long addr, unsigned long data)
+static int FlashWriteWord(unsigned long addr, unsigned long data)
 {
 	FLASHREGS *flash = (FLASHREGS *)FLASH_REG_BASE;
 
@@ -72,13 +72,13 @@ int FlashWriteWord(unsigned long addr, unsigned long data)
 	while (flash->cr0 & FLASH_BSY) ;
 
 	/* Let caller handle and clear errors */
-	return flash->er;
+	return flash->er & FLASH_ERMASK;
 }
 
 /************************/
 /* FlashWriteDoubleWord */
 /************************/
-int FlashWriteDoubleWord(unsigned long addr, unsigned long datalow, unsigned long datahigh)
+static int FlashWriteDoubleWord(unsigned long addr, unsigned long datalow, unsigned long datahigh)
 {
 	FLASHREGS *flash = (FLASHREGS *)FLASH_REG_BASE;
 
@@ -97,13 +97,13 @@ int FlashWriteDoubleWord(unsigned long addr, unsigned long datalow, unsigned lon
 	while (flash->cr0 & FLASH_BSY) ;
 
 	/* Let caller handle and clear errors */
-	return flash->er;
+	return flash->er & FLASH_ERMASK;
 }
 
 /************************/
 /* FlashGetSectorNumber */
 /************************/
-unsigned long FlashGetSectorNumber(unsigned long addr)
+static unsigned long FlashGetSectorNumber(unsigned long addr)
 {
 	unsigned long badAddr = 0xffffffff;
 
@@ -171,12 +171,12 @@ int FlashEraseSector(unsigned long addr)
 
 	/* Just monitor both busy bits; one will always be low */
 	while (flash->cr0 & FLASH_BSY) {
-		if (flash->er) {
+		if (flash->er & FLASH_ERMASK) {
 			break;
 		}
 	}
 
-	return flash->er;
+	return flash->er & FLASH_ERMASK;
 }
 
 
@@ -208,12 +208,12 @@ int FlashEraseRegion(unsigned char *addrptr, int len)
 
 	/* Just monitor both busy bits; one will always be low */
 	while (flash->cr0 & FLASH_BSY) {
-		if (flash->er) {
+		if (flash->er & FLASH_ERMASK) {
 			break;
 		}
 	}
 
-	return flash->er;
+	return flash->er & FLASH_ERMASK;
 }
 
 /********************/
@@ -231,7 +231,7 @@ int FlashWriteBuffer(unsigned char *data, unsigned char *addrptr, int len)
 	}
 
 	while (len > 0) {
-		if (len >= 8 && (addr & 0x7)) {
+		if (len >= 8 && !(addr & 0x7)) {
 			err = FlashWriteDoubleWord(addr, *(unsigned long *)data, *(unsigned long *)(data + 4));
 			if (err) return err;
 			data += 8;

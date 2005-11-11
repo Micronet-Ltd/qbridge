@@ -90,6 +90,8 @@ typedef struct {
 #endif	/* _ASM_ */
 
 extern unsigned char _FirmwareStartAddr[];
+extern unsigned char _RomStartAddr[];
+extern unsigned char _BootloaderStartAddr[];
 
 /************/
 /* BootFlag */

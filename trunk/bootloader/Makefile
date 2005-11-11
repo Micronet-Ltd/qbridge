@@ -101,7 +101,7 @@ $(SOBJS): obj/%.o : src/%.S dpn/%.d
 ##########
 
 $(target).srec: $(target).elf
-	$(OBJCPY) -v -S $(SEC_EXCLUDES) --gap-fill=51 -O symbolsrec $(target).elf $(target).srec
+	$(OBJCPY) -v -S $(SEC_EXCLUDES) -O symbolsrec $(target).elf $(target).srec
 
 $(target).bin: $(target).srec
 	$(OBJCPY) -v -I symbolsrec -O binary $(target).srec $(target).bin

@@ -505,6 +505,7 @@ typedef struct {
 #define FLASH_B0F0			0x00000001
 
 #define FLASH_ARMASK			0x001FFFFC
+#define FLASH_ERMASK       0x000001CF
 
 #define BANK1_ADDR			0x000C0000
 #define BANK1F1				0x00002000

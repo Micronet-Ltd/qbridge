@@ -50,8 +50,8 @@ SECTIONS
 		*(.text)
 		*(.stub)
 		*(.glue_7)
-		*(.glue_7t)
-		_etext = .;
+		*(.glue_7t)	
+	_etext = .;
 	} >rom=0xff
 
 	PROVIDE (etext = .);
