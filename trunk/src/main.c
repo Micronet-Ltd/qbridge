@@ -73,7 +73,7 @@ unsigned long irq_stack[1024] __attribute__((section(".irqstack"))) = { 0 };
 void __start(void);
 
 /* Firmware CRC table.  This table has to be filled in later by the crc tool */
-crcROMHdrDefn crcTbl __attribute__ ((section(".firmwarehdr"))) = { 0, 0, 0, 0, __start };
+crcROMHdrDefn crcTbl __attribute__ ((section(".firmwarehdr"))) = { crcROMMagicL, 0, 0, 0, __start };
 
 
 /************/
