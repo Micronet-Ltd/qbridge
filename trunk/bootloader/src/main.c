@@ -35,6 +35,7 @@
 #define CR        0x0d
 #define LF        0x0a
 #define ACK       0x06
+#define NAK       0x15
 
 /************/
 /* TypeDefs */
@@ -72,6 +73,7 @@ UINT32 BootFlag;
 /************/
 /* Routines */
 /************/
+void SendACK(void);
 
 /********************/
 /* InitializeClocks */
@@ -233,10 +235,11 @@ int ProcessSRecord(UINT8 *buf, int len)
 
 		break;
 	case '7': /* S-record termination (4 byte address) */
+		SendACK();
 		bootKRNL(0, (void *) _FirmwareStartAddr);
 		break;
 	default:
-		return -2;
+		return -1;
 	}
 
 	return 0;
@@ -291,6 +294,17 @@ void SendACK(void)
 	Transmit(hostPort, ack, 1);
 }
 
+/***********/
+/* SendNAK */
+/***********/
+void SendNAK(void)
+{
+	UINT8 nak[1];
+
+	nak[0] = NAK;
+	Transmit(hostPort, nak, 1);
+}
+
 /**************/
 /* bootloader */
 /**************/
@@ -305,9 +319,14 @@ void bootloader(void) {
 		len = GetLine(linebuf, MAXLINE);
 		if (len) {
 			if (CheckSRecord(linebuf, len) == 0) {
-				ProcessSRecord(linebuf, len);
+				if (ProcessSRecord(linebuf, len) == 0) {
+					SendACK();
+				} else {
+					SendNAK();
+				}
+			} else {
+				SendNAK();
 			}
-			SendACK();
 		}
 #if 0
 		{
