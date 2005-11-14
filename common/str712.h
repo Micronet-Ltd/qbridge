@@ -486,7 +486,7 @@ typedef struct {
 
 #define FLASH_BSY1			0x00000004
 #define FLASH_BSY0			0x00000002
-#define FLASH_BSY 			0x00000006
+#define FLASH_BSY 			0x00000016
 
 /* CR1 Bits */
 #define FLASH_B1STAT			0x02000000
