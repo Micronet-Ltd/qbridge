@@ -199,73 +199,35 @@ main(int argc, char **argv)
 {
 	int c;
 	long i, j, k;
-	char upgradeType;
 
 	int fd, res;
 	struct termios oldtio, newtio;
 	struct termios oldstdtio, newstdtio;
 
-	unsigned char buf[BUFFER_SIZE];
-
-	FILE *tempFile = NULL;
-	FILE *memGCMFile = NULL;
-	FILE *memMainFile = NULL;
-	FILE *LogFile1 = NULL;
-	FILE *LogFile2 = NULL;
-
-	int NumGCM;
-	char *memGCMBuf;
-	size_t memGCMSize;
-	char *memMainBuf;
-	size_t memMainSize;
-	char *tempBuf;
-	size_t tempSize;
-
 	unsigned int comport, baud;
 	unsigned char PortStr[255];
 
-	// Command Headers.
-	// Transmit all characters of header (these should never contain xon, xoff, or escape characters)
-	unsigned char UpgradeBL[3] = { 0xA5, ',', 0x00 };
-	unsigned char UpgradeRamKrnl[3] = { 0xBD, ',', 0x00 };
-	unsigned char UpgradeParm[3] = { 0xC3, ',', 0x00 };
-
-	char *cmd[] = { "","S,","R45D","G55D","GCMD", (char *) &UpgradeBL,"G60D", 
-						 (char *) &UpgradeRamKrnl, (char *) &UpgradeParm };
-	int cmdnum = 2;
-
-	char **FileName = NULL;
-	int filenum = 0;
-
-	fd_set rfds;
-	struct timeval tv;
-
-	long delay = 100000000;
-
-	// Flags
-	BYTE GetOptions = TRUE;
-	BYTE Flags = 0;
+	char *FileName = NULL;
 
 	void (* OldHand)(int);
 
-	// Set default com port string.
+	/* Set default com port string. */
 	sprintf(PortStr, "%s", COM_DEV_STR);
 
-	// Set default baud rate.
+	/* Set default baud rate. */
 	baud = BAUDRATE;
 
-	// Check for print usage.
-	if ((argc == 2) && !strncmp( argv[1], "-h", 2))
-		{
-			// Pass program name to PrintUsage.
-			PrintUsage(argv[0]);
-			exit(0);
-		}
+	/* Check for print usage. */
+	if ((argc == 2) && !strncmp( argv[1], "-h", 2)) {
+		/* Pass program name to PrintUsage. */
+		PrintUsage(argv[0]);
+		exit(0);
+	}
 
-	// Get comm parameters
+	/* Get comm parameters */
 	for (c = 1; c < argc; c++)	{
-		// Check for options.
-		if ((GetOptions) && (argv[c][0] == '-')) {
+		/* Check for options. */
+		if (argv[c][0] == '-') {
 			switch(argv[c][1]) {
 			case 'c':
 				sscanf(argv[c],"-c%u",&comport);
@@ -319,134 +281,15 @@ main(int argc, char **argv)
 					break;
 				}
 				break;
-			case 'd':
-            {
-               long tmp = 0;
-               sscanf(argv[c],"-d%lu", &tmp);
-               switch (tmp) {
-               case 1:
-                  if (LogFile1 != NULL) {
-                     printf("ERROR:  File data.log already opened\n");
-                  }
-                  LogFile1 = fopen("./data.log", "wb");
-                  if (LogFile1 == NULL) {
-                     printf("ERROR:  Unable to open data.log file\n");
-                     exit(-1);
-                  }
-                  break;
-               case 2:
-                  if (LogFile2 != NULL) {
-                     printf("ERROR:  File actual.log already opened\n");
-                  }
-                  LogFile2 = fopen("./actual.log", "wb");
-                  if (LogFile2 == NULL) {
-                     printf("ERROR:  Unable to open actual.log file\n");
-                     exit(-1);
-                  }
-                  break;
-               default:
-                  printf("ERROR:  Illegal option\n");
-                  PrintUsage(argv[0]);
-                  exit(-1);
-               }
-            }
-				break;
-			case 't':
-				sscanf(argv[c],"-t%lu", &delay);
-				break;
-			case 'r':
-				if (Flags & XON_XOFF)
-					printf("Using both hardware and software flow control??!!??\n");
-
-				Flags |= HWFC;
-				break;
-			case 'x':
-				if (Flags & HWFC)
-					printf("Using both hardware and software flow control??!!??\n");
-
-				Flags |= XON_XOFF;
-				break;
-			case 'f':
-				// This is a firmware upgrade
-				if (cmdnum == 0) {
-					printf("ERROR:  Illegal combination using -f and -n\n");
-					exit(-1);
-				} else if (Flags & UPGRADE_BL) {
-					printf("ERROR:  Illegal combination using -f and -l\n");
-					exit(-1);
-				} else if (Flags & G60DL) {
-					printf("ERROR:  Illegal combination using -f and -g\n");
-					exit(-1);
-				}
-				upgradeType = argv[c][2];
-				Flags |= FIRMWARE;
-				break;
-			case 'l':
-				// This is a bootloader upgrade
-				if (cmdnum == 0) {
-					printf("ERROR:  Illegal combination using -l and -n\n");
-					exit(-1);
-				} else if (Flags & FIRMWARE) {
-					printf("ERROR:  Illegal combination using -l and -f\n");
-					exit(-1);
-				} else if (Flags & G60DL) {
-					printf("ERROR:  Illegal combination using -l and -g\n");
-					exit(-1);
-				}
-				Flags |= UPGRADE_BL;
-				break;
-			case 'n':
-				if (Flags & FIRMWARE) {
-					printf("ERROR:  Illegal combination using -n and -f\n");
-					exit(-1);
-				} else if (Flags & UPGRADE_BL) {
-					printf("ERROR:  Illegal combination using -n and -l\n");
-					exit(-1);
-				} else if (Flags & G60DL) {
-					printf("ERROR:  Illegal combination using -n and -g\n");
-					exit(-1);
-				}
-				cmdnum = 0;
-				break;
-			case 'o':
-				// Support for the old bootloader
-				Flags |= OLD_BL; 
-				break;
-			case 'g':
-				/* Support G60 downloads */
-				if (cmdnum == 0) {
-					printf("ERROR:  Illegal combination using -g and -n\n");
-					exit(-1);
-				} else if (Flags & FIRMWARE) {
-					printf("ERROR:  Illegal combination using -g and -f\n");
-					exit(-1);
-				} else if (Flags & UPGRADE_BL)  {
-					printf("ERROR:  Illegal combination using -g and -l\n");
-					exit(-1);
-				}
-				Flags |= G60DL;
-				break;
 			default:
 				printf("ERROR:  Illegal option\n");
 				PrintUsage(argv[0]);
 				exit(-1);
 			}
-		} else {
-			// Don't allow any more options once a filename is reached.
-			GetOptions = FALSE;
-
-			// Figure out how many filenames we have and allocate enough pointers for them the first time.
-			if (filenum == 0) {
-				FileName = (char **) malloc((argc - c) * sizeof(char *));
-				if (FileName == NULL) {
-					printf("ERROR:  Unable to allocate memory\n");
-					exit(-1);
-				}
-			}
-
-			// Get normal file name.
-			FileName[filenum++] = argv[c];
 		}
+			
+		/* Get Filename */
+		FileName = argv[c];
 	}
 
 	// Figure out which command header to use (only use g55 if multiple files are listed).
