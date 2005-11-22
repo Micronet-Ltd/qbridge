@@ -78,6 +78,16 @@ void InitializeTimers() {
 
 }
 
+/**************/
+/* StopTimers */
+/**************/
+void StopTimers(void)
+{
+	MainTimer.timer->ControlRegister1 = 0;
+	J1708IdleTimer.timer->ControlRegister1 = 0;
+	J1708RxInterruptTimer.timer->ControlRegister1 = 0;
+}
+
 
 /**************/
 /* TimerWrap */

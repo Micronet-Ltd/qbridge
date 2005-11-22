@@ -47,6 +47,7 @@ extern SerialPort *j1708Port;
 extern SerialPort *hostPort;
 
 void InitializeAllSerialPorts();
+void DisableAllSerialPorts(void);
 bool SetPortSettings (SerialPort *port, UINT32 baud, UINT8 dataBits, UINT8 parity, UINT8 stopBits);
 UINT32 Transmit (SerialPort *port, UINT8 *data, int leng);
 void StuffTxFifo(SerialPort *port);

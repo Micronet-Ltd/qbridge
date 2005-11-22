@@ -48,6 +48,10 @@
 /**********/
 /* Macros */
 /**********/
+#define RESET(flag) do { \
+   /* Set register r0 to contain the BootFlag, and reboot */ \
+   asm volatile("\tMOV r0, %0\n\tMOV pc, %1\n" : : "r" (flag), "r" (_RomStartAddr) : "r0" ); \
+} while (0)
 
 /********************/
 /* Global Variables */
@@ -202,4 +206,26 @@ void LockProgram() {
 			Transmit (hostPort, buf, len);
 		} 
 	}
+}
+
+/*********/
+/* Reset */
+/*********/
+void Reset(void)
+{
+   IRQSTATE oldIRQ;
+
+   /* Disable interrupts here */
+   DISABLE_IRQ(oldIRQ);
+
+	/* Disable timers */
+	StopTimers();
+
+	/* Disable uarts */
+	DisableAllSerialPorts();
+
+	RESET(BOOTFLAG_ENTER_BL);
+
+	/* Forever loop makes noreturn happy */
+	for(;;);
 }

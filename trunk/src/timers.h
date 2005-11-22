@@ -13,6 +13,7 @@ extern Timer J1708IdleTimer;
 extern Timer J1708RxInterruptTimer;
 
 void InitializeTimers();
+void StopTimers(void);
 UINT64 GetTimerTime(Timer *timer);
 
 // HACK:  GetJ1708IdleTime is flagged as an int function rather than a UINT32 
