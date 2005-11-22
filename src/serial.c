@@ -48,6 +48,7 @@ static const BaudTableEntry BaudRateTable[] = {
 };
 
 static void InitializePort (SerialPort *port, EIC_SOURCE src, void (*hdlr)(void));
+static void DisablePort(SerialPort *port);
 
 //SerialPort com1;
 SerialPort com2;
@@ -161,6 +162,25 @@ static void InitializePort (SerialPort *port, EIC_SOURCE src, void (*hdlr)(void)
 
 	RegisterEICHdlr(src, hdlr, SERIAL_IRQ_PRIORITY);
 	EICEnableIRQ(src);
+}
+
+/*************************/
+/* DisableAllSerialPorts */
+/*************************/
+void DisableAllSerialPorts(void)
+{
+	DisablePort(debugPort);
+	DisablePort(hostPort);
+	DisablePort(j1708Port);
+}
+
+/***************/
+/* DisablePort */
+/***************/
+static void DisablePort(SerialPort *port)
+{
+	port->port->intEnable = 0;
+	port->port->portSettings = 0;
 }
 
 /********************/
