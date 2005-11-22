@@ -70,7 +70,8 @@ echo copying qbridge.elf to qbridge.flash.elf
 copy qbridge.elf qbridge.flash.elf &gt;nul
 del qbridge.elf
 echo Success FLASH VERSION -- NO DEBUG INFO
-exit /B 0"/>
+exit /B 0
+"/>
 			<Tool
 				Name="VCPreBuildEventTool"
 				CommandLine="rsh brutus -l simon &quot;make -C qbridge clean&quot;"/>
@@ -106,7 +107,9 @@ exit /B 0"/>
 					Name="Release|Win32">
 					<Tool
 						Name="VCCustomBuildTool"
-						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;"/>
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+"
+						Outputs="obj/$(InputName).o"/>
 				</FileConfiguration>
 			</File>
 			<File
@@ -126,7 +129,9 @@ exit /B 0"/>
 					Name="Release|Win32">
 					<Tool
 						Name="VCCustomBuildTool"
-						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;"/>
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+"
+						Outputs="obj/$(InputName).o"/>
 				</FileConfiguration>
 			</File>
 			<File
@@ -143,7 +148,9 @@ exit /B 0"/>
 					Name="Release|Win32">
 					<Tool
 						Name="VCCustomBuildTool"
-						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;"/>
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+"
+						Outputs="obj/$(InputName).o"/>
 				</FileConfiguration>
 			</File>
 			<File
@@ -160,7 +167,9 @@ exit /B 0"/>
 					Name="Release|Win32">
 					<Tool
 						Name="VCCustomBuildTool"
-						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;"/>
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+"
+						Outputs="obj/$(InputName).o"/>
 				</FileConfiguration>
 			</File>
 			<File
@@ -177,7 +186,9 @@ exit /B 0"/>
 					Name="Release|Win32">
 					<Tool
 						Name="VCCustomBuildTool"
-						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;"/>
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+"
+						Outputs="obj/$(InputName).o"/>
 				</FileConfiguration>
 			</File>
 			<File
@@ -194,7 +205,9 @@ exit /B 0"/>
 					Name="Release|Win32">
 					<Tool
 						Name="VCCustomBuildTool"
-						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;"/>
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+"
+						Outputs="obj/$(InputName).o"/>
 				</FileConfiguration>
 			</File>
 			<File
@@ -211,7 +224,9 @@ exit /B 0"/>
 					Name="Release|Win32">
 					<Tool
 						Name="VCCustomBuildTool"
-						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;"/>
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+"
+						Outputs="obj/$(InputName).o"/>
 				</FileConfiguration>
 			</File>
 			<File
@@ -228,7 +243,9 @@ exit /B 0"/>
 					Name="Release|Win32">
 					<Tool
 						Name="VCCustomBuildTool"
-						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;"/>
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+"
+						Outputs="obj/$(InputName).o"/>
 				</FileConfiguration>
 			</File>
 		</Filter>

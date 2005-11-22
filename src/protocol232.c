@@ -291,6 +291,14 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
 			Send232Ack(ACK_OK, id, NULL, 0);
 			break;
 		case UpgradeFirmware:
+			{
+				// special case -- we need to transmit a reply, then wait for the serial port to go idle and reboot
+				Send232Ack(ACK_OK, id, NULL, 0);
+				while (!IsTxFifoEmpty(hostPort)) { // loop until the serial port transmission buffer is empty
+				}
+				extern void Reset(void);
+				Reset();
+			}		
 		case J1708TransmitConfirm:
 		case ReceiveJ1708Packet:
 		default:
