@@ -395,7 +395,7 @@ void J1708PrintEventLog() {
 	char *msgs[] = { "full compare", "framing error", "mismatch header" };
 	char *states[] = { "Pasv", "Tx  ", "Ignr" };
 	UINT8 i = j1708EventLogIndex;
-	int baseTime, lastTime;
+	int baseTime, lastTime=0;
 	bool first = true;
 
 	Transmit (debugPort, "Rel Time   Idle State Message\r\n", 31);
