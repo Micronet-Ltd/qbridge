@@ -68,7 +68,7 @@ unsigned long bldr_stack[1024] __attribute__((section(".stack"))) = { 0 };
  */
 unsigned long irq_stack[256] __attribute__((section(".irqstack"))) = { 0 };
 
-UINT32 BootFlag;
+UINT32 BootFlag __attribute__ ((section(".BootFlag")));
 
 /************/
 /* Routines */
