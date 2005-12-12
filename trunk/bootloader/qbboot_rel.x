@@ -90,6 +90,12 @@ SECTIONS
 		*(.irqstack)
 		_irqstackend = . ;				
 	} > ram=0
+
+	.BootFlag ALIGN(4) (NOLOAD) :
+	{
+		*(.BootFlag)
+	} > ram=0
+
 	_heapBegin = ALIGN(16) ;
 	end = . ;
 
