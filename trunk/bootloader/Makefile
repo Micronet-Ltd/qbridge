@@ -7,7 +7,7 @@
 #  Defines  #
 #############
 
-version	        := V0.002
+version	        := V0.003
 test_version    := 
 versdash        := -
 
