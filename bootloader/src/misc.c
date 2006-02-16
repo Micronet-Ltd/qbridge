@@ -122,7 +122,7 @@ void bootKRNL(int verbose, void *startAddr)
 
 	createCITTTable(CITTTablePtr);
 
-	if (crcHdr->magic == crcROMMagicL) {
+	if (crcHdr->magic == crcROMMagicL && crcHdr->codeLen != 0) {
 		/* Verify the checksum */
 		crc = calcCITT(CITTTablePtr, ((unsigned char *) startAddr) + sizeof(crcROMHdrDefn), 
                      crcHdr->codeLen - sizeof(crcROMHdrDefn));
