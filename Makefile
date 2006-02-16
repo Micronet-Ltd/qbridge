@@ -96,12 +96,16 @@ $(SOBJS): obj/%.o : src/%.S dpn/%.d
 	@echo -e '\E[32m'"\033[1m$<\033[0m"
 	$(CC) $(DEBUG_FLAGS) $(OPTIMIZE) $(CFLAGS) $(IFLAGS) $(defs) -Wa,-ahld=lst/$*.lst -c -o $@ $< 
 
+tools/sreccrc: tools/sreccrc.c
+	@gcc -o tools/sreccrc tools/sreccrc.c
+
 ##########
 #  Link  #
 ##########
 
-$(target).srec: $(target).elf
+$(target).srec: $(target).elf tools/sreccrc
 	$(OBJCPY) -v -S $(SEC_EXCLUDES) --gap-fill=51 -O symbolsrec $(target).elf $(target).srec
+	@tools/sreccrc $(target).srec
 
 $(target).bin: $(target).srec
 	$(OBJCPY) -v -I symbolsrec -O binary $(target).srec $(target).bin
