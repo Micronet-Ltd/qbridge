@@ -1,1 +1,1 @@
-Debug *.suo *.bin *.aws *.a
+Debug *.suo *.bin *.aws *.a release Release

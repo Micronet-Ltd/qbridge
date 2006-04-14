@@ -10,8 +10,8 @@ extern int j1708IDCounter;
 extern int j1708WaitForBusyBusCount;
 extern int j1708CollisionCount;
 extern int j1708RecvPacketLen;
-extern bool j1708PIDFilterEnabled;
-extern UINT8 j1708EnabledPIDs[64];
+extern bool j1708MIDFilterEnabled;
+extern UINT8 j1708EnabledMIDs[64];
 extern bool j1708TransmitConfirm;
 
 
@@ -57,7 +57,7 @@ extern J1708EventLog j1708EventLog[256];
 extern UINT8 j1708EventLogIndex;
 void J1708PrintEventLog();
 #define J1708DebugPrint(args...) DebugPrint(args)
-void J1708PrintPIDInfo();
+void J1708PrintMIDInfo();
 #else
 #define J1708LogEvent(event, flags)
 #define J1708PrintEventLog()
@@ -73,8 +73,8 @@ int J1708AddFormattedTxPacket (UINT8 priority, UINT8 *data, UINT8 len);
 int J1708AddUnFormattedTxPacket(UINT8 priority, UINT8 *data, UINT8 len);
 int GetFreeJ1708TxBuffers();
 
-bool PIDPassesFilter();
-void J1708SetPIDState(UINT16 pid, bool state);
+bool MIDPassesFilter();
+void J1708SetMIDState(UINT16 MID, bool state);
 void J1708ResetDefaultPrefs();
 void J1708ComIRQHandle();
 void J1708EnterCollisionState(enum J1708CollisionReason reason);

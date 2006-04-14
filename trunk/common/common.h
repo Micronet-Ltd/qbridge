@@ -63,7 +63,7 @@ static inline UINT16 BufToUINT16(UINT8 *buf) { return 256*buf[1] + buf[0]; }
 /**************/
 /* Prototypes */
 /**************/
-void Reset(void) __attribute__ ((noreturn));
+void Reset(UINT32) __attribute__ ((noreturn));
 
 
 /******************************/

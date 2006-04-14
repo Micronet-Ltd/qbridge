@@ -16,13 +16,14 @@ typedef enum _Commands {
 	ACK							= 'A',
 	InfoReq						= '*',
 	RawJ1708						= '+',
-	PIDFilterEnable			= 'B',
-	SetPIDState					= 'C',
+	MIDFilterEnable			= 'B',
+	SetMIDState					= 'C',
 	SendJ1708Packet			= 'D',
 	ReceiveJ1708Packet		= 'E',
 	EnableJ1708TxConfirm		= 'F',
 	J1708TransmitConfirm		= 'G',
 	UpgradeFirmware			= 'H',
+	ResetQBridge				= 'I',
 } Commands;
 
 void Initialize232Protocol();
