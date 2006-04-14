@@ -24,8 +24,8 @@ bool j1708RetransmitNeeded;
 int  j1708RetransmitIdleTime;
 int  j1708CheckingMIDCharForCollision = -1;
 
-bool j1708PIDFilterEnabled = true;
-UINT8 j1708EnabledPIDs[64] = {0};
+bool j1708MIDFilterEnabled = true;
+UINT8 j1708EnabledMIDs[64] = {0};
 bool j1708TransmitConfirm = false;
 
 #ifdef _J1708DEBUG
@@ -55,8 +55,8 @@ void InitializeJ1708() {
 	j1708RetransmitIdleTime = 0;
 	j1708CheckingMIDCharForCollision = -1;
 
-	//j1708PIDFilterEnabled = true;
-	//memset (j1708EnabledPIDs, 0, sizeof(j1708EnabledPIDs));
+	//j1708MIDFilterEnabled = true;
+	//memset (j1708EnabledMIDs, 0, sizeof(j1708EnabledMIDs));
 
 #ifdef _J1708DEBUG
 	msgIdx = 0;
@@ -149,8 +149,8 @@ void ProcessJ1708RecvPacket() {
 			AssertPrint (j1708State != JST_IgnoreRxData, "Error -- received packet while in collision state");
 			j1708RecvPacketCount++;
 			J1708DebugPrintRxPacketInfo("rx ");
-			if (PIDPassesFilter()) {
-				QueueTx232Packet (ReceiveJ1708Packet, j1708RecvPacket, j1708RecvPacketLen);
+			if (MIDPassesFilter()) {
+				QueueTx232Packet (ReceiveJ1708Packet, j1708RecvPacket, j1708RecvPacketLen - 1); // Omit checksum byte
 			}
 		}
 	}
@@ -158,19 +158,19 @@ void ProcessJ1708RecvPacket() {
 }
 
 /********************/
-/* PIDPassesFilter */
+/* MIDPassesFilter */
 /******************/
-bool PIDPassesFilter () {
-	if (!j1708PIDFilterEnabled) {
+bool MIDPassesFilter () {
+	if (!j1708MIDFilterEnabled) {
 		return true;
 	}
 
-	int pid = j1708RecvPacket[0];
-	if (pid == 255) {
-		pid = 256 + j1708RecvPacket[1];
+	int MID = j1708RecvPacket[0];
+	if (MID == 255) {
+		MID = 256 + j1708RecvPacket[1];
 	}
 
-	return (j1708EnabledPIDs[pid/8] & BIT(pid%8)) != 0;
+	return (j1708EnabledMIDs[MID/8] & BIT(MID%8)) != 0;
 }
 
 
@@ -494,15 +494,19 @@ void J1708EnterCollisionState(enum J1708CollisionReason reason) {
 }
 
 /*********************/
-/* J1708SetPIDState */
+/* J1708SetMIDState */
 /*******************/
-void J1708SetPIDState(UINT16 pid, bool state) {
-	int idx = pid/8;
-	int bit = pid%8;
-	if (state) {
-		j1708EnabledPIDs[idx] |= BIT(bit);
+void J1708SetMIDState(UINT16 MID, bool state) {
+	if (MID == 0xFFFF) {
+		memset (j1708EnabledMIDs, (state ? 0xFF : 0x00), sizeof(j1708EnabledMIDs));		
 	} else {
-		j1708EnabledPIDs[idx] &= ~BIT(bit);
+		int idx = MID/8;
+		int bit = MID%8;
+		if (state) {
+			j1708EnabledMIDs[idx] |= BIT(bit);
+		} else {
+			j1708EnabledMIDs[idx] &= ~BIT(bit);
+		}
 	}
 }
 
@@ -510,24 +514,24 @@ void J1708SetPIDState(UINT16 pid, bool state) {
 /* J1708ResetDefaultPrefs */
 /*************************/
 void J1708ResetDefaultPrefs() {
-	memset (j1708EnabledPIDs, 0, sizeof(j1708EnabledPIDs));
-	j1708PIDFilterEnabled = true;
+	memset (j1708EnabledMIDs, 0, sizeof(j1708EnabledMIDs));
+	j1708MIDFilterEnabled = true;
 	j1708TransmitConfirm = false;
 }
 
 #ifdef _DEBUG
 /**********************/
-/* J1708PrintPIDInfo */
+/* J1708PrintMIDInfo */
 /********************/
-void J1708PrintPIDInfo() {
+void J1708PrintMIDInfo() {
 	char tbuf[256];
 	int idx = 0;
 	int i = 0;
 	msgIdx++;
-	snprintf (tbuf, 256, "PID filters are %s.  Transmit confirm is %s\r\n", j1708PIDFilterEnabled ? "enabled" : "disabled", j1708TransmitConfirm ? "enabled" : "disabled");
+	snprintf (tbuf, 256, "MID filters are %s.  Transmit confirm is %s\r\n", j1708MIDFilterEnabled ? "enabled" : "disabled", j1708TransmitConfirm ? "enabled" : "disabled");
 	idx = strlen(tbuf);
 	for (i = 0; i < 64; i+=2) {
-		snprintf (tbuf+idx, 6, "%02X%02X.", j1708EnabledPIDs[i], j1708EnabledPIDs[i+1]);
+		snprintf (tbuf+idx, 6, "%01X%01X%01X%01X.", j1708EnabledMIDs[i] % 16, j1708EnabledMIDs[i] / 16, j1708EnabledMIDs[i+1]%16, j1708EnabledMIDs[i+1]/16);
 		idx += 5;
 
 		if (((i % 16) >= 6)  && ((i % 16) < 8)){

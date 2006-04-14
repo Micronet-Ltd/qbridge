@@ -211,7 +211,7 @@ void LockProgram() {
 /*********/
 /* Reset */
 /*********/
-void Reset(void)
+void Reset(UINT32 flag)
 {
    IRQSTATE oldIRQ;
 
@@ -224,7 +224,7 @@ void Reset(void)
 	/* Disable uarts */
 	DisableAllSerialPorts();
 
-	RESET(BOOTFLAG_ENTER_BL);
+	RESET(flag);
 
 	/* Forever loop makes noreturn happy */
 	for(;;);

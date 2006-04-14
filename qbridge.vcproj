@@ -260,7 +260,7 @@ exit /B 0
 				RelativePath=".\src\common.h">
 			</File>
 			<File
-				RelativePath=".\src\crc.h">
+				RelativePath=".\common\crc.h">
 			</File>
 			<File
 				RelativePath=".\src\eic.h">

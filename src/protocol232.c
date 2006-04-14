@@ -164,18 +164,24 @@ bool VerifyCITTCRC(UINT16 *calculatedCRC, UINT8 *buf, int leng, UINT16 crc) {
 /* Process232Packet */
 /*******************/
 void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
-	if ((id == lastPacketID) && (cmd != ACK)) {
-		Send232Ack (ACK_DUPLICATE_PACKET, id, NULL, 0);
-		return;
+	if (cmd != ACK) {
+		if (id == lastPacketID) {
+			Send232Ack (ACK_DUPLICATE_PACKET, id, NULL, 0);
+			return;
+		}
+		lastPacketID = id;
 	}
-	lastPacketID = id;
 
 	switch (cmd) {
 		case Init232:
 			lastPacketID = -1;
 			packetID = 0;
 			J1708ResetDefaultPrefs();
-			Send232Ack(ACK_OK, id, NULL, 0);
+			if (dataLen == 0) {
+				Send232Ack(ACK_OK, id, NULL, 0);
+			} else {
+				Send232Ack(ACK_INVALID_DATA, id, NULL, 0);
+			}
 			break;
 		case ACK:
 			if (dataLen >= 1) {
@@ -228,7 +234,7 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
 					DebugPrint ("J1708 Event Log: ");
 					J1708PrintEventLog();
 				} else if (data[0] == 2) {
-					J1708PrintPIDInfo();
+					J1708PrintMIDInfo();
 #endif
 				} else {
 					DebugPrint ("Unknown info request (%d), or only available in debug builds", data[0]);
@@ -246,27 +252,31 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
 				Send232Ack(code, id, ackBuf, 5);
 			}
 			break;
-		case PIDFilterEnable:
+		case MIDFilterEnable:
 			if ((dataLen != 1) || (data[0] > 1)) {
 				Send232Ack (ACK_INVALID_DATA, id, NULL, 0);
 				break;
 			}
-			j1708PIDFilterEnabled = data[0];
+			j1708MIDFilterEnabled = data[0];
 			Send232Ack(ACK_OK, id, NULL, 0);
 			break;
-		case SetPIDState:
-			if ((dataLen != 3) || (data[2] > 1)) {
+		case SetMIDState:
+			if ((dataLen < 3) || (data[0] > 1)) {
 				Send232Ack (ACK_INVALID_DATA, id, NULL, 0);
 				break;
 			}
 			{ 
-				UINT16 pid = BufToUINT16(data);
-				if (pid > 511) {
-					Send232Ack (ACK_INVALID_DATA, id, NULL, 0);
-					break;
+				int i;
+				UINT32 ackCode = ACK_OK;
+				for (i = 1; i < dataLen-1; i+=2) {
+					UINT16 MID = BufToUINT16(data+i);
+					if ((MID > 511) && (MID != 0xFFFF)) {
+						ackCode = ACK_INVALID_DATA;
+						break;
+					}
+					J1708SetMIDState(MID, data[0]);
 				}
-				J1708SetPIDState(pid, data[2]);
-				Send232Ack(ACK_OK, id, NULL, 0);
+				Send232Ack(ackCode, id, NULL, 0);
 			}
 			break;
 		case SendJ1708Packet:
@@ -296,9 +306,15 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
 				Send232Ack(ACK_OK, id, NULL, 0);
 				while (!IsTxFifoEmpty(hostPort)) { // loop until the serial port transmission buffer is empty
 				}
-				extern void Reset(void);
-				Reset();
+				Reset(BOOTFLAG_ENTER_BL);
 			}		
+		case ResetQBridge:
+				// special case -- we need to transmit a reply, then wait for the serial port to go idle and reboot
+				Send232Ack(ACK_OK, id, NULL, 0);
+				while (!IsTxFifoEmpty(hostPort)) { // loop until the serial port transmission buffer is empty
+				}
+				Reset(0);
+			break;
 		case J1708TransmitConfirm:
 		case ReceiveJ1708Packet:
 		default:
