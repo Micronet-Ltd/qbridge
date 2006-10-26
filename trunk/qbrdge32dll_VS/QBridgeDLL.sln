@@ -1,0 +1,103 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 9.00
+# Visual Studio 2005
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestAppMFC", "TestAppMFC\TestAppMFC.vcproj", "{EB73C9F7-0C8A-439A-B70C-A39474761146}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestAppMFCTreq", "TestAppMFCTreq\TestAppMFCTreq\TestAppMFCTreq.vcproj", "{5FA5336B-ADED-4B1D-9062-98AEACB3C959}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "QBridgeDLL", "qbrdge32dll\QBridgeDLL.vcproj", "{ECE61C37-D242-423C-A83B-20513376C6FF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|Mixed Platforms = Debug|Mixed Platforms
+		Debug|TREQ (x86) = Debug|TREQ (x86)
+		Debug|Win32 = Debug|Win32
+		Release|Any CPU = Release|Any CPU
+		Release|Mixed Platforms = Release|Mixed Platforms
+		Release|TREQ (x86) = Release|TREQ (x86)
+		Release|Win32 = Release|Win32
+		TreqDebug|Any CPU = TreqDebug|Any CPU
+		TreqDebug|Mixed Platforms = TreqDebug|Mixed Platforms
+		TreqDebug|TREQ (x86) = TreqDebug|TREQ (x86)
+		TreqDebug|Win32 = TreqDebug|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.Debug|Any CPU.ActiveCfg = Debug|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.Debug|Any CPU.Build.0 = Debug|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.Debug|Mixed Platforms.ActiveCfg = Debug|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.Debug|Mixed Platforms.Build.0 = Debug|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.Debug|TREQ (x86).ActiveCfg = Debug|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.Debug|Win32.ActiveCfg = Debug|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.Debug|Win32.Build.0 = Debug|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.Release|Any CPU.ActiveCfg = Release|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.Release|Mixed Platforms.ActiveCfg = Release|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.Release|Mixed Platforms.Build.0 = Release|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.Release|TREQ (x86).ActiveCfg = Release|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.Release|TREQ (x86).Build.0 = Release|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.Release|Win32.ActiveCfg = Release|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.Release|Win32.Build.0 = Release|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.TreqDebug|Any CPU.ActiveCfg = Debug|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.TreqDebug|Mixed Platforms.ActiveCfg = Debug|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.TreqDebug|Mixed Platforms.Build.0 = Debug|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.TreqDebug|TREQ (x86).ActiveCfg = Debug|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.TreqDebug|Win32.ActiveCfg = Debug|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.TreqDebug|Win32.Build.0 = Debug|Win32
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.Debug|Any CPU.ActiveCfg = Debug|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.Debug|Any CPU.Build.0 = Debug|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.Debug|Mixed Platforms.ActiveCfg = Debug|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.Debug|Mixed Platforms.Build.0 = Debug|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.Debug|Mixed Platforms.Deploy.0 = Debug|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.Debug|TREQ (x86).ActiveCfg = Debug|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.Debug|TREQ (x86).Build.0 = Debug|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.Debug|TREQ (x86).Deploy.0 = Debug|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.Debug|Win32.ActiveCfg = Debug|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.Release|Any CPU.ActiveCfg = Release|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.Release|Mixed Platforms.ActiveCfg = Release|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.Release|Mixed Platforms.Build.0 = Release|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.Release|Mixed Platforms.Deploy.0 = Release|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.Release|TREQ (x86).ActiveCfg = Release|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.Release|TREQ (x86).Build.0 = Release|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.Release|TREQ (x86).Deploy.0 = Release|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.Release|Win32.ActiveCfg = Release|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.TreqDebug|Any CPU.ActiveCfg = Debug|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.TreqDebug|Mixed Platforms.ActiveCfg = Debug|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.TreqDebug|Mixed Platforms.Build.0 = Debug|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.TreqDebug|Mixed Platforms.Deploy.0 = Debug|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.TreqDebug|TREQ (x86).ActiveCfg = Debug|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.TreqDebug|TREQ (x86).Build.0 = Debug|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.TreqDebug|TREQ (x86).Deploy.0 = Debug|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.TreqDebug|Win32.ActiveCfg = Debug|TREQ (x86)
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.Debug|Any CPU.ActiveCfg = Debug|Win32
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.Debug|Any CPU.Build.0 = Debug|Win32
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.Debug|Mixed Platforms.ActiveCfg = Debug|TREQ (x86)
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.Debug|Mixed Platforms.Build.0 = Debug|TREQ (x86)
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.Debug|Mixed Platforms.Deploy.0 = Debug|TREQ (x86)
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.Debug|TREQ (x86).ActiveCfg = Debug|TREQ (x86)
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.Debug|TREQ (x86).Build.0 = Debug|TREQ (x86)
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.Debug|TREQ (x86).Deploy.0 = Debug|TREQ (x86)
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.Debug|Win32.ActiveCfg = Debug|Win32
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.Debug|Win32.Build.0 = Debug|Win32
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.Release|Any CPU.ActiveCfg = Release|TREQ (x86)
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.Release|Mixed Platforms.ActiveCfg = Release|TREQ (x86)
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.Release|Mixed Platforms.Build.0 = Release|TREQ (x86)
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.Release|Mixed Platforms.Deploy.0 = Release|TREQ (x86)
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.Release|TREQ (x86).ActiveCfg = Release|TREQ (x86)
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.Release|TREQ (x86).Build.0 = Release|TREQ (x86)
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.Release|TREQ (x86).Deploy.0 = Release|TREQ (x86)
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.Release|Win32.ActiveCfg = Release|Win32
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.Release|Win32.Build.0 = Release|Win32
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.TreqDebug|Any CPU.ActiveCfg = TreqDebug|TREQ (x86)
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.TreqDebug|Mixed Platforms.ActiveCfg = TreqDebug|TREQ (x86)
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.TreqDebug|Mixed Platforms.Build.0 = TreqDebug|TREQ (x86)
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.TreqDebug|Mixed Platforms.Deploy.0 = TreqDebug|TREQ (x86)
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.TreqDebug|TREQ (x86).ActiveCfg = TreqDebug|TREQ (x86)
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.TreqDebug|TREQ (x86).Build.0 = TreqDebug|TREQ (x86)
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.TreqDebug|TREQ (x86).Deploy.0 = TreqDebug|TREQ (x86)
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.TreqDebug|Win32.ActiveCfg = TreqDebug|Win32
+		{ECE61C37-D242-423C-A83B-20513376C6FF}.TreqDebug|Win32.Build.0 = TreqDebug|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
