@@ -7,7 +7,7 @@
 #  Defines  #
 #############
 
-version	        := V0.002
+version	        := V0.003
 test_version    := 
 versdash        := -
 
@@ -59,7 +59,7 @@ SRCS		:= $(CSRCS) $(SSRCS)
 #  Built In Targets  #
 ######################
 
-HOUSEKEEPGOALS  := clean realclean listsrc listdep listobj doecho showoptions tags
+HOUSEKEEPGOALS  := clean realclean listsrc listdep listobj doecho showoptions tags objdir lstdir
 .PHONY: all $(HOUSEKEEPGOALS)
 .SUFFIXES:
 
@@ -67,7 +67,7 @@ HOUSEKEEPGOALS  := clean realclean listsrc listdep listobj doecho showoptions ta
 #  DEFAULT TARGET  #
 ####################
 
-all : doecho $(target).bin
+all : doecho objdir lstdir $(target).bin
 
 ####################################################
 #  REALVIEW DEBUG TARGET (execute from SRAM only)  #
@@ -159,6 +159,24 @@ listobj:
 
 tags:
 	@etags src/*.c src/*.h
+
+objdir:
+	@if test -d obj; \
+	then \
+		:; \
+	else \
+		mkdir obj; \
+		:>obj/.cvsignore; \
+	fi
+
+lstdir:
+	@if test -d lst; \
+	then \
+		:; \
+	else \
+		mkdir lst; \
+		:>lst/.cvsignore; \
+	fi
 
 doecho:
 	@echo -e '\E[37m'"\033[1m#################################################"
