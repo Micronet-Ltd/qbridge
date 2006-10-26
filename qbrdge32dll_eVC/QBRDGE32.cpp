@@ -1,7 +1,7 @@
 // QBRDGE32.cpp : Defines the entry point for the DLL application.
 //
 
-#include "stdafx.h"
+#include "Stdafx.h"
 #include "QBRDGE32.h"
 #include "rp1210a_impl.h"
 

@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include "QBRDGE32.h"
 #include "rp1210a_impl.h"

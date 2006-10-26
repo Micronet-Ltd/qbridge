@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef RP1210A_IMPL_H
 #define RP1210A_IMPL_H
 
