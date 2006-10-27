@@ -115,15 +115,30 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 		}
 		//send j1708 message to driver app.
 		int cid = (int) nClientID;
+		_DbgTrace(_T("before query driver app send\n"));
+		if (nBlockOnSend) {
+			cs.Pause();
+		}
 		if (QueryDriverApp(queryType, GetAssignPort(), cid, fpchClientMessage, nMessageSize, 0) == true) {
 			int msgId = cid;
 			if (nBlockOnSend || nNotifyStatusOnTx) {
 				connections[nClientID].AddTransaction(nNotifyStatusOnTx, msgId);
 			}
 			if (nBlockOnSend) {
-				cs.Pause();
 				//wait for signal here
 				HANDLE hEvent = connections[nClientID].GetTransEvent(nNotifyStatusOnTx, msgId);
+
+				int BufLen = 80;
+				char buff[80];				
+				BufLen = _snprintf(buff, 80, 
+					"Wait event %d, client %d, msgid %d\n", hEvent, nClientID, msgId);				
+				TCHAR tbuf[80];
+				for (int i = 0; i < 80; i++) {
+					tbuf[i] = buff[i];
+				}
+				tbuf[BufLen] = 0;
+				_DbgTrace(tbuf);
+
 				::WaitForSingleObject(hEvent, INFINITE); //SetEvent for release?
 				cs.Unpause();
 				::CloseHandle(hEvent);
@@ -131,11 +146,13 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 				int returnCode = connections[nClientID].GetReturnCode(nNotifyStatusOnTx, msgId);
 				connections[nClientID].RemoveTransaction(nNotifyStatusOnTx, msgId);
 
+				_DbgTrace(_T("after query driver app send 1\n"));
 				return returnCode;
 			} 
 			else if (nNotifyStatusOnTx) {
 				if (cid == 0) {
 					//message queue 1-127 full
+				_DbgTrace(_T("after query driver app send 2\n"));
 					return ERR_MAX_NOTIFY_EXCEEDED;
 				}
 				else {
@@ -143,13 +160,19 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 					return cid;
 				}
 			} else {
+				_DbgTrace(_T("after query driver app send 3\n"));
 				// message sent to QBridge -- no notify or blockign requested
 				return 0;
 			}
 		} else {
+			if (nBlockOnSend) {
+				cs.Unpause();
+			}
+				_DbgTrace(_T("after query driver app send 4\n"));
 			return ERR_HARDWARE_NOT_RESPONDING;
 		}
 	}
+				_DbgTrace(_T("after query driver app send 5\n"));
 	return ERR_MESSAGE_NOT_SENT;
 }
 
@@ -376,6 +399,7 @@ bool QueryDriverApp(PACKET_TYPE queryId, int localPort,
 	int retryNum = 0;	
 	//for select func:
 	fd_set fdReadSet;
+	fd_set fdErrorSet;
     TIMEVAL timeout = {5, 0}; // 5 second timeout
 	bool isTimeout = false;
 
@@ -396,7 +420,9 @@ bool QueryDriverApp(PACKET_TYPE queryId, int localPort,
 
 	//-----------------------------------------------
 	// Initialize Winsock
-	WSAStartup(MAKEWORD(2,2), &wsaData);
+	if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
+		return false;
+	}
 
 	int rv;
 	do {
@@ -422,33 +448,42 @@ bool QueryDriverApp(PACKET_TYPE queryId, int localPort,
 		sendto(RecvSocket, sendBuf,	sendBufLen,	0, (SOCKADDR *) &RecvAddr, sizeof(RecvAddr));
 		
 		FD_ZERO(&fdReadSet);
+		FD_ZERO(&fdErrorSet);
 		FD_SET(RecvSocket, &fdReadSet);
-
-		if(select(0, &fdReadSet, NULL, NULL, &timeout) != 1)
+		FD_SET(RecvSocket, &fdErrorSet);
+		if(select(0, &fdReadSet, NULL, &fdErrorSet, &timeout) != 1)
 		{
 			_DbgTrace(_T("Select in query timeout\n"));
 			isTimeout = true;
 			closesocket(RecvSocket);
 		}
 		else {
-			// Call the recvfrom function to receive datagrams
-			// on the bound socket.
-			_DbgTrace(_T("Receiving datagrams...\n"));
-			rv = recvfrom(RecvSocket, 
-				RecvBuf, 
-				BufLen, 
-				0, 
-				(SOCKADDR *)&SenderAddr, 
-				&SenderAddrSize);
+			if (FD_ISSET(RecvSocket, &fdReadSet)) {
+				// Call the recvfrom function to receive datagrams
+				// on the bound socket.
+				_DbgTrace(_T("Receiving datagrams...\n"));
+				rv = recvfrom(RecvSocket, 
+					RecvBuf, 
+					BufLen, 
+					0, 
+					(SOCKADDR *)&SenderAddr, 
+					&SenderAddrSize);
 
-			if (rv != SOCKET_ERROR)
-			{
-				isTimeout = false;
-				retryNum = retryLimit;
+				if (rv != SOCKET_ERROR)
+				{
+					isTimeout = false;
+					retryNum = retryLimit;
+				}
+				else
+				{
+					closesocket(RecvSocket);
+				}
 			}
-			else
-			{
+			else {
+				isTimeout = true;
 				closesocket(RecvSocket);
+				WSACleanup();
+				return false;
 			}
 		}
 	}
@@ -470,8 +505,9 @@ bool QueryDriverApp(PACKET_TYPE queryId, int localPort,
 	TCHAR tbuf[BufLen];
 	RecvBuf[rv] = 0;
 	ToUnicode(RecvBuf, tbuf, BufLen);
+	_DbgTrace(_T("recv: "));
 	_DbgTrace(tbuf);
-	_DbgTrace(_T("\n"));
+	_DbgTrace(_T("*\n"));
 
 	closesocket(RecvSocket);
 	WSACleanup();
@@ -577,6 +613,7 @@ void SendUDPClosePacket() {
 /* SendUDPPacket */
 /****************/
 void SendUDPPacket(unsigned long toIPAddr, int toPort, int fromPort, const char* buf, int bufLen) {
+	
   	//trans udp here
   WSADATA wsaData;
   SOCKET SendSocket;
@@ -585,7 +622,9 @@ void SendUDPPacket(unsigned long toIPAddr, int toPort, int fromPort, const char*
 
   //---------------------------------------------
   // Initialize Winsock
-  WSAStartup(MAKEWORD(2,2), &wsaData);
+  if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
+	  return;
+  }
 
   //---------------------------------------------
   // Create a socket for sending data
@@ -650,14 +689,19 @@ static DWORD __stdcall UDPListenFunc(void * args) {
 
 	//for select func:
 	fd_set fdReadSet;
-    TIMEVAL timeout = {5, 0}; // 5 second timeout
+	fd_set fdErrorSet;
+	TIMEVAL timeout = {5, 0}; // 5 second timeout
+	timeout.tv_sec = 5;
+	timeout.tv_usec = 500;
 
 
-	_DbgTrace(_T("UDPListenFunc()\n"));
+	_DbgTrace(_T("UDPListenFunc() Start\n"));
 
 	//-----------------------------------------------
 	// Initialize Winsock
-	WSAStartup(MAKEWORD(2,2), &wsaData);
+	if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
+		return 0;
+	}
 	
 	//-----------------------------------------------
 	// Create a receiver socket to receive datagrams
@@ -673,6 +717,7 @@ static DWORD __stdcall UDPListenFunc(void * args) {
 	RecvAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
 	bind(RecvSocket, (SOCKADDR *) &RecvAddr, sizeof(RecvAddr));
+
 
 	int rv;
 	do {
@@ -694,26 +739,34 @@ static DWORD __stdcall UDPListenFunc(void * args) {
 			sizeof(RecvAddr));
 
 		FD_ZERO(&fdReadSet);
+		FD_ZERO(&fdErrorSet);
 		FD_SET(RecvSocket, &fdReadSet);
+		FD_SET(RecvSocket, &fdErrorSet);
 
-		if(select(0, &fdReadSet, NULL, NULL, &timeout) != 1)
+		if(select(0, &fdReadSet, NULL, &fdErrorSet, &timeout) != 1)
 		{
 			_DbgTrace(_T("Select 1 timeout\n"));
 			break;
 		}
 		else {
-			// listen for ack from hello
-			//_DbgTrace(_T("RD2"));
-			rv = recvfrom(RecvSocket, 
-				RecvBuf, 
-				BufLen, 
-				0, 
-				(SOCKADDR *)&SenderAddr, 
-				&SenderAddrSize);
+			if (FD_ISSET(RecvSocket, &fdReadSet)) {
+				// listen for ack from hello
+				//_DbgTrace(_T("RD2"));
+				rv = recvfrom(RecvSocket, 
+					RecvBuf, 
+					BufLen, 
+					0, 
+					(SOCKADDR *)&SenderAddr, 
+					&SenderAddrSize);
 
-			if (rv == SOCKET_ERROR)
-			{
-				_DbgTrace(_T("UDPListen RecvFrom Error\n"));
+				if (rv == SOCKET_ERROR)
+				{
+					_DbgTrace(_T("UDPListen RecvFrom Error\n"));
+					break;
+				}
+			}
+			else {
+				_DbgTrace(_T("select 1 error\n"));
 				break;
 			}
 		}
@@ -727,42 +780,50 @@ static DWORD __stdcall UDPListenFunc(void * args) {
 		}
 
 		for (int i = 0; i < 5; i++)
-		{			
+		{
 			FD_ZERO(&fdReadSet);
+			FD_ZERO(&fdErrorSet);
 			FD_SET(RecvSocket, &fdReadSet);
+			FD_SET(RecvSocket, &fdErrorSet);
 
-			if(select(0, &fdReadSet, NULL, NULL, &timeout) != 1)
+			if(select(0, &fdReadSet, NULL, &fdErrorSet, &timeout) != 1)
 			{
 				_DbgTrace(_T("Select 2 timeout\n"));
 				break;
 			}
 			else {
-				rv = recvfrom(RecvSocket, 
-					RecvBuf, 
-					BufLen, 
-					0, 
-					(SOCKADDR *)&SenderAddr, 
-					&SenderAddrSize);
+				if (FD_ISSET(RecvSocket, &fdReadSet)) {
+					rv = recvfrom(RecvSocket, 
+						RecvBuf, 
+						BufLen, 
+						0, 
+						(SOCKADDR *)&SenderAddr, 
+						&SenderAddrSize);
 
-				if (rv == SOCKET_ERROR)
-				{
-					int a = WSAGetLastError();
-					if (WSAETIMEDOUT != a) {
-						_DbgTrace(_T("socket error\n"));
-						break;
+					if (rv == SOCKET_ERROR)
+					{
+						int a = WSAGetLastError();
+						if (WSAETIMEDOUT != a) {
+							_DbgTrace(_T("socket error\n"));
+							break;
+						}
+					}
+					else {
+						RecvBuf[rv] = 0;
+						if (strcmp(RecvBuf, "ack") == 0) {
+							//_DbgTrace(_T("hello unblocking got ack\n"));
+						}
+						else {
+							ProcessDataPacket(RecvBuf, RecvSocket, RecvAddr);
+						}
 					}
 				}
 				else {
-					RecvBuf[rv] = 0;
-					if (strcmp(RecvBuf, "ack") == 0) {
-						//_DbgTrace(_T("hello unblocking got ack\n"));
-					}
-					else {
-						ProcessDataPacket(RecvBuf, RecvSocket, RecvAddr);
-					}
+					_DbgTrace(_T("Select 2 error set\n"));
+					break;
 				}
-			}
-		}		
+			}		
+		}
 		if (udpThread.valid == false) {
 			break;
 		}
@@ -780,7 +841,7 @@ static DWORD __stdcall UDPListenFunc(void * args) {
 
 	//-----------------------------------------------
 	// Clean up and exit.
-	_DbgTrace(_T("Exiting.\n"));
+	_DbgTrace(_T("UDPLFUNC END\n"));
 	WSACleanup();
 	return 0;
 }
@@ -878,7 +939,15 @@ void ProcessDataPacket(char* data, SOCKET RecvSocket, sockaddr_in RecvAddr)
 			_DbgTrace(_T("sendJ1708confirmfail"));
 		}
 		else if (strcmp(pktType, "sendJ1708success") == 0) {
-			connections[clientid].UpdateTransaction(isnotify, transid, 0);
+			CritSection cs;
+			cs.Pause();
+			for (int i = 0; i < 80; i++) {
+				if (connections[clientid].UpdateTransaction(isnotify, transid, 0)) {
+					break;
+				}
+				::Sleep(10);
+			}
+			cs.Unpause();
 			_DbgTrace(_T("sendJ1708success"));
 		}
 		else if (strcmp(pktType, "readmessage") == 0) {

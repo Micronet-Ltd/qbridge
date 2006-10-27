@@ -134,30 +134,57 @@ public:
 		}
 		return 0;
 	}
-	void UpdateTransaction(short isNotify, int transId, int returnCode) {
+	bool UpdateTransaction(short isNotify, int transId, int returnCode) {
+		bool result = false;
+		_DbgTrace(_T("update trans\n"));
 		for (list<Transaction>::iterator it = transactions.begin(); it != transactions.end(); it++) {
 			Transaction &t = *it;
 			if (t.isNotify == isNotify && t.transId == transId) {
 				if (isNotify) {
 					//send msg to hwnd
 					if (returnCode == 0) {
+						_DbgTrace(_T("before in send success hwnd msg\n"));
 						//Success in SendMessage
 						::PostMessage(GetHwnd(), WM_RP1210_ERROR_MESSAGE, ERR_TXMESSAGE_STATUS, transId);
+						_DbgTrace(_T("after in send success hwnd msg\n"));
 					}
 					else {
 						//Error in SendMessage
+						_DbgTrace(_T("before in send err hwnd msg\n"));
 						::PostMessage(GetHwnd(), WM_RP1210_ERROR_MESSAGE, ERR_TXMESSAGE_STATUS, transId+128);
+						_DbgTrace(_T("after in send err hwnd msg\n"));
 					}
 					RemoveTransaction(isNotify, transId);
+					result = true;
 				}
 				else {
 					//notify blocking send msg.
-					t.returnCode = returnCode;
-					::SetEvent(t.transEvent);
+					int BufLen = 80;
+					char buff[80];				
+					BufLen = _snprintf(buff, 80, 
+						"Set trans event %d \n", t.transEvent);				
+					TCHAR tbuf[80];
+					for (int i = 0; i < 80; i++) {
+						tbuf[i] = buff[i];
+					}
+					tbuf[BufLen] = 0;
+					_DbgTrace(tbuf);
+
+					t.returnCode = returnCode;	
+					for (int j = 0; j < 40; j++) {
+						result = ::SetEvent(t.transEvent);
+						if (result) {
+							break;
+						}
+						::Sleep(10);
+					}
+					_DbgTrace(_T("after send setevent\n"));
 				}
-				return;
+				return result;
 			}
 		}
+		_DbgTrace(_T("Finish Update Trans."));
+		return result;
 	}
 	void RemoveTransaction(short isNotify, int transId) {	
 		typedef list<Transaction>::iterator transIter;
