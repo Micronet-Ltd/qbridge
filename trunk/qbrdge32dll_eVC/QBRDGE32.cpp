@@ -312,10 +312,11 @@ void _DbgTrace(_TCHAR *formatStr, ...)
 	SendBuf[i] = (char)buf[i];	  
   }
 
-
   //---------------------------------------------
   // Initialize Winsock
-  WSAStartup(MAKEWORD(2,2), &wsaData);
+  if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
+	  return;
+  }
 
   //---------------------------------------------
   // Create a socket for sending data
@@ -345,7 +346,6 @@ void _DbgTrace(_TCHAR *formatStr, ...)
   //---------------------------------------------
   // Clean up and quit.
   WSACleanup();
-
 #endif
 }
 

@@ -447,6 +447,9 @@ void CTestAppMFCDlg::OnBnClickedSendCom4btn()
 void CTestAppMFCDlg::OnBnClickedButton6()
 {
 	rp1210SendMessage(lastCom3Client, 1);
+	rp1210SendMessage(lastCom3Client, 1);
+	rp1210SendMessage(lastCom3Client, 1);
+	rp1210SendMessage(lastCom3Client, 1);
 }
 
 void CTestAppMFCDlg::OnBnClickedReadcom4Btn()
