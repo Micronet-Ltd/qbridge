@@ -139,7 +139,7 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 				tbuf[BufLen] = 0;
 				_DbgTrace(tbuf);
 
-				::WaitForSingleObject(hEvent, INFINITE); //SetEvent for release?
+				::WaitForSingleObject(hEvent, 10000); //SetEvent for release?
 				cs.Unpause();
 				::CloseHandle(hEvent);
 
@@ -193,7 +193,7 @@ RP1210AReturnType ReadRP1210Message (short nClientID, char far* fpchAPIMessage, 
 			//listen for event
 			HANDLE hEvent = GetReadEvent();
 			connections[nClientID].recvMsgEvents.push_back(hEvent);
-			::WaitForSingleObject(hEvent, INFINITE); //SetEvent for release?
+			::WaitForSingleObject(hEvent, 10000); //SetEvent for release?
 			cs.Unpause();
 			::CloseHandle(hEvent);
 		}
@@ -254,7 +254,7 @@ RP1210AReturnType GetHardwareStatus (short nClientID, char far* fpchClientInfo, 
 		cs.Pause();
 		//wait for signal here
 		HANDLE hEvent = connections[nClientID].AddGetHWStatusNotify(nClientID);
-		::WaitForSingleObject(hEvent, INFINITE); //SetEvent for release?
+		::WaitForSingleObject(hEvent, 10000); //SetEvent for release?
 		cs.Unpause();
 		::CloseHandle(hEvent);
 	}
@@ -291,7 +291,7 @@ bool ConnectToDriverApp(){
 	HANDLE hMutex = ::CreateMutex(NULL, FALSE, _T("qbridgeDLLMutex"));
 	if (hMutex == NULL)
 		return false;
-	if(WAIT_OBJECT_0 == ::WaitForSingleObject(hMutex, INFINITE))
+	if(WAIT_OBJECT_0 == ::WaitForSingleObject(hMutex, 10000))
 	{
 		int dmy;
 		if (QueryDriverApp(QUERY_NEWPORT_PKT, DRIVER_LISTEN_PORT-1, dmy, NULL, 0, 0) == false) {
