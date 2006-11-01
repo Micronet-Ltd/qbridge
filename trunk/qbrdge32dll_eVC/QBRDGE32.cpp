@@ -119,6 +119,8 @@ RP1210A_API RP1210AReturnType WINAPI RP1210_ClientConnect (HWND hwndClient, shor
 
 		if (strcmp(fpchProtocol, QBRIDGE_J1708_PROTOCOL) == 0) {
 			return CreateJ1708Connection(comPort, hwndClient, lTxBufferSize, lRcvBufferSize);			
+		} else if (strcmp(fpchProtocol, QBRIDGE_J1939_PROTOCOL) == 0) {
+			return CreateJ1939Connection(comPort, hwndClient, lTxBufferSize, lRcvBufferSize, nIsAppPacketizingIncomingMsgs);	
 		} else {
 			return ERR_INVALID_PROTOCOL;
 		}

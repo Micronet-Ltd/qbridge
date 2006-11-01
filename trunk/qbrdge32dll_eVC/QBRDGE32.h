@@ -146,7 +146,7 @@ void ToUnicode(char *buf, TCHAR *unicodeBuf, int size);
 #define QBRIDGE_RP1210_ERROR_STRING			_T("QBRIDGE_WINDOWS_ERROR_STRING")
 
 // QSI Protocol related stuff
-#define QBRIDGE_COM1								1975		
+#define QBRIDGE_COM1								1		
 #define QBRIDGE_COM4								(QBRIDGE_COM1+3)
 #define QBRIDGE_COM5								(QBRIDGE_COM4+1)
 #define QBRIDGE_COM6								(QBRIDGE_COM5+1)

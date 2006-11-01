@@ -345,12 +345,12 @@ void CTestAppMFCTreqDlg::rp1210ReadMessage(short comClient, short nBlockOnRead) 
 void CTestAppMFCTreqDlg::OnBnClickedButton4()
 {
 	char far* fpchProtocol = "J1708";
-	rp1210ClientConnect(1977, fpchProtocol, lastCom3Client);
+	rp1210ClientConnect(3, fpchProtocol, lastCom3Client);
 }
 void CTestAppMFCTreqDlg::OnBnClickedCreatecon4Btn()
 {
 	char far* fpchProtocol = "J1708";
-	rp1210ClientConnect(1978, fpchProtocol, lastCom4Client);
+	rp1210ClientConnect(4, fpchProtocol, lastCom4Client);
 }
 
 void CTestAppMFCTreqDlg::OnBnClickedSendCom4btn()
@@ -397,7 +397,7 @@ void CTestAppMFCTreqDlg::OnBnClickedSendresetcmdBtn3()
 void CTestAppMFCTreqDlg::OnBnClickedButton9()
 {
 	char far* fpchProtocol = "J1708";
-	rp1210ClientConnect(1976, fpchProtocol, lastCom2Client);
+	rp1210ClientConnect(2, fpchProtocol, lastCom2Client);
 }
 
 void CTestAppMFCTreqDlg::OnBnClickedButton10()

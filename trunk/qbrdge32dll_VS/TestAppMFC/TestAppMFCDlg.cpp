@@ -430,12 +430,12 @@ void CTestAppMFCDlg::rp1210ReadMessage(short comClient, short nBlockOnRead) {
 void CTestAppMFCDlg::OnBnClickedButton4()
 {
 	char far* fpchProtocol = "J1708";
-	rp1210ClientConnect(1977, fpchProtocol, lastCom3Client);
+	rp1210ClientConnect(3, fpchProtocol, lastCom3Client);
 }
 void CTestAppMFCDlg::OnBnClickedCreatecon4Btn()
 {
 	char far* fpchProtocol = "J1708";
-	rp1210ClientConnect(1978, fpchProtocol, lastCom4Client);
+	rp1210ClientConnect(4, fpchProtocol, lastCom4Client);
 }
 
 void CTestAppMFCDlg::OnBnClickedSendCom4btn()
