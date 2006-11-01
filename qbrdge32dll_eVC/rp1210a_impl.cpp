@@ -59,6 +59,35 @@ RP1210AReturnType CreateJ1708Connection(int comPort, HWND hwndClient, long lTxBu
 	}
 }
 
+/**************************/
+/* CreateJ1939Connection */
+/************************/
+RP1210AReturnType CreateJ1939Connection(int comPort, HWND hwndClient, long lTxBufferSize, long lRcvBufferSize, short nIsAppPacketizingIncomingMsgs) {
+	if (lTxBufferSize <= 0) { lTxBufferSize = 8192; }
+	if (lRcvBufferSize <= 0) { lRcvBufferSize = 8192; }
+
+	//get new clientid from wince driver, if fail then return err_hardware...
+	int cid = comPort; // send comport value, & get back client id value
+	if (QueryDriverApp(QUERY_NEW_CLIENTID_PKT, GetAssignPort(), cid, NULL, 0, 0) == false) {
+		return ERR_HARDWARE_NOT_RESPONDING;
+	}
+	else {
+		// add connection to array list
+		if (cid == -1) {
+			return ERR_CLIENT_AREA_FULL;
+		}
+		else if (cid == -2) {
+			return ERR_INVALID_DEVICE;
+		}
+		else {
+			_DbgTrace(_T("created j1939 conn\n"));
+			connections[cid].SetupConnection(lTxBufferSize, lRcvBufferSize, Conn_J1939, hwndClient);
+			_DbgTrace(_T("created j1939 done\n"));
+			return cid;
+		}
+	}	
+}
+
 /***************/
 /* Disconnect */
 /*************/
@@ -139,20 +168,20 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 				tbuf[BufLen] = 0;
 				_DbgTrace(tbuf);
 
-				::WaitForSingleObject(hEvent, 10000); //SetEvent for release?
+				::WaitForSingleObject(hEvent, 70000); //SetEvent for release?
 				cs.Unpause();
 				::CloseHandle(hEvent);
 
 				int returnCode = connections[nClientID].GetReturnCode(nNotifyStatusOnTx, msgId);
 				connections[nClientID].RemoveTransaction(nNotifyStatusOnTx, msgId);
 
-				_DbgTrace(_T("after query driver app send 1\n"));
+				//_DbgTrace(_T("after query driver app send 1\n"));
 				return returnCode;
 			} 
 			else if (nNotifyStatusOnTx) {
 				if (cid == 0) {
 					//message queue 1-127 full
-				_DbgTrace(_T("after query driver app send 2\n"));
+					//_DbgTrace(_T("after query driver app send 2\n"));
 					return ERR_MAX_NOTIFY_EXCEEDED;
 				}
 				else {
@@ -160,7 +189,7 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 					return cid;
 				}
 			} else {
-				_DbgTrace(_T("after query driver app send 3\n"));
+				//_DbgTrace(_T("after query driver app send 3\n"));
 				// message sent to QBridge -- no notify or blockign requested
 				return 0;
 			}

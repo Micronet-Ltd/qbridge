@@ -29,6 +29,7 @@ private:
 void InitializeDLL();
 void GetStatusInfo(TCHAR *buf, int bufLen);
 RP1210AReturnType CreateJ1708Connection(int comPort, HWND hwndClient, long lTxBufferSize, long lRcvBufferSize);
+RP1210AReturnType CreateJ1939Connection(int comPort, HWND hwndClient, long lTxBufferSize, long lRcvBufferSize, short nIsAppPacketizingIncomingMsgs);
 RP1210AReturnType Disconnect(short clientID);
 RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessage, short nMessageSize, short nNotifyStatusOnTx, short nBlockOnSend, CritSection &cs);
 RP1210AReturnType ReadRP1210Message (short nClientID, char far* fpchAPIMessage, short nBufferSize, short nBlockOnRead, CritSection &cs);
@@ -136,7 +137,6 @@ public:
 	}
 	bool UpdateTransaction(short isNotify, int transId, int returnCode) {
 		bool result = false;
-		_DbgTrace(_T("update trans\n"));
 		for (list<Transaction>::iterator it = transactions.begin(); it != transactions.end(); it++) {
 			Transaction &t = *it;
 			if (t.isNotify == isNotify && t.transId == transId) {
@@ -178,12 +178,10 @@ public:
 						}
 						::Sleep(10);
 					}
-					_DbgTrace(_T("after send setevent\n"));
 				}
 				return result;
 			}
 		}
-		_DbgTrace(_T("Finish Update Trans."));
 		return result;
 	}
 	void RemoveTransaction(short isNotify, int transId) {	
