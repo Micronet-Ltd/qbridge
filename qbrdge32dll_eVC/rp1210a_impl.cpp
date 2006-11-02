@@ -30,11 +30,12 @@ void GetStatusInfo(TCHAR *buf, int bufLen) {
 	_DbgTrace(_T("GetStatusInfo\n"));
 }
 
-/**************************/
-/* CreateJ1708Connection */
-/************************/
-RP1210AReturnType CreateJ1708Connection(int comPort, HWND hwndClient, long lTxBufferSize, long lRcvBufferSize) {
-	if (lTxBufferSize <= 0) { lTxBufferSize = 8192; }
+/*********************/
+/* CreateConnection */
+/*******************/
+//connType 1 = J1708, connType 2 = 1939
+RP1210AReturnType CreateConnection(int connType, int comPort, HWND hwndClient, long lTxBufferSize, long lRcvBufferSize, short nIsAppPacketizingIncomingMsgs) { 
+if (lTxBufferSize <= 0) { lTxBufferSize = 8192; }
 	if (lRcvBufferSize <= 0) { lRcvBufferSize = 8192; }
 
 	//get new clientid from wince driver, if fail then return err_hardware...
@@ -51,39 +52,30 @@ RP1210AReturnType CreateJ1708Connection(int comPort, HWND hwndClient, long lTxBu
 			return ERR_INVALID_DEVICE;
 		}
 		else {
-			_DbgTrace(_T("created j1708 conn\n"));
-			connections[cid].SetupConnection(lTxBufferSize, lRcvBufferSize, Conn_J1708, hwndClient);
-			_DbgTrace(_T("created j1708 done\n"));
-			return cid;
-		}
-	}
-}
-
-/**************************/
-/* CreateJ1939Connection */
-/************************/
-RP1210AReturnType CreateJ1939Connection(int comPort, HWND hwndClient, long lTxBufferSize, long lRcvBufferSize, short nIsAppPacketizingIncomingMsgs) {
-	if (lTxBufferSize <= 0) { lTxBufferSize = 8192; }
-	if (lRcvBufferSize <= 0) { lRcvBufferSize = 8192; }
-
-	//get new clientid from wince driver, if fail then return err_hardware...
-	int cid = comPort; // send comport value, & get back client id value
-	if (QueryDriverApp(QUERY_NEW_CLIENTID_PKT, GetAssignPort(), cid, NULL, 0, 0) == false) {
-		return ERR_HARDWARE_NOT_RESPONDING;
-	}
-	else {
-		// add connection to array list
-		if (cid == -1) {
-			return ERR_CLIENT_AREA_FULL;
-		}
-		else if (cid == -2) {
-			return ERR_INVALID_DEVICE;
-		}
-		else {
-			_DbgTrace(_T("created j1939 conn\n"));
-			connections[cid].SetupConnection(lTxBufferSize, lRcvBufferSize, Conn_J1939, hwndClient);
-			_DbgTrace(_T("created j1939 done\n"));
-			return cid;
+			if (connType == 1) {
+				_DbgTrace(_T("created j1708 conn\n"));
+				connections[cid].SetupConnection(lTxBufferSize, lRcvBufferSize, Conn_J1708, hwndClient);
+				_DbgTrace(_T("created j1708 done\n"));
+				return cid;
+			}
+			else if (connType == 2) {
+				_DbgTrace(_T("created j1939 conn\n"));
+				for (int i = 0; i <= maxClientID; i++) {
+					if (connections[cid].GetConnectionType() == Conn_J1939 && 
+						connections[cid].nIsAppPacketizingIncomingMsgs != nIsAppPacketizingIncomingMsgs &&
+						connections[cid].comPort == comPort)
+					{
+						_DbgTrace(_T("conn 1939 err conn not allowed\n"));
+						return ERR_CONNECT_NOT_ALLOWED;
+					}
+				}
+				connections[cid].SetupConnection(lTxBufferSize, lRcvBufferSize, Conn_J1939, hwndClient);
+				connections[cid].comPort = comPort;
+				connections[cid].nIsAppPacketizingIncomingMsgs = nIsAppPacketizingIncomingMsgs;
+				_DbgTrace(_T("created j1939 done\n"));
+				return cid;
+			}
+			return ERR_INVALID_PROTOCOL;
 		}
 	}	
 }
@@ -145,9 +137,6 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 		//send j1708 message to driver app.
 		int cid = (int) nClientID;
 		_DbgTrace(_T("before query driver app send\n"));
-		if (nBlockOnSend) {
-			cs.Pause();
-		}
 		if (QueryDriverApp(queryType, GetAssignPort(), cid, fpchClientMessage, nMessageSize, 0) == true) {
 			int msgId = cid;
 			if (nBlockOnSend || nNotifyStatusOnTx) {
@@ -167,7 +156,8 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 				}
 				tbuf[BufLen] = 0;
 				_DbgTrace(tbuf);
-
+				
+				cs.Pause();
 				::WaitForSingleObject(hEvent, 70000); //SetEvent for release?
 				cs.Unpause();
 				::CloseHandle(hEvent);
@@ -194,10 +184,7 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 				return 0;
 			}
 		} else {
-			if (nBlockOnSend) {
-				cs.Unpause();
-			}
-				_DbgTrace(_T("after query driver app send 4\n"));
+			_DbgTrace(_T("after query driver app send 4\n"));
 			return ERR_HARDWARE_NOT_RESPONDING;
 		}
 	}
@@ -970,11 +957,14 @@ void ProcessDataPacket(char* data, SOCKET RecvSocket, sockaddr_in RecvAddr)
 		else if (strcmp(pktType, "sendJ1708success") == 0) {
 			CritSection cs;
 			cs.Pause();
-			for (int i = 0; i < 80; i++) {
+			/*for (int i = 0; i < 80; i++) {
 				if (connections[clientid].UpdateTransaction(isnotify, transid, 0)) {
 					break;
 				}
 				::Sleep(10);
+			}*/
+			if (connections[clientid].UpdateTransaction(isnotify, transid, 0) == FALSE) {
+				_DbgTrace(_T("sendj1708succes EARLY :(\n"));
 			}
 			cs.Unpause();
 			_DbgTrace(_T("sendJ1708success"));
