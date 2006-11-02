@@ -16,8 +16,8 @@ namespace qbrdge_driver_classlib
             public SerialPortInfo serialInfo = null; // serial port assigned to client id
 
             //MID filter enable/disable
-            public bool J1708MIDFilter = false;
-            public byte[] J1708MIDList = new byte[0];
+            public bool J1708MIDFilter = true;
+            public byte[] J1708MIDList = new byte[0];            
 
             public bool allowReceive = true;
         }
