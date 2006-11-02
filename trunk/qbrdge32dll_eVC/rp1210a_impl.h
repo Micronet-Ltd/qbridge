@@ -28,8 +28,7 @@ private:
 
 void InitializeDLL();
 void GetStatusInfo(TCHAR *buf, int bufLen);
-RP1210AReturnType CreateJ1708Connection(int comPort, HWND hwndClient, long lTxBufferSize, long lRcvBufferSize);
-RP1210AReturnType CreateJ1939Connection(int comPort, HWND hwndClient, long lTxBufferSize, long lRcvBufferSize, short nIsAppPacketizingIncomingMsgs);
+RP1210AReturnType CreateConnection(int connType, int comPort, HWND hwndClient, long lTxBufferSize, long lRcvBufferSize, short nIsAppPacketizingIncomingMsgs);
 RP1210AReturnType Disconnect(short clientID);
 RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessage, short nMessageSize, short nNotifyStatusOnTx, short nBlockOnSend, CritSection &cs);
 RP1210AReturnType ReadRP1210Message (short nClientID, char far* fpchAPIMessage, short nBufferSize, short nBlockOnRead, CritSection &cs);
@@ -57,6 +56,9 @@ public:
 	Connection() : 
 		txQueueMax(8000), rxQueueMax(8000), connType(Conn_Invalid), hwnd(0) { }
 	~Connection() {  }
+
+	short nIsAppPacketizingIncomingMsgs;
+	int comPort;
 
 	inline ConnectionType GetConnectionType() { return connType; }
 	inline HWND GetHwnd() { return hwnd; }
@@ -101,6 +103,8 @@ public:
 			ConnectionStatusChanged();
 		}	
 		hwnd = 0;
+		nIsAppPacketizingIncomingMsgs = 0;
+		comPort = 0;
 	}
 
 
@@ -172,7 +176,7 @@ public:
 
 					t.returnCode = returnCode;	
 					for (int j = 0; j < 40; j++) {
-						result = ::SetEvent(t.transEvent);
+						result = (::SetEvent(t.transEvent) != 0);
 						if (result) {
 							break;
 						}
