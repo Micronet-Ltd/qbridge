@@ -55,7 +55,7 @@ RP1210A_API RP1210AReturnType WINAPI RP1210_SendCommand (
 	short nMessageSize
 );
 
-RP1210A_API RP1210AReturnType WINAPI RP1210_ReadVersion (
+RP1210A_API void WINAPI RP1210_ReadVersion (
 	char far* fpchDLLMajorVersion,
 	char far* fpchDLLMinorVersion,
 	char far* fpchAPIMajorVersion,

@@ -206,14 +206,13 @@ RP1210A_API void WINAPI RP1210_GetStatusInfo(TCHAR *buf, int size) {
 /***********************/
 /* RP1210_ReadVersion */
 /*********************/
-RP1210A_API RP1210AReturnType WINAPI RP1210_ReadVersion (char far* fpchDLLMajorVersion,	char far* fpchDLLMinorVersion,	char far* fpchAPIMajorVersion,	char far* fpchAPIMinorVersion) 
+RP1210A_API void WINAPI RP1210_ReadVersion (char far* fpchDLLMajorVersion,	char far* fpchDLLMinorVersion,	char far* fpchAPIMajorVersion,	char far* fpchAPIMinorVersion) 
 {
 	CritSection cs;
 	fpchDLLMajorVersion[0] = 32;
 	fpchDLLMinorVersion[0] = 32;
 	fpchAPIMajorVersion[0] = '2';
 	fpchAPIMinorVersion[0] = '0';
-	return 0;
 }
 
 /*****************************/
