@@ -267,9 +267,9 @@ RP1210AReturnType GetHardwareStatus (short nClientID, char far* fpchClientInfo, 
 	}
 
 	if (nBlockOnRequest) {
-		cs.Pause();
 		//wait for signal here
 		HANDLE hEvent = connections[nClientID].AddGetHWStatusNotify(nClientID);
+		cs.Pause();
 		::WaitForSingleObject(hEvent, 10000); //SetEvent for release?
 		cs.Unpause();
 		::CloseHandle(hEvent);
