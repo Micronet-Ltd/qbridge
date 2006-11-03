@@ -48,6 +48,7 @@ void _DbgPrintErrCode(DWORD errCode);
 #else //NOT _WIN32_WCE
 
 #define _CRT_SECURE_NO_DEPRECATE 
+#pragma warning(disable:4996)
 #pragma comment(lib,"wsock32.lib") 
 
 #pragma once
@@ -100,4 +101,5 @@ void _DbgTrace(_TCHAR *formatStr, ...);
 
 #define _CRT_SECURE_NO_DEPRECATE 
 //#define  _CRT_NON_CONFORMING_SWPRINTFS
+
 #endif //_WIN32_WCE
