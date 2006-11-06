@@ -19,8 +19,8 @@
 /*                                   broken out of main.c          */
 /*******************************************************************/
 
-#ifndef	FLASH_H
-#define	FLASH_H
+#ifndef FLASH_H
+#define FLASH_H
 
 /*****************************/
 /* Standard Library Includes */

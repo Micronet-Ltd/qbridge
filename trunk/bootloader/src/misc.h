@@ -18,8 +18,8 @@
 /* 26 Aug 2003  MK Elwood    1.0     Updated                       */
 /*******************************************************************/
 
-#ifndef	MISC_H
-#define	MISC_H
+#ifndef MISC_H
+#define MISC_H
 
 /* Do not include these definitions in assembly files */
 #ifndef _ASM_
@@ -61,6 +61,6 @@ void irq_lockup(void);
 void bootKRNL(int doPrint, void *startAddr);
 void lockMachine(void);
 
-#endif	/* #ifndef _ASM */
+#endif  /* #ifndef _ASM */
 
 #endif /* MISC_H */
