@@ -149,7 +149,7 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 				int BufLen = 80;
 				char buff[80];				
 				BufLen = _snprintf(buff, 80, 
-					"Wait event %d, client %d, msgid %d\n", hEvent, nClientID, msgId);				
+					"Wait event %p, client %d, msgid %d\n", hEvent, nClientID, msgId);				
 				TCHAR tbuf[80];
 				for (int i = 0; i < 80; i++) {
 					tbuf[i] = buff[i];

@@ -166,7 +166,7 @@ public:
 					int BufLen = 80;
 					char buff[80];				
 					BufLen = _snprintf(buff, 80, 
-						"Set trans event %d \n", t.transEvent);				
+						"Set trans event %p \n", t.transEvent);				
 					TCHAR tbuf[80];
 					for (int i = 0; i < 80; i++) {
 						tbuf[i] = buff[i];
