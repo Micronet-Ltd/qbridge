@@ -71,7 +71,7 @@ void SetupErrorStrings() {
 	SET_ERR_STR (ERR_BLOCKED_NOTIFY,"Notification not supported for blocking calls.");
 	SET_ERR_STR (ERR_NOT_ADDED_TO_BUS,"The QBridge was unable to place the message on the bus.");
 	SET_ERR_STR (ERR_MISC_COMMUNICATION,"Misc error communicating with QBridge driver process.");
-	SET_ERR_STR (ERR_RECV_OPERATION_TIMEOUT,"No messages recieved.  Waiting operation aborted.");
+	SET_ERR_STR (ERR_RECV_OPERATION_TIMEOUT,"No messages recieved, waiting operation aborted.");
 
 #undef SET_ERR_STRING
 }
@@ -246,7 +246,7 @@ void RP1210Trace(_TCHAR *formatStr, ...) {
 	_vsntprintf (bufPtr, 2000, formatStr, list); 
 	va_end(list);
 
-	int len = _tcslen(buf);
+	size_t len = _tcslen(buf);
 	if ((len > 0) && (buf[len-1] == '\n')) {
 		newLine = true;
 	} else if (len > 0) {
@@ -260,7 +260,7 @@ void RP1210Trace(_TCHAR *formatStr, ...) {
 /* ToUnicode */
 /************/
 void ToUnicode(char *buf, TCHAR *unicodeBuf, int size) {
-    int zeroPos = MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, buf, strlen(buf), unicodeBuf, size-1);
+    int zeroPos = MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, buf, (int)strlen(buf), unicodeBuf, size-1);
     if (zeroPos >= 0) {
         unicodeBuf[zeroPos]  = 0;
     }
@@ -271,7 +271,7 @@ void ToUnicode(char *buf, TCHAR *unicodeBuf, int size) {
 /*********/
 void ToAnsi(const TCHAR *unicodeBuf, char *buf, int size) {
     BOOL defCharUsed = FALSE;
-    int zeroPos = WideCharToMultiByte(CP_ACP, 0, unicodeBuf, wcslen(unicodeBuf), buf, size-1, "~", &defCharUsed);
+    int zeroPos = WideCharToMultiByte(CP_ACP, 0, unicodeBuf, (int)wcslen(unicodeBuf), buf, size-1, "~", &defCharUsed);
     if (zeroPos >= 0) {
         buf[zeroPos]  = 0;
     }
