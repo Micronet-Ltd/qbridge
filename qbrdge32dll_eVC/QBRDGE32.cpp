@@ -85,7 +85,7 @@ BOOL APIENTRY DllMain( HANDLE hModule,
 	{
 		case DLL_PROCESS_ATTACH:
 			CritSection::Init();
-			_DbgTrace (_T("Process Attach!!!!!!!!!!!!!!\n"));
+//			_DbgTrace (_T("Process Attach!!!!!!!!!!!!!!\n"));
 			{
 				CritSection cs;
 				InitializeDLL();
@@ -94,13 +94,13 @@ BOOL APIENTRY DllMain( HANDLE hModule,
 			}
 			break;
 		case DLL_THREAD_ATTACH:
-			_DbgTrace(_T("DLL_THREAD_ATTACH!\n"));
+			//_DbgTrace(_T("DLL_THREAD_ATTACH!\n"));
 			break;
 		case DLL_THREAD_DETACH:
-			_DbgTrace(_T("DLL_THREAD_DETACH!\n"));
+		//	_DbgTrace(_T("DLL_THREAD_DETACH!\n"));
 			break;
 		case DLL_PROCESS_DETACH:
-			_DbgTrace(_T("DLL_PROCESS_DETACH!\n"));
+		//	_DbgTrace(_T("DLL_PROCESS_DETACH!\n"));
 			break;
     }
     return TRUE;
