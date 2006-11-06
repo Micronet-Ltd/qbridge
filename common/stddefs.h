@@ -54,14 +54,14 @@
 //#endif
 
 //#ifdef _ASM_
-#define FALSE	0
-#define TRUE	1
+#define FALSE   0
+#define TRUE    1
 //#else
 //typedef enum { FALSE = 0, TRUE } BOOLEAN;
 //#endif
 
 #ifndef NULL
-#define NULL	(void *) 0
+#define NULL    (void *) 0
 #endif
 
 /* Maximum integer numbers */
@@ -108,10 +108,10 @@ typedef unsigned char BOOLEAN;
 typedef float FLT32;
 
 typedef struct {
-	INT32 top;
-	INT32 left;
-	INT32 bottom;
-	INT32 right;
+    INT32 top;
+    INT32 left;
+    INT32 bottom;
+    INT32 right;
 } rect;
 
 #endif /* _ASM_ */
@@ -127,12 +127,12 @@ typedef struct {
 #define TO_STR(strval)                 TO_STR2(strval)
 
 /* Reading and writing to hardware registers */
-#define WRITE_REG32(addr, val)	(*(volatile unsigned long *)(addr) = (val))
-#define READ_REG32(addr)			(*(volatile unsigned long *)(addr))
-#define WRITE_REG16(addr, val)	(*(volatile unsigned short *)(addr) = (val))
-#define READ_REG16(addr)			(*(volatile unsigned short *)(addr))
-#define WRITE_REG8(addr, val)		(*(volatile unsigned char *)(addr) = (val))
-#define READ_REG8(addr)				(*(volatile unsigned char *)(addr))
+#define WRITE_REG32(addr, val)  (*(volatile unsigned long *)(addr) = (val))
+#define READ_REG32(addr)            (*(volatile unsigned long *)(addr))
+#define WRITE_REG16(addr, val)  (*(volatile unsigned short *)(addr) = (val))
+#define READ_REG16(addr)            (*(volatile unsigned short *)(addr))
+#define WRITE_REG8(addr, val)       (*(volatile unsigned char *)(addr) = (val))
+#define READ_REG8(addr)             (*(volatile unsigned char *)(addr))
 
 /* Figure out the number of elements in an initialized array */
 #define ITEM_SIZEOF(x) (sizeof(x) / sizeof(x[0]))
@@ -154,7 +154,7 @@ typedef struct {
 #define POW2(n) BIT(n)
 
 #ifdef SIM
-/* 
+/*
  * These functions aren't standard C functions - we need to map them for simulation.
  * They are defined functions in newlib (used in UCOS build).
  */

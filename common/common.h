@@ -47,8 +47,8 @@
 #define DEBUG_SERIAL
 #endif
 
-#define HAVE_SNPRINTF 
-#define PREFER_PORTABLE_SNPRINTF 
+#define HAVE_SNPRINTF
+#define PREFER_PORTABLE_SNPRINTF
 
 /************/
 /* TypeDefs */
@@ -69,7 +69,7 @@ void Reset(UINT32) __attribute__ ((noreturn));
 /******************************/
 /* Firmware Header Definition */
 /******************************/
-#define crcROMMagicL 0x43724321	/* "!CrC"	(little endian) */
+#define crcROMMagicL 0x43724321 /* "!CrC"   (little endian) */
 
 #ifndef _ASM_
 /*
@@ -78,17 +78,17 @@ void Reset(UINT32) __attribute__ ((noreturn));
  */
 /* WARNING: This section is fixed in size and link location. DO NOT MODIFY!! */
 typedef struct {
-	unsigned long magic;		/* Magic string 'CrC!' */
-	unsigned long codeLen;
-	unsigned short crc;
-	unsigned short pad;
-	void (*entry)(void);
+    unsigned long magic;        /* Magic string 'CrC!' */
+    unsigned long codeLen;
+    unsigned short crc;
+    unsigned short pad;
+    void (*entry)(void);
 } crcROMHdrDefn;
-#else	/* _ASM_ */
-#define	crcHdr_magic	0
-#define	crcHdr_codeLen	4
-#define	crcHdr_crc		8
-#endif	/* _ASM_ */
+#else   /* _ASM_ */
+#define crcHdr_magic    0
+#define crcHdr_codeLen  4
+#define crcHdr_crc      8
+#endif  /* _ASM_ */
 
 extern unsigned char _FirmwareStartAddr[];
 extern unsigned char _RomStartAddr[];

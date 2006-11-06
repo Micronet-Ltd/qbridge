@@ -23,8 +23,8 @@
 /* 17 May 2004  RNM          1.0     1st Release                   */
 /*******************************************************************/
 
-#ifndef	BASEARM_H
-#define	BASEARM_H
+#ifndef BASEARM_H
+#define BASEARM_H
 
 /*****************************/
 /* Standard Library Includes */
@@ -44,25 +44,25 @@
 /* These macro's must be rammable - no functions calls! */
 #define IRQSTATE UINT32
 #define DISABLE_IRQ(saveState) { asm volatile ( \
-									 "\tMRS  r0, CPSR\n"		\
-									 "\tSTR  r0, %0\n"			\
-									 "\tORR	 r0, r0, #0xc0\n" \
-									 "\tMSR	 CPSR_c, r0\n" \
-									 : : "m" (saveState) : "r0", "memory" ); }
+                                     "\tMRS  r0, CPSR\n"        \
+                                     "\tSTR  r0, %0\n"          \
+                                     "\tORR  r0, r0, #0xc0\n" \
+                                     "\tMSR  CPSR_c, r0\n" \
+                                     : : "m" (saveState) : "r0", "memory" ); }
 #define RESTORE_IRQ(saveState)  { asm volatile ( \
-									 "\tLDR  r0, %0\n"			\
-									 "\tMSR	 CPSR_c, r0\n" \
-									 : : "m" (saveState) : "r0", "memory" ); }
+                                     "\tLDR  r0, %0\n"          \
+                                     "\tMSR  CPSR_c, r0\n" \
+                                     : : "m" (saveState) : "r0", "memory" ); }
 
 #define ARM_GET_CP15() ({ unsigned long cpval=0; \
-		  asm volatile ("MRC p15, 0, %0, c1, c0, 0" : "=r" (cpval) : ); cpval; })
+          asm volatile ("MRC p15, 0, %0, c1, c0, 0" : "=r" (cpval) : ); cpval; })
 
 
 #define ARCH_GET_PC() ({ unsigned long pc; asm volatile ( "MOV %[currpc], pc\n" : [currpc] "=g" (pc) : ); pc; })
 #define ARCH_GET_SP() ({ unsigned long sp=0;  asm volatile("MOV %0, sp\n" : "=r" (sp) :); sp; })
 
 #define noCacheSeg(addr) (((unsigned long) (addr)) | 0x08000000)
-#define cacheSeg(addr)	 (((unsigned long) (addr)) & 0xf7ffffff)
+#define cacheSeg(addr)   (((unsigned long) (addr)) & 0xf7ffffff)
 
 #define ARM_GET_PC() ({ unsigned long cpc=0; asm volatile("MOV %0, pc\n" : "=r" (cpc) :); cpc; })
 #define ARM_GET_FP() ({ unsigned long fp=0;  asm volatile("MOV %0, fp\n" : "=r" (fp) :); fp; })
@@ -72,7 +72,7 @@
 #define ARM_GET_FSR() ({ unsigned long fsr=0; asm volatile("MRC p15, 0, %0, c5, c0, 0\n" : "=r" (fsr) :); (fsr & 0x7ff); })
 #define ARM_GET_FAR() ({ unsigned long far=0; asm volatile("MRC p15, 0, %0, c6, c0, 0\n" : "=r" (far) :); far; })
 
-#define ARM_FLUSH_CACHE() asm volatile ("MCR	 p15, 0, r1, c7,  c7, 0\n")
+#define ARM_FLUSH_CACHE() asm volatile ("MCR     p15, 0, r1, c7,  c7, 0\n")
 
 /*************************************/
 /* ARM Hard Vector Address Locations */
@@ -99,13 +99,13 @@
 #define ARM_IRQ         BIT(7)
 #define ARM_FIQ         BIT(6)
 
-#define ARM_INTMASK		(ARM_IRQ | ARM_FIQ)
+#define ARM_INTMASK     (ARM_IRQ | ARM_FIQ)
 
 /* ARM Thumb State Bit (xPSR bit [5])  */
 #define ARM_THUMB       BIT(5)
 
 /*
- * ARM Processor Mode Values (xPSR bits [4:0]) 
+ * ARM Processor Mode Values (xPSR bits [4:0])
  * Use ARM_MODE macro and constants to test ARM mode
  * Example, where tmp has xPSR value:
  * if (ARM_MODE(tmp, ARM_MODE_IRQ))
@@ -127,31 +127,31 @@
 /***********************************/
 
 /* Valid CP15 registers */
-/*#define CP15_REG_ID			c0 */
-#define CP15_REG_CTRL			c1, c0, 0
-#define CP15_REG_AUXCTRL		c1, c0, 1
-#define CP15_REG_TTBASE 		c2, c0, 0		/* Translation Table Base Address */
-#define CP15_REG_DAC          c3, c0, 0		/* Domain Access Control */
-/*#define CP15_REG_FSTAT		c5		* Fault Status */
-/*#define CP15_REG_FADDR		c6		* Fault Address */
-#define CP15_REG_CACHEOP(cx,op)	c7, TOKEN_CONCAT(c,cx), op
-#define CP15_REG_TLBOP(cx,op)		c8, TOKEN_CONCAT(c,cx), op		/* Translation Lookaside Buffer */
-/*#define CP15_REG_FCSE_PID	c13	* Fast Context Switch Extension */
+/*#define CP15_REG_ID           c0 */
+#define CP15_REG_CTRL           c1, c0, 0
+#define CP15_REG_AUXCTRL        c1, c0, 1
+#define CP15_REG_TTBASE         c2, c0, 0       /* Translation Table Base Address */
+#define CP15_REG_DAC          c3, c0, 0     /* Domain Access Control */
+/*#define CP15_REG_FSTAT        c5      * Fault Status */
+/*#define CP15_REG_FADDR        c6      * Fault Address */
+#define CP15_REG_CACHEOP(cx,op) c7, TOKEN_CONCAT(c,cx), op
+#define CP15_REG_TLBOP(cx,op)       c8, TOKEN_CONCAT(c,cx), op      /* Translation Lookaside Buffer */
+/*#define CP15_REG_FCSE_PID c13 * Fast Context Switch Extension */
 #define CP15_REG_CACHELOCK(cx,op) c9, TOKEN_CONCAT(c,cx), op
 #define CP15_REG_TLBLOCK(cx,op) c10, TOKEN_CONCAT(c,cx), op
 
 /* Control register (c1) bits */
-#define CP15_CTRL_MMU_BIT		BIT(0)	/* MMU Enable */
-#define CP15_CTRL_AFAULT_BIT	BIT(1)	/* Alignment Fault */
-#define CP15_CTRL_CACHE_BIT	BIT(2)	/* Data Cache or Unified Cache (no Instruction Cache) */
-#define CP15_CTRL_WB_BIT		BIT(3)	/* Write Buffer */
-#define CP15_CTRL_SPROT_BIT	BIT(8)	/* System Protection */
-#define CP15_CTRL_RPROT_BIT	BIT(9)	/* ROM Protection */
+#define CP15_CTRL_MMU_BIT       BIT(0)  /* MMU Enable */
+#define CP15_CTRL_AFAULT_BIT    BIT(1)  /* Alignment Fault */
+#define CP15_CTRL_CACHE_BIT BIT(2)  /* Data Cache or Unified Cache (no Instruction Cache) */
+#define CP15_CTRL_WB_BIT        BIT(3)  /* Write Buffer */
+#define CP15_CTRL_SPROT_BIT BIT(8)  /* System Protection */
+#define CP15_CTRL_RPROT_BIT BIT(9)  /* ROM Protection */
 #define CP15_CTRL_BRANCH_BIT  BIT(11)  /* Branch prediction bit */
-#define CP15_CTRL_ICACHE_BIT	BIT(12)	/* Instruction Cache */
-#define CP15_CTRL_HIGHVEC_BIT	BIT(13)	/* Exception Vector location */
+#define CP15_CTRL_ICACHE_BIT    BIT(12) /* Instruction Cache */
+#define CP15_CTRL_HIGHVEC_BIT   BIT(13) /* Exception Vector location */
 
-#define CP14_REG_CLKCFG			c6, c0, 0
+#define CP14_REG_CLKCFG         c6, c0, 0
 
 /*
  * Tiny page size - 1KB
@@ -160,9 +160,9 @@
  * Section size - 1MB
  */
 #define TINY_PAGE_SIZE (0x100 * 4)
-#define SMALL_PAGE_SIZE	(0x400 * 4)
-#define LARGE_PAGE_SIZE	(0x4000 * 4)
-#define SECTION_SIZE		(0x40000 * 4)
+#define SMALL_PAGE_SIZE (0x400 * 4)
+#define LARGE_PAGE_SIZE (0x4000 * 4)
+#define SECTION_SIZE        (0x40000 * 4)
 
 /*
  * Small page tables and Large page tables are the same size,
@@ -170,8 +170,8 @@
  * Large page tables have each of 16 entries replicated 16 times
  * in succeeding memory location
  */
-#define PAGE_TABLE_SIZE		(0x100 * 4)  /* 256 entries */
-#define TRANS_TABLE_SIZE	(0x1000 * 4) /* 4096 entries */
+#define PAGE_TABLE_SIZE     (0x100 * 4)  /* 256 entries */
+#define TRANS_TABLE_SIZE    (0x1000 * 4) /* 4096 entries */
 
 /*
  * Translation table must be based on a 16KB boundary.
@@ -196,19 +196,19 @@
 /*********************/
 /* Translation Table */
 /*********************/
-/* Number of entries in TT */ 
+/* Number of entries in TT */
 #define TT_ENTRIES  4096
 #define TT_SIZE     (TT_ENTRIES * 4)
 
 /**************/
 /* Page Table */
 /**************/
-/* Number of entries in PT */ 
+/* Number of entries in PT */
 #define PT_ENTRIES  256
 #define PT_SIZE     (PT_ENTRIES * 4)
 
 /*
- * Level 1 Descriptor fields 
+ * Level 1 Descriptor fields
  * L1D_x fields apply to both section and page descriptor,
  * where applicable
  */
@@ -221,17 +221,17 @@
 
 /*
  * Section AP field meaning depends on CP15 Control Reg S and R bits
- * See LH79520 User's Guide 
- */ 
+ * See LH79520 User's Guide
+ */
 #define L1D_AP_SVC_ONLY    0x40000000
 #define L1D_AP_USR_RO      0x00000800
 #define L1D_AP_ALL         0x00000c00
 
-#define L1D_DOMAIN(n)			((((n) & 0x0f)) << 5)
+#define L1D_DOMAIN(n)           ((((n) & 0x0f)) << 5)
 #define L1D_SEC_BASE_ADDR(n)  ((((n) & 0xfff)) << 20)
 
 /*
- * Level 2 Descriptor fields 
+ * Level 2 Descriptor fields
  * L2D_x fields apply to both large page and small page descriptors,
  * where applicable.
  */
@@ -263,8 +263,8 @@
 #define MMU_DOMAIN_CLIENT   1
 #define MMU_DOMAIN_MANAGER  3
 
-/* The following macros may be used to set Domain Access Control */ 
-/* The range of argument 'n' is 0 -15 */ 
+/* The following macros may be used to set Domain Access Control */
+/* The range of argument 'n' is 0 -15 */
 #define MMU_DOMAIN_NO_ACCESS(n)         (MMU_DOMAIN_NONE << ((n) * 2))
 #define MMU_DOMAIN_CLIENT_ACCESS(n)     (MMU_DOMAIN_CLIENT << ((n) * 2))
 #define MMU_DOMAIN_MANAGER_ACCESS(n)    (MMU_DOMAIN_MANAGER << ((n) * 2))
@@ -287,7 +287,7 @@ typedef struct {
 
 /*
  * num_sections: number of sections >=1 for all blocks
- *                            except last; last = 0 
+ *                            except last; last = 0
  * virt_addr: as required, base Virtual address for block
  * phys_addr: as required, PT address or Section address
  * entry is composed of the following 'or'd' together:
@@ -297,29 +297,29 @@ typedef struct {
  *  write_buffered:  L1D_BUFFERABLE if applicable
  *  descriptor_type: L1D_TYPE_x (x = FAULT, PAGE, SECTION)
  *
- */ 
+ */
 typedef const struct {
     unsigned long num_sections;
-    unsigned long virt_addr; /* calculate index from this */ 
+    unsigned long virt_addr; /* calculate index from this */
     unsigned long phys_addr; /* initialize location @ index w/this */
-    unsigned long entry;	  /* 'or'd' combinations of entry settings;
-										  'or' this with phys_addr */ 
-    /* 
-	  * Entry settings:
-	  *  access_perm, domain, cacheable, write_buffered, descriptor_type
-	  */ 
+    unsigned long entry;      /* 'or'd' combinations of entry settings;
+                                          'or' this with phys_addr */
+    /*
+      * Entry settings:
+      *  access_perm, domain, cacheable, write_buffered, descriptor_type
+      */
 } TT_SECTION_BLOCK;
 
 typedef const struct {
     unsigned long num_sections;
-    unsigned long virt_addr; /* calculate index from this */ 
+    unsigned long virt_addr; /* calculate index from this */
     unsigned long phys_addr; /* initialize location @ index w/this */
-    unsigned long entry;	  /* 'or'd' combinations of entry settings;
-										  'or' this with phys_addr */ 
-    /*  
-	  * Entry settings:
-	  *  access_perm, domain, cacheable, write_buffered, descriptor_type
-     */ 
+    unsigned long entry;      /* 'or'd' combinations of entry settings;
+                                          'or' this with phys_addr */
+    /*
+      * Entry settings:
+      *  access_perm, domain, cacheable, write_buffered, descriptor_type
+     */
 } PT_PAGE_BLOCK;
 #endif /* _ASM_ */
 
