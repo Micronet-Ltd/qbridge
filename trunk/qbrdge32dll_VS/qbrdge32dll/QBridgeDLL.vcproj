@@ -94,7 +94,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy $(OutDir)\QBRDGE32.dll ..\..\TestRP1210A\TestRP1210_PC\Debug&#x0D;&#x0A;copy $(OutDir)\QBRDGE32.dll ..\..\TestRP1210A\TestRP1210_PC\Release"
+				CommandLine="copy $(OutDir)\QBRDGE32.dll ..\..\TestRP1210A\TestRP1210_PC\Debug&#x0D;&#x0A;copy $(OutDir)\QBRDGE32.dll ..\..\TestRP1210A\TestRP1210_PC\Release&#x0D;&#x0A;"
 			/>
 		</Configuration>
 		<Configuration
@@ -235,6 +235,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
+				CommandLine="copy $(OutDir)\QBRDGE32.dll ..\..\TestRP1210A\TestRP1210_PC\Debug&#x0D;&#x0A;copy $(OutDir)\QBRDGE32.dll ..\..\TestRP1210A\TestRP1210_PC\Release&#x0D;&#x0A;"
 			/>
 		</Configuration>
 		<Configuration

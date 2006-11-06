@@ -2,8 +2,14 @@
 Microsoft Visual Studio Solution File, Format Version 9.00
 # Visual Studio 2005
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestAppMFC", "TestAppMFC\TestAppMFC.vcproj", "{EB73C9F7-0C8A-439A-B70C-A39474761146}"
+	ProjectSection(ProjectDependencies) = postProject
+		{ECE61C37-D242-423C-A83B-20513376C6FF} = {ECE61C37-D242-423C-A83B-20513376C6FF}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestAppMFCTreq", "TestAppMFCTreq\TestAppMFCTreq\TestAppMFCTreq.vcproj", "{5FA5336B-ADED-4B1D-9062-98AEACB3C959}"
+	ProjectSection(ProjectDependencies) = postProject
+		{ECE61C37-D242-423C-A83B-20513376C6FF} = {ECE61C37-D242-423C-A83B-20513376C6FF}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "QBridgeDLL", "qbrdge32dll\QBridgeDLL.vcproj", "{ECE61C37-D242-423C-A83B-20513376C6FF}"
 EndProject

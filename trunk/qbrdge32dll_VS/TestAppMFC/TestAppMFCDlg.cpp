@@ -10,6 +10,7 @@
 #define new DEBUG_NEW
 #endif
 
+#pragma warning(disable:4996)
 
 // CAboutDlg dialog used for App About
 
@@ -431,11 +432,13 @@ void CTestAppMFCDlg::OnBnClickedButton4()
 {
 	char far* fpchProtocol = "J1708";
 	rp1210ClientConnect(3, fpchProtocol, lastCom3Client);
+	rp1210SendCommand(3, lastCom3Client); //set all filter states to pass
 }
 void CTestAppMFCDlg::OnBnClickedCreatecon4Btn()
 {
 	char far* fpchProtocol = "J1708";
 	rp1210ClientConnect(4, fpchProtocol, lastCom4Client);
+	rp1210SendCommand(3, lastCom4Client); //set all filter states to pass
 }
 
 void CTestAppMFCDlg::OnBnClickedSendCom4btn()
