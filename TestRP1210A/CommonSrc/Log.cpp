@@ -33,7 +33,11 @@ void Log::LogText (const CString &text, COLORREF clr) {
 	cf.crTextColor = clr;
 	re->SetSelectionCharFormat(cf);
 
-	re->ReplaceSel(text + _T("\r\n"), false);
+	if (re->GetLineCount() < 1) {
+		re->ReplaceSel(text , false);
+	} else {
+		re->ReplaceSel(_T("\r\n") + text , false);
+	}
 	
 	int visLines = 20;
 	int count = re->GetLineCount();
@@ -43,5 +47,28 @@ void Log::LogText (const CString &text, COLORREF clr) {
 	} else {
 		re->LineScroll(count-visLines-cur, 0);
 	}
+	re->UpdateWindow();
+}
 
+/****************/
+/* Log::LogDot */
+/**************/
+void Log::LogDot() {
+	if (re == NULL) {
+		return;
+	}
+
+	re->SetSel(-1, -1);
+	
+	re->ReplaceSel(_T("."), false);
+	
+	int visLines = 20;
+	int count = re->GetLineCount();
+	int cur = re->GetFirstVisibleLine();
+	if (count < visLines) { 
+		re->LineScroll(-cur, 0);
+	} else {
+		re->LineScroll(count-visLines-cur, 0);
+	}
+	re->UpdateWindow();
 }

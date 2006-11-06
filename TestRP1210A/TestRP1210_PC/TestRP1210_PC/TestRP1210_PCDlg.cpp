@@ -111,7 +111,7 @@ BOOL CTestRP1210_PCDlg::OnInitDialog()
 	for (size_t i = 0; i < dev.size(); i++) {
 		m_dev1.AddString(dev[i].deviceName +  _T(" (") + dev[i].deviceDesc + _T(")"));
 		m_dev2.AddString(dev[i].deviceName +  _T(" (") + dev[i].deviceDesc + _T(")"));
-		log.LogText(_T("Device: ") + dev[i].deviceName, Log::Blue);
+		/*log.LogText(_T("Device: ") + dev[i].deviceName, Log::Blue);
 		CString fmt;
 		fmt.Format(_T("%d"), dev[i].deviceID);
 		log.LogText(_T("    ID: ") + fmt);
@@ -126,7 +126,7 @@ BOOL CTestRP1210_PCDlg::OnInitDialog()
 		}
 		log.LogText(_T("    Protocol IDs: ") + pids);
 		log.LogText(_T("    Protocol Strings: ") + pstrgs);
-		log.LogText(_T("    Protocol Desciptions: ") + pdescs);
+		log.LogText(_T("    Protocol Desciptions: ") + pdescs);*/
 	}
 
 	m_dev1.SetCurSel(AfxGetApp()->GetProfileInt(_T("Default"), _T("dev1"), -1));
