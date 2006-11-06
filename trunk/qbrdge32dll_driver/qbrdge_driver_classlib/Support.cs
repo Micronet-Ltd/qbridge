@@ -61,11 +61,26 @@ namespace qbrdge_driver_classlib
         {
             return System.BitConverter.ToInt32(fourByteArr, 0);
         }
-        public static byte[] Int32ToBytes(Int32 int32Input)
+        public static byte[] Int32ToBytes(Int32 int32Input, bool bigendien)
         {
-            return System.BitConverter.GetBytes(int32Input);
+            if (bigendien == false)
+            {
+                return System.BitConverter.GetBytes(int32Input);
+            }
+            else
+            {
+                byte[] a = new byte[4];
+                byte[] b = System.BitConverter.GetBytes(int32Input);
+                int j = 0;
+                for (int i = a.Length-1; i >= 0; i--)
+                {
+                    a[j] = b[i];
+                    j++;
+                }
+                return a;
+            }
         }
-                
+
         public static void SendClientDataPacket(string pktType, QBTransaction qbt)
         {
             //<pkt type>, <client id>, <trans id>, <is notify, 0 or 1>, <data len>;<data>

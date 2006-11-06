@@ -631,6 +631,13 @@ namespace qbrdge_driver_classlib
                 //received j1708 data
                 if (pktId != lastRecvPktId)
                 {
+                    //add timestamp to j1708 packet
+                    byte[] tstamp = Support.Int32ToBytes(Environment.TickCount, true);
+                    byte[] ptmp = new byte[4 + pktData.Length];
+                    tstamp.CopyTo(ptmp, 0);
+                    pktData.CopyTo(ptmp, 4);
+                    pktData = ptmp;
+
                     for (int i = 0; i < ClientIDManager.clientIds.Length; i++)
                     {
                         ClientIDManager.ClientIDInfo clientInfo = ClientIDManager.clientIds[i];
