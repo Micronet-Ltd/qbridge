@@ -441,7 +441,7 @@ void CTestAppMFCDlg::OnBnClickedCreatecon4Btn()
 void CTestAppMFCDlg::OnBnClickedSendCom4btn()
 {
 	for (int i = 0; i < 6; i++) {
-		rp1210SendMessage(lastCom4Client, 0);
+		rp1210SendMessage(lastCom4Client, 1);
 	}
 }
 void CTestAppMFCDlg::OnBnClickedButton6()
