@@ -6,10 +6,10 @@
 
 #define QUEUE_SIZE 512
 typedef struct _CircleQueue {
-	UINT32 count;
-	UINT32 head;
-	UINT32 tail;
-	UINT8 data[QUEUE_SIZE];
+    UINT32 count;
+    UINT32 head;
+    UINT32 tail;
+    UINT8 data[QUEUE_SIZE];
 } CircleQueue;
 
 

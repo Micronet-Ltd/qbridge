@@ -3,27 +3,27 @@
 
 
 typedef enum _ACKCodes {
-	ACK_OK						= '0',
-	ACK_DUPLICATE_PACKET		= '1',
-	ACK_INVALID_PACKET		= '2',
-	ACK_INVALID_COMMAND		= '3',
-	ACK_INVALID_DATA			= '4',
-	ACK_UNABLE_TO_PROCESS	= '5',
+    ACK_OK                      = '0',
+    ACK_DUPLICATE_PACKET        = '1',
+    ACK_INVALID_PACKET      = '2',
+    ACK_INVALID_COMMAND     = '3',
+    ACK_INVALID_DATA            = '4',
+    ACK_UNABLE_TO_PROCESS   = '5',
 } ACKCodes;
 
 typedef enum _Commands {
-	Init232						= '@',
-	ACK							= 'A',
-	InfoReq						= '*',
-	RawJ1708						= '+',
-	MIDFilterEnable			= 'B',
-	SetMIDState					= 'C',
-	SendJ1708Packet			= 'D',
-	ReceiveJ1708Packet		= 'E',
-	EnableJ1708TxConfirm		= 'F',
-	J1708TransmitConfirm		= 'G',
-	UpgradeFirmware			= 'H',
-	ResetQBridge				= 'I',
+    Init232                     = '@',
+    ACK                         = 'A',
+    InfoReq                     = '*',
+    RawJ1708                        = '+',
+    MIDFilterEnable         = 'B',
+    SetMIDState                 = 'C',
+    SendJ1708Packet         = 'D',
+    ReceiveJ1708Packet      = 'E',
+    EnableJ1708TxConfirm        = 'F',
+    J1708TransmitConfirm        = 'G',
+    UpgradeFirmware         = 'H',
+    ResetQBridge                = 'I',
 } Commands;
 
 void Initialize232Protocol();

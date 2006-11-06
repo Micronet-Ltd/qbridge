@@ -53,24 +53,24 @@ static XTIREGS * const xti = (XTIREGS *)XTI_REG_BASE;
 /*****************/
 void InitializeEIC(void)
 {
-	/* 
-	 * Sadly, the EIC is not very smart. The upper 16 bits of the
-	 * interrupt vector is fixed for all interrupts. This is fine as
-	 * long as all ISR addresses live in the same 64k of code space.
-	 * If the code gets larger than this, we should consider creating a
-	 * code section to contain all ISRs, and link it properly to
-	 * guarantee that we don't violate this condition.
-	 *
-	 * Note that we store an address (not a jump opcode) into the IVR.
-	 */
+    /*
+     * Sadly, the EIC is not very smart. The upper 16 bits of the
+     * interrupt vector is fixed for all interrupts. This is fine as
+     * long as all ISR addresses live in the same 64k of code space.
+     * If the code gets larger than this, we should consider creating a
+     * code section to contain all ISRs, and link it properly to
+     * guarantee that we don't violate this condition.
+     *
+     * Note that we store an address (not a jump opcode) into the IVR.
+     */
 #ifdef RVDEBUG
-	eic->ivr = RAM_PHYS_BASE & 0xffff0000; /* JEREMY CHANGE THIS TO RAM_PHYS_BASE for your debugging build */
+    eic->ivr = RAM_PHYS_BASE & 0xffff0000; /* JEREMY CHANGE THIS TO RAM_PHYS_BASE for your debugging build */
 #else /* RVDEBUG */
-	eic->ivr = FLASH_PHYS_BASE & 0xffff0000; /* JEREMY CHANGE THIS TO RAM_PHYS_BASE for your debugging build */
+    eic->ivr = FLASH_PHYS_BASE & 0xffff0000; /* JEREMY CHANGE THIS TO RAM_PHYS_BASE for your debugging build */
 #endif /* RVDEBUG */
 
-	/* Enable interrupts */
-	eic->icr |= IRQ_EN;
+    /* Enable interrupts */
+    eic->icr |= IRQ_EN;
 }
 
 /*******************/
@@ -78,13 +78,13 @@ void InitializeEIC(void)
 /*******************/
 int RegisterEICHdlr(EIC_SOURCE src, void (*hdlr)(void), unsigned int priority)
 {
-	if (priority > EIC_MAX_PRIORITY) {
-		return -1;
-	}
+    if (priority > EIC_MAX_PRIORITY) {
+        return -1;
+    }
 
-	eic->sir[src] = ((unsigned long)hdlr << 16) | priority;
+    eic->sir[src] = ((unsigned long)hdlr << 16) | priority;
 
-	return 0;
+    return 0;
 }
 
 /**********************/
@@ -92,41 +92,41 @@ int RegisterEICHdlr(EIC_SOURCE src, void (*hdlr)(void), unsigned int priority)
 /**********************/
 int RegisterEICExtHdlr(XTI_SOURCE src, void (*hdlr)(void), unsigned int priority, enum irq_sense edge)
 {
-	/* 
-	 * NOTE: The EIC requires a single handler for all XTI sources,
-	 * currently the last handler registered will handle all XTI
-	 * interrupts. Additional code will be required if more than
-	 * one XTI source is to be handled. 
-	 *
-	 * Also, this code enables the external interrupt in the XTI.
-	 * To enable and disable XTI interrupts, use the Enable/DisableEIC
-	 * functions with a source of EIC_XTI.
-	 */
-	if (src > 7) {
-		src >>= 4;
-		xti->mrh |= BIT(src);
+    /*
+     * NOTE: The EIC requires a single handler for all XTI sources,
+     * currently the last handler registered will handle all XTI
+     * interrupts. Additional code will be required if more than
+     * one XTI source is to be handled.
+     *
+     * Also, this code enables the external interrupt in the XTI.
+     * To enable and disable XTI interrupts, use the Enable/DisableEIC
+     * functions with a source of EIC_XTI.
+     */
+    if (src > 7) {
+        src >>= 4;
+        xti->mrh |= BIT(src);
 
-		/* Set the edge trigger polarity */
-		if (edge == IRQ_RISING) {
-			xti->trh |= BIT(src);
-		} else {
-			xti->trh &= ~BIT(src);
-		}
-	} else {
-		xti->mrl |= BIT(src);
+        /* Set the edge trigger polarity */
+        if (edge == IRQ_RISING) {
+            xti->trh |= BIT(src);
+        } else {
+            xti->trh &= ~BIT(src);
+        }
+    } else {
+        xti->mrl |= BIT(src);
 
-		/* Set the edge trigger polarity */
-		if (edge == IRQ_RISING) {
-			xti->trl |= BIT(src);
-		} else {
-			xti->trl &= ~BIT(src);
-		}
-	}
+        /* Set the edge trigger polarity */
+        if (edge == IRQ_RISING) {
+            xti->trl |= BIT(src);
+        } else {
+            xti->trl &= ~BIT(src);
+        }
+    }
 
-	/* Enable XTI interrupts */
-	xti->ctrl |= 0x2;
+    /* Enable XTI interrupts */
+    xti->ctrl |= 0x2;
 
-	return RegisterEICHdlr(EIC_XTI, hdlr, priority);
+    return RegisterEICHdlr(EIC_XTI, hdlr, priority);
 }
 
 /****************/
@@ -134,7 +134,7 @@ int RegisterEICExtHdlr(XTI_SOURCE src, void (*hdlr)(void), unsigned int priority
 /****************/
 void EICEnableIRQ(EIC_SOURCE src)
 {
-	eic->ier |= BIT(src);
+    eic->ier |= BIT(src);
 }
 
 /*****************/
@@ -142,7 +142,7 @@ void EICEnableIRQ(EIC_SOURCE src)
 /*****************/
 void EICDisableIRQ(EIC_SOURCE src)
 {
-	eic->ier &= ~BIT(src);
+    eic->ier &= ~BIT(src);
 }
 
 /***************/
@@ -150,10 +150,10 @@ void EICDisableIRQ(EIC_SOURCE src)
 /***************/
 void EICClearIRQ(EIC_SOURCE src)
 {
-	// according to the docs, we need to globally disable interrupts before clearing one?
-	//eic->icr &= ~IRQ_EN;
-	eic->ipr |= BIT(src);
-	//eic->icr |= IRQ_EN;
+    // according to the docs, we need to globally disable interrupts before clearing one?
+    //eic->icr &= ~IRQ_EN;
+    eic->ipr |= BIT(src);
+    //eic->icr |= IRQ_EN;
 }
 
 /***************/
@@ -161,12 +161,12 @@ void EICClearIRQ(EIC_SOURCE src)
 /***************/
 void XTIClearIRQ(XTI_SOURCE src)
 {
-	if (src > 7) {
-		src >>= 4;
-		xti->prh &= ~BIT(src);
-	} else {
-		xti->prl &= ~BIT(src);
-	}
+    if (src > 7) {
+        src >>= 4;
+        xti->prh &= ~BIT(src);
+    } else {
+        xti->prl &= ~BIT(src);
+    }
 
-	EICClearIRQ(EIC_XTI);
+    EICClearIRQ(EIC_XTI);
 }
