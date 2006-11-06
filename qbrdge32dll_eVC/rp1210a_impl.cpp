@@ -956,7 +956,6 @@ void ProcessDataPacket(char* data, SOCKET RecvSocket, sockaddr_in RecvAddr)
 		}
 		else if (strcmp(pktType, "sendJ1708success") == 0) {
 			CritSection cs;
-			cs.Pause();
 			/*for (int i = 0; i < 80; i++) {
 				if (connections[clientid].UpdateTransaction(isnotify, transid, 0)) {
 					break;
@@ -966,7 +965,6 @@ void ProcessDataPacket(char* data, SOCKET RecvSocket, sockaddr_in RecvAddr)
 			if (connections[clientid].UpdateTransaction(isnotify, transid, 0) == FALSE) {
 				_DbgTrace(_T("sendj1708succes EARLY :(\n"));
 			}
-			cs.Unpause();
 			_DbgTrace(_T("sendJ1708success"));
 		}
 		else if (strcmp(pktType, "readmessage") == 0) {
@@ -975,7 +973,7 @@ void ProcessDataPacket(char* data, SOCKET RecvSocket, sockaddr_in RecvAddr)
 		}
 	}
 }
-
+ 
 /***************/
 /* DLLCleanUp */
 /*************/
