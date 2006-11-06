@@ -5,35 +5,19 @@
 
 #define SERIAL_IRQ_PRIORITY 8
 
-// Assumes a baud clock of 14.7456 MHz
-#define bauddiv_460800  0x2
-#define bauddiv_230400  0x4
-#define bauddiv_115200  0x8
-#define bauddiv_57600   0x10
-#define bauddiv_38400   0x18
-#define bauddiv_19200   0x30
-#define bauddiv_14400   0x40
-#define bauddiv_9600    0x60
-#define bauddiv_4800    0xc0
-#define bauddiv_2400    0x180
-#define bauddiv_1200    0x300
-#define bauddiv_600     0x600
-
-
-// Assumes a baud clock of 16.0 MHz
-/*#define bauddiv_460800  2
-#define bauddiv_230400  4
-#define bauddiv_115200  9
-#define bauddiv_57600   17
-#define bauddiv_38400   26
-#define bauddiv_19200   52
-#define bauddiv_14400   69
-#define bauddiv_9600    104
-#define bauddiv_4800    208
-#define bauddiv_2400    417
-#define bauddiv_1200    833
-#define bauddiv_600     1667
-*/
+// Assumes a baud clock of 24.0000 MHz
+//#define bauddiv_460800  3.25  // %error = 7.7 --too large
+//#define bauddiv_230400  6.5   // %error = 7.5 --too large to work
+#define bauddiv_115200  13      // %error = .16
+#define bauddiv_57600   26      // %error = .16
+#define bauddiv_38400   39      // %error = .16
+#define bauddiv_19200   78      // %error = .16
+#define bauddiv_14400   104     // %error = .16
+#define bauddiv_9600    156     // %error = .16
+#define bauddiv_4800    313     // %error = .16
+#define bauddiv_2400    625     // %error = 0
+#define bauddiv_1200    1250    // %error = 0
+#define bauddiv_600     2500    // %error = 0
 
 typedef struct _SerialPort {
     UARTRegisterMap volatile * port;

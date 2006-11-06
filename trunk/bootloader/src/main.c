@@ -88,13 +88,13 @@ void InitializeClocks(void)
 
     /*
      * Set up the PLL:
-     * CLK2 = CLK3 = CK/2 (8 MHz for 16 MHz oscillator input)
-     * MX = 01b (multiply by 16)
-     * DX = 001b (divide by 4)
+     * CLK2 = CLK3 = CK/2 (6 MHz for 12 MHz oscillator input)
+     * MX = 01b (multiply by 12)
+     * DX = 010b (divide by 3)
      * FREF_RANGE = 1 (CLK2 > 3 MHz)
-     * Therefore, RCLK = 32 MHz
+     * Therefore, RCLK = 24 MHz  (6*12/3)
      */
-    rccu->pll1cr = 0x73;
+    rccu->pll1cr = 0x52;
 
     /* Wait for PLL lock */
     while ((rccu->cfr & LOCK) == 0) ;
@@ -104,14 +104,16 @@ void InitializeClocks(void)
 
     /*
      * Set up peripheral clocks:
-     * MCLK = 32 MHz (no divisor, default)
-     * PCLK1 = 16 MHz (divide by 2)
-     * PCLK2 = 16 MHz (divide by 2)
+     * MCLK = 24 MHz (no divisor, default)
+     * PCLK1 = 24 MHz (divide by 1)
+     * PCLK2 = 24 MHz (divide by 1)
      */
-    pcu->pdivr = 0x0101;
+    pcu->pdivr = 0x0000;
 
     /* Disable peripheral clocks (External Memory and USB) to save power */
     rccu->per = 0;
+    pcu->pll2cr = 7;    //disable pll 2 to save power
+    pcu->pwrcr |= 0x8200;   //put flash into low power mode for 0 wait state operation (up to 33MHz) - ie set FLASH_LP bit
 }
 
 /**********************/
