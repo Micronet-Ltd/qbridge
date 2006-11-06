@@ -68,87 +68,87 @@ void *CITTTablePtr = CITTTable;
 /**************/
 void irq_lockup(void)
 {
-	/* 
-	 * Jeremy, you can re-enable the print code when you have a serial
-	 * driver working.
-	 */
-	unsigned long cpsr, lr;
-	int mode;
+    /*
+     * Jeremy, you can re-enable the print code when you have a serial
+     * driver working.
+     */
+    unsigned long cpsr, lr;
+    int mode;
 
-	cpsr = ARM_GET_CPSR();
-	lr = ARM_GET_LR();
-	mode = cpsr & ARM_MODE_MASK;
+    cpsr = ARM_GET_CPSR();
+    lr = ARM_GET_LR();
+    mode = cpsr & ARM_MODE_MASK;
 
-	switch (mode) {
-	case ARM_MODE_FIQ:
-		print("FIQ");
-		break;
-	case ARM_MODE_IRQ:
-		print("IRQ");
-		break;
-	case ARM_MODE_SVC:
-		print("SWI");
-		break;
-	case ARM_MODE_ABT:
-		print("ABORT");
-		break;
-	case ARM_MODE_UND:
-		print("UNDEFINED INSN");
-		break;
-	default:
-		print("UNKNOWN");
-		//print(errmsg);
-		for(;;) ; /* Lock up here for default case */
-	}
+    switch (mode) {
+    case ARM_MODE_FIQ:
+        print("FIQ");
+        break;
+    case ARM_MODE_IRQ:
+        print("IRQ");
+        break;
+    case ARM_MODE_SVC:
+        print("SWI");
+        break;
+    case ARM_MODE_ABT:
+        print("ABORT");
+        break;
+    case ARM_MODE_UND:
+        print("UNDEFINED INSN");
+        break;
+    default:
+        print("UNKNOWN");
+        //print(errmsg);
+        for(;;) ; /* Lock up here for default case */
+    }
 
-	print("Unhandled exception: cpsr=0x%x lr(user pc)=0x%x", cpsr, lr);
+    print("Unhandled exception: cpsr=0x%x lr(user pc)=0x%x", cpsr, lr);
 
-	/* Now lock the machine */
-	// We want to ensure that the debug serial port has been flushed
-	IRQSTATE saveState = 0;
-	DISABLE_IRQ(saveState);
+    /* Now lock the machine */
+    // We want to ensure that the debug serial port has been flushed
+    IRQSTATE saveState = 0;
+    DISABLE_IRQ(saveState);
 
-	for (;;);
+    for (;;);
 }
 
 /************/
 /* bootKRNL */
 /************/
-void bootKRNL(int verbose, void *startAddr) 
+void bootKRNL(int verbose, void *startAddr)
 {
-	unsigned short crc;
-	crcROMHdrDefn * crcHdr = (crcROMHdrDefn *) startAddr;
-	voidFuncPtr func;
+    unsigned short crc;
+    crcROMHdrDefn * crcHdr = (crcROMHdrDefn *) startAddr;
+    voidFuncPtr func;
 
-	createCITTTable(CITTTablePtr);
+    createCITTTable(CITTTablePtr);
 
-	if (crcHdr->magic == crcROMMagicL && crcHdr->codeLen != 0) {
-		/* Verify the checksum */
-		crc = calcCITT(CITTTablePtr, ((unsigned char *) startAddr) + sizeof(crcROMHdrDefn), 
+    if (crcHdr->magic == crcROMMagicL && crcHdr->codeLen != 0) {
+        /* Verify the checksum */
+        crc = calcCITT(CITTTablePtr, ((unsigned char *) startAddr) + sizeof(crcROMHdrDefn),
                      crcHdr->codeLen - sizeof(crcROMHdrDefn));
-		if (crc != crcHdr->crc) {
-			print("ERROR--KRNL stored crc=$%x does not match calc crc=$%x\r\n",
-					  crcHdr->crc, crc);
-			return;
-		}
-	} else {
-		print("NOTICE--No KRNL present\r\n");
-		return;
-	}
+        if (crc != crcHdr->crc) {
+            print("ERROR--KRNL stored crc=$%x does not match calc crc=$%x\r\n",
+                      crcHdr->crc, crc);
+            return;
+        }
+    } else {
+        print("NOTICE--No KRNL present\r\n");
+        return;
+    }
 
-	if (verbose) {
-		print("Booting new KRNL. . .\r\n");
-	}
+    if (verbose) {
+        print("Booting new KRNL. . .\r\n");
+    }
 
-	/* Disable interrupts permanently - System mode */
-  	asm volatile ("MSR cpsr_c, #0xdf");
+    /* Disable interrupts permanently - System mode */
+    asm volatile ("MSR cpsr_c, #0xdf");
 
-	ShutdownPort(hostPort);
+    ShutdownPort(hostPort);
 
-	func = (voidFuncPtr) crcHdr->entry;
-	(*func) ();
+    func = (voidFuncPtr) crcHdr->entry;
+    (*func) ();
 
-	/* NEVER RETURNS!!! */
+    /* NEVER RETURNS!!! */
 }
 
 /***************/
@@ -156,9 +156,9 @@ void bootKRNL(int verbose, void *startAddr)
 /***************/
 void lockMachine(void)
 {
-	/* Disable interrupts permanently - System mode */
-	asm volatile ("MSR cpsr_c, #0xdf");
+    /* Disable interrupts permanently - System mode */
+    asm volatile ("MSR cpsr_c, #0xdf");
 
-	print("Locking this machine due to ERROR -- please reboot.\r\n");
-	for (;;);
+    print("Locking this machine due to ERROR -- please reboot.\r\n");
+    for (;;);
 }
