@@ -1,1 +1,3 @@
 release debug *.suo enc_temp_folder
+Debug
+Release
