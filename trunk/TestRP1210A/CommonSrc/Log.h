@@ -13,6 +13,7 @@ public:
 
 	void SetRichEdit(CRichEditCtrl *inRe) { re = inRe; re->SetBackgroundColor(false, 0xFFFFFF); }
 	void LogText (const CString &text, COLORREF clr = Black);
+	void LogDot();
 private:
 	CRichEditCtrl *re;
 };
