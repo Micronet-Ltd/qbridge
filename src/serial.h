@@ -8,7 +8,7 @@
 
 // Assumes a baud clock of 14.7456 MHz
 #define bauddiv_460800  0x2
-#define bauddiv_230400  0x4 
+#define bauddiv_230400  0x4
 #define bauddiv_115200  0x8
 #define bauddiv_57600   0x10
 #define bauddiv_38400   0x18
@@ -23,7 +23,7 @@
 
 // Assumes a baud clock of 16.0 MHz
 /*#define bauddiv_460800  2
-#define bauddiv_230400  4 
+#define bauddiv_230400  4
 #define bauddiv_115200  9
 #define bauddiv_57600   17
 #define bauddiv_38400   26
@@ -37,9 +37,9 @@
 */
 
 typedef struct _SerialPort {
-	UARTRegisterMap volatile * port;
-	CircleQueue rxQueue;
-	CircleQueue txQueue;
+    UARTRegisterMap volatile * port;
+    CircleQueue rxQueue;
+    CircleQueue txQueue;
 } SerialPort;
 
 extern SerialPort *debugPort;

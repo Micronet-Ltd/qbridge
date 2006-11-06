@@ -16,16 +16,16 @@ extern bool j1708TransmitConfirm;
 
 
 typedef struct _J1708Message {
-	UINT8 priority;
-	UINT8 len;
-	int id;
-	UINT8 data[21];
+    UINT8 priority;
+    UINT8 len;
+    int id;
+    UINT8 data[21];
 } J1708Message;
 
 typedef struct _J1708Queue {
-	int head;
-	int tail;
-	J1708Message msgs[J1708_QUEUE_SIZE];
+    int head;
+    int tail;
+    J1708Message msgs[J1708_QUEUE_SIZE];
 } J1708Queue;
 extern J1708Queue j1708Queue;
 extern J1708Message j1708CurTxMessage;
@@ -44,14 +44,14 @@ extern int  j1708RetransmitIdleTime;
 #ifdef _J1708DEBUG
 void J1708LogEventIdle (UINT8 event, UINT16 flags, UINT32 idleTime);
 #define J1708LogEvent(event, flags) J1708LogEventIdle(event, flags, GetJ1708IdleTime())
-enum J1708DebugEvents { JEV_None = 0, JEV_RecvFromHost, JEV_Transmit, JEV_SerIRQ, JEV_RecvFromBus, JEV_RecvFromBusProc, JEV_Collision, 
-								JEV_Retry, JEV_ChecksumErr, JEV_Msg };
+enum J1708DebugEvents { JEV_None = 0, JEV_RecvFromHost, JEV_Transmit, JEV_SerIRQ, JEV_RecvFromBus, JEV_RecvFromBusProc, JEV_Collision,
+                                JEV_Retry, JEV_ChecksumErr, JEV_Msg };
 typedef struct _J1708EventLog {
-	UINT32 time;
-	UINT32 idle;
-	UINT16 flags;
-	UINT8 event;
-	UINT8 state;
+    UINT32 time;
+    UINT32 idle;
+    UINT16 flags;
+    UINT8 event;
+    UINT8 state;
 } J1708EventLog;
 extern J1708EventLog j1708EventLog[256];
 extern UINT8 j1708EventLogIndex;

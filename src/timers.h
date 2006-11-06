@@ -5,7 +5,7 @@
 
 typedef struct _Timer {
    TimerRegisterMap *timer;
-	UINT32 wrapCounter;
+    UINT32 wrapCounter;
 } Timer;
 
 extern Timer MainTimer;
@@ -16,7 +16,7 @@ void InitializeTimers();
 void StopTimers(void);
 UINT64 GetTimerTime(Timer *timer);
 
-// HACK:  GetJ1708IdleTime is flagged as an int function rather than a UINT32 
+// HACK:  GetJ1708IdleTime is flagged as an int function rather than a UINT32
 // function deliberately.  The problem is if the timer wraps for the first time
 // during an interrupt (somewhat likely), then the wrap count is 0xFFFFFFFF,
 // but the timer counter is zero, resulting a negative return value.
