@@ -201,7 +201,7 @@ public:
 
 	int GetReadMsg(char *buff, int buffLen, int &msgLen) {
 		if (recvMsgQueue.size() == 0) {
-			return ERR_MISC_COMMUNICATION;
+			return ERR_RECV_OPERATION_TIMEOUT;
 		}
 		RecvMsg &rm = recvMsgQueue.front();
 		if (buffLen < rm.getLen()) {

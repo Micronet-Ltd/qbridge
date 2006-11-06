@@ -71,6 +71,7 @@ void SetupErrorStrings() {
 	SET_ERR_STR (ERR_BLOCKED_NOTIFY,"Notification not supported for blocking calls.");
 	SET_ERR_STR (ERR_NOT_ADDED_TO_BUS,"The QBridge was unable to place the message on the bus.");
 	SET_ERR_STR (ERR_MISC_COMMUNICATION,"Misc error communicating with QBridge driver process.");
+	SET_ERR_STR (ERR_RECV_OPERATION_TIMEOUT,"No messages recieved.  Waiting operation aborted.");
 
 #undef SET_ERR_STRING
 }
@@ -209,10 +210,10 @@ RP1210A_API void WINAPI RP1210_GetStatusInfo(TCHAR *buf, int size) {
 RP1210A_API void WINAPI RP1210_ReadVersion (char far* fpchDLLMajorVersion,	char far* fpchDLLMinorVersion,	char far* fpchAPIMajorVersion,	char far* fpchAPIMinorVersion) 
 {
 	CritSection cs;
-	fpchDLLMajorVersion[0] = 32;
-	fpchDLLMinorVersion[0] = 32;
-	fpchAPIMajorVersion[0] = '2';
-	fpchAPIMinorVersion[0] = '0';
+	strcpy(fpchDLLMajorVersion, "2");
+	strcpy(fpchDLLMinorVersion, "0");
+	strcpy(fpchAPIMajorVersion, "2");
+	strcpy(fpchAPIMinorVersion, "0");
 	strcpy (fpchDLLMajorVersion, "Hi");
 	strcpy (fpchDLLMinorVersion, "There");
 }

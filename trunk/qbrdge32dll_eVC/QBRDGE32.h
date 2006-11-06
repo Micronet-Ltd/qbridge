@@ -126,6 +126,7 @@ void ToUnicode(char *buf, TCHAR *unicodeBuf, int size);
 #define ERR_BLOCKED_NOTIFY						194
 #define ERR_NOT_ADDED_TO_BUS					195
 #define ERR_MISC_COMMUNICATION					196
+#define ERR_RECV_OPERATION_TIMEOUT				197
 
 // RP1210 Commands for the RP1210_SendCommand function
 #define CMD_RESET_DEVICE						0
