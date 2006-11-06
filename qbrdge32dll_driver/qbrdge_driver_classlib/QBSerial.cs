@@ -188,7 +188,7 @@ namespace qbrdge_driver_classlib
             }
             catch (TimeoutException exp)
             {
-                Debug.WriteLine(exp.ToString());
+                Debug.WriteLine("waitforcom: " + exp.ToString());
                 return false;
             }
             return true;
@@ -498,7 +498,7 @@ namespace qbrdge_driver_classlib
             }
             catch (Exception exp)
             { // this shouldn't happen
-                Debug.WriteLine(exp.ToString());
+                Debug.WriteLine("datarecv: "+exp.ToString());
                 return;
             }
 
@@ -639,14 +639,22 @@ namespace qbrdge_driver_classlib
                             clientInfo.allowReceive)
                         {
                             byte mid = pktData[0];
-                            for (int j = 0; j < clientInfo.J1708MIDList.Length; j++)
+                            if (clientInfo.J1708MIDFilter == false)
                             {
-                                if (mid == clientInfo.J1708MIDList[j])
+                                Support.SendClientDataPacket(UDPReplyType.readmessage,
+                                    i, pktData);
+                            }
+                            else
+                            {
+                                for (int j = 0; j < clientInfo.J1708MIDList.Length; j++)
                                 {
-                                    //if client is registered to recieving port then send message
-                                    Support.SendClientDataPacket(UDPReplyType.readmessage,
-                                        i, pktData);
-                                    break;
+                                    if (mid == clientInfo.J1708MIDList[j])
+                                    {
+                                        //if client is registered to recieving port then send message
+                                        Support.SendClientDataPacket(UDPReplyType.readmessage,
+                                            i, pktData);
+                                        break;
+                                    }
                                 }
                             }
                         }
