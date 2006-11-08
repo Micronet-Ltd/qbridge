@@ -86,4 +86,8 @@
   <Target Name="AfterBuild">
   </Target>
   -->
+  <PropertyGroup>
+    <PostBuildEvent>copy $(TargetFileName) ..\..\..\..\TestRP1210A\TestRP1210_PC\Debug\QBridgeWinCEDriver.exe
+copy $(TargetFileName) ..\..\..\..\TestRP1210A\TestRP1210_PC\Release\QBridgeWinCEDriver.exe</PostBuildEvent>
+  </PropertyGroup>
 </Project>

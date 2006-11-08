@@ -96,6 +96,9 @@ TRACE (_T("Implementation: %s\n"), impls[i]);
 		if (ini.GetEntry(_T("VendorInformation"), _T("ErrorString"), e)) {
 			coreDev.errString = e.base;
 		}
+		if (ini.GetEntry(_T("VendorInformation"), _T("TimestampWeight"), e)) {
+			coreDev.timeStampWeight = _ttoi(e.base);
+		}
 
 		vector <CString> protocolBaseList;
 		if (ini.GetEntry(_T("VendorInformation"), _T("Protocols"), e)) {
