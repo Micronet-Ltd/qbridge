@@ -12,6 +12,7 @@
 
 #pragma warning(disable:4996)
 
+
 // CAboutDlg dialog used for App About
 
 class CAboutDlg : public CDialog
@@ -79,6 +80,8 @@ BEGIN_MESSAGE_MAP(CTestAppMFCDlg, CDialog)
 	ON_BN_CLICKED(IDC_SENDRESETCMD_BTN, &CTestAppMFCDlg::OnBnClickedSendresetcmdBtn)
 	ON_BN_CLICKED(IDC_SENDRESETCMD_BTN2, &CTestAppMFCDlg::OnBnClickedSendresetcmdBtn2)
 	ON_BN_CLICKED(IDC_SENDRESETCMD_BTN3, &CTestAppMFCDlg::OnBnClickedSendresetcmdBtn3)
+	ON_BN_CLICKED(IDC_BUTTON9, &CTestAppMFCDlg::OnBnClickedButton9)
+	ON_BN_CLICKED(IDC_sendj1939msgbtn, &CTestAppMFCDlg::OnBnClickedsendj1939msgbtn)
 END_MESSAGE_MAP()
 
 
@@ -195,6 +198,7 @@ void CTestAppMFCDlg::OnBnClickedButton3()
 	FreeLibrary(mod);
 }
 
+//DISCONNECT ALL CLIENTS
 void CTestAppMFCDlg::OnBnClickedButton5()
 {
 	typedef short (WINAPI* fp_RP1210_ClientDisconnect) (
@@ -335,8 +339,7 @@ void CTestAppMFCDlg::rp1210SendCommand(short nCommandNumber, short nClientID) {
 		m_editbox.SetWindowTextW(c);
 	}
 }
-void CTestAppMFCDlg::rp1210SendMessage(short comClient, short nBlockOnSend) {	
-	// TODO: Add your control notification handler code here
+void CTestAppMFCDlg::rp1210SendCustomMsg(short comClient, short nBlockOnSend, char far* fpchMsg, short msgSize) {
 	typedef short (WINAPI* fp_RP1210_SendMessage) (
 		short nClientID,
 		char far* fpchClientMessage,
@@ -353,19 +356,8 @@ void CTestAppMFCDlg::rp1210SendMessage(short comClient, short nBlockOnSend) {
 	
 	fp_RP1210_GetErrorMsg efunc = (fp_RP1210_GetErrorMsg) GetProcAddress(mod, "RP1210_GetErrorMsg");
 
-
-
-	char far fpchMessage[128];
-	//char far* fpchMessage = "1212233223233232144324322341234123443214324321";
-	fpchMessage[0] = 0x01;
-	fpchMessage[1] = 0x41;
-	fpchMessage[2] = 0x42;
-	fpchMessage[3] = 0x43;
-	fpchMessage[4] = 0x44;
-	fpchMessage[20] = 0x5a;
-
 	short nRet;
-	nRet = cfunc(comClient, fpchMessage, 21, 0, nBlockOnSend);
+	nRet = cfunc(comClient, fpchMsg, msgSize, 0, nBlockOnSend);
 	if (nRet > 127) {
 		char pchBuf[256];
 		char fpchDescription[80];
@@ -383,6 +375,18 @@ void CTestAppMFCDlg::rp1210SendMessage(short comClient, short nBlockOnSend) {
 	{
 
 	}
+}
+
+void CTestAppMFCDlg::rp1210SendMessage(short comClient, short nBlockOnSend) {		
+	char far fpchMessage[128];
+	//char far* fpchMessage = "1212233223233232144324322341234123443214324321";
+	fpchMessage[0] = 0x01;
+	fpchMessage[1] = 0x41;
+	fpchMessage[2] = 0x42;
+	fpchMessage[3] = 0x43;
+	fpchMessage[4] = 0x44;
+	fpchMessage[20] = 0x5a;
+	rp1210SendCustomMsg(comClient, nBlockOnSend, fpchMessage, 21);
 }
 
 void CTestAppMFCDlg::rp1210ReadMessage(short comClient, short nBlockOnRead) {	
@@ -464,8 +468,30 @@ void CTestAppMFCDlg::OnBnClickedButton7()
 {
 	rp1210ReadMessage(lastCom3Client, 0);
 }
+
+//DISCONNECT THREAD
+static DWORD __stdcall DisconnectFunc(void * args) {
+	::Sleep(1000);
+	typedef short (WINAPI* fp_RP1210_ClientDisconnect) (
+		short nClientID
+		);
+	fp_RP1210_ClientDisconnect cfunc = (fp_RP1210_ClientDisconnect) GetProcAddress(mod, "RP1210_ClientDisconnect");
+	
+	for (short i = 0; i < 128; i++) {
+		short errcode = cfunc(i);
+	}	
+	return 0;
+}
+
+Thread dThread;
+
+//READ COM3 BLOCK
 void CTestAppMFCDlg::OnBnClickedButton8()
-{
+{	
+	void * arg = NULL;
+	dThread.SetupThread(DisconnectFunc, arg);
+	dThread.Resume();
+
 	rp1210ReadMessage(lastCom3Client, 1);
 }
 
@@ -483,4 +509,19 @@ void CTestAppMFCDlg::OnBnClickedSendresetcmdBtn2()
 void CTestAppMFCDlg::OnBnClickedSendresetcmdBtn3()
 {
 	rp1210GetHardwareStatus(lastCom3Client);
+}
+
+void CTestAppMFCDlg::OnBnClickedButton9()
+{
+	char far* fpchProtocol = "J1939";
+	rp1210ClientConnect(3, fpchProtocol, lastCom3Client);
+	rp1210SendCommand(3, lastCom3Client); //set all filter states to pass
+}
+
+void CTestAppMFCDlg::OnBnClickedsendj1939msgbtn()
+{
+	char far* msg = "\x03" "\xF0" "\x00" "\x03" "\x06" "\x00" "\xFF" "\xFE" "\x26"
+		"\x01" "\xFF" "\xFF" "\xFF" "\xFF";
+	short msgLen = 14;
+	rp1210SendCustomMsg(lastCom3Client, 1, msg, msgLen);
 }
