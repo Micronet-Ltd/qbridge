@@ -110,7 +110,7 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 		return ERR_INVALID_CLIENT_ID;
 	}
 	if (connections[nClientID].GetConnectionType() == Conn_Invalid) {
-		return ERR_CLIENT_DISCONNECTED;
+		return ERR_INVALID_CLIENT_ID;
 	}
 
 	if (nNotifyStatusOnTx && (connections[nClientID].GetHwnd() == 0)) {
@@ -167,7 +167,10 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 				}
 				tbuf[BufLen] = 0;
 				_DbgTrace(tbuf);
-				
+						
+				if (connections[nClientID].GetConnectionType() == Conn_Invalid) {
+					return ERR_CLIENT_DISCONNECTED;
+				}
 				cs.Pause();
 				::WaitForSingleObject(hEvent, 70000); //SetEvent for release?
 				cs.Unpause();
@@ -176,7 +179,9 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 				int returnCode = connections[nClientID].GetReturnCode(nNotifyStatusOnTx, msgId);
 				connections[nClientID].RemoveTransaction(nNotifyStatusOnTx, msgId);
 
-				//_DbgTrace(_T("after query driver app send 1\n"));
+				if (connections[nClientID].GetConnectionType() == Conn_Invalid) {
+					return ERR_CLIENT_DISCONNECTED;
+				}
 				return returnCode;
 			} 
 			else if (nNotifyStatusOnTx) {
@@ -211,7 +216,7 @@ RP1210AReturnType ReadRP1210Message (short nClientID, char far* fpchAPIMessage, 
 		return -ERR_INVALID_CLIENT_ID;
 	}
 	if (connections[nClientID].GetConnectionType() == Conn_Invalid) {
-		return -ERR_CLIENT_DISCONNECTED;
+		return -ERR_INVALID_CLIENT_ID;
 	}
 
 	if (connections[nClientID].recvMsgQueue.size() == 0) {
@@ -223,14 +228,17 @@ RP1210AReturnType ReadRP1210Message (short nClientID, char far* fpchAPIMessage, 
 			::WaitForSingleObject(hEvent, 10000); //SetEvent for release?
 			cs.Unpause();
 			::CloseHandle(hEvent);
+			if (connections[nClientID].GetConnectionType() == Conn_Invalid) {
+				return ERR_CLIENT_DISCONNECTED;
+			}
 		}
 		else {
 			return 0;
 		}
 	}
-
 	int msgLen = 0;
 	int errId = connections[nClientID].GetReadMsg(fpchAPIMessage, nBufferSize, msgLen);
+	
 	if (errId != 0) {
 		return -errId;
 	}
@@ -283,7 +291,7 @@ RP1210AReturnType GetHardwareStatus (short nClientID, char far* fpchClientInfo, 
 		cs.Pause();
 		::WaitForSingleObject(hEvent, 10000); //SetEvent for release?
 		cs.Unpause();
-		::CloseHandle(hEvent);
+		::CloseHandle(hEvent);	
 	}
 
 	int cid = nClientID;
