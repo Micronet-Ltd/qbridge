@@ -105,8 +105,13 @@ public:
 		hwnd = 0;
 		nIsAppPacketizingIncomingMsgs = 0;
 		comPort = 0;
+		//loop and unblock all read functions
+		while (recvMsgEvents.size() != 0) {
+			HANDLE &blocked = recvMsgEvents.front();
+			::SetEvent(blocked);
+			recvMsgEvents.pop_front();
+		}
 	}
-
 
 	void AddTransaction(short isNotify, int transId) {
 		Transaction t;
@@ -200,6 +205,9 @@ public:
 	}
 
 	int GetReadMsg(char *buff, int buffLen, int &msgLen) {
+		if (GetConnectionType() == Conn_Invalid) {
+			return ERR_CLIENT_DISCONNECTED;
+		}
 		if (recvMsgQueue.size() == 0) {
 			return ERR_RECV_OPERATION_TIMEOUT;
 		}
