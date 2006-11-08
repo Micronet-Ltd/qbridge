@@ -645,7 +645,7 @@ namespace qbrdge_driver_classlib
                             clientInfo.serialInfo.com.PortName == portInfo.com.PortName &&
                             clientInfo.allowReceive)
                         {
-                            byte mid = pktData[0];
+                            byte mid = pktData[4];
                             if (clientInfo.J1708MIDFilter == false)
                             {
                                 Support.SendClientDataPacket(UDPReplyType.readmessage,
@@ -989,6 +989,40 @@ namespace qbrdge_driver_classlib
             return msgId;
         }
 
+        //returns msgQID
+        public static int AddSendJ1939Msg(int clientId, string msg, bool isNotify)
+        {
+            int msgId;
+            if (isNotify)
+            {
+                msgId = GetMsgId();
+                if (msgId <= 0)
+                {
+                    return msgId;
+                }
+            }
+            else
+            {
+                msgId = NewMsgBlockId();
+            }
+            SerialPortInfo sinfo = Support.ClientToSerialPortInfo(clientId);
+            QBTransaction qbt = new QBTransaction();
+            qbt.clientId = clientId;
+            qbt.isNotify = isNotify;
+            qbt.msgId = msgId;
+            qbt.isJ1939 = true;
+            qbt.j1939transaction = new J1939Transaction();
+            qbt.cmdType = PacketCmdCodes.PKT_CMD_SEND_CAN;
+
+            qbt.j1939transaction.UpdateJ1939Data(msg); //add message, process
+            qbt.pktData = qbt.j1939transaction.GetCANPacket(); //get packet for current state.
+
+            qbt.numRetries = 2;
+            qbt.timePeriod = Support.ackReplyLimit;
+            ClientIdToSerialInfo(clientId).QBTransactionNew.Add(qbt);
+            return msgId;
+        }
+
         private static SerialPortInfo ClientIdToSerialInfo(int clientId)
         {
             return ClientIDManager.clientIds[clientId].serialInfo;
@@ -1186,6 +1220,10 @@ namespace qbrdge_driver_classlib
        
         //special for firmware upgrade
         public bool fwUpgrade = false;
+
+        //j1939 info.
+        public bool isJ1939 = false;
+        public J1939Transaction j1939transaction;
 
         public void StartTimer()
         {

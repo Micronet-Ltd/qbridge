@@ -289,6 +289,20 @@ namespace qbrdge_driver_classlib
                 int blockID = QBSerial.AddSendJ1708Msg(intNum1, j1708msg, false);
                 UdpSend(blockID.ToString(), iep);
             }
+            else if (cmd == "j1939msg")
+            {
+                //add to msg queue return msg q#, return 0 if full, <0 if error
+                string msg = sdata.Substring(idx2 + 1);
+                int msgQID = QBSerial.AddSendJ1939Msg(intNum1, msg, true);
+                UdpSend(msgQID.ToString(), iep);
+            }
+            else if (cmd == "j1939blockmsg")
+            {
+                //add to blocking queue
+                string msg = sdata.Substring(idx2 + 1);
+                int blockID = QBSerial.AddSendJ1939Msg(intNum1, msg, false);
+                UdpSend(blockID.ToString(), iep);
+            }
             else if (cmd == "newclientid")
             {
                 // Assign Client ID: port, comNum
