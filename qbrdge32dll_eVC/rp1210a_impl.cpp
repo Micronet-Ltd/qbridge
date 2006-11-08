@@ -121,7 +121,8 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 		return ERR_BLOCKED_NOTIFY;
 	}
 
-	if (connections[nClientID].GetConnectionType() == Conn_J1708) {
+	ConnectionType ctype = connections[nClientID].GetConnectionType();
+	if (ctype == Conn_J1708 || ctype == Conn_J1939) {
 		//J1708
 		if (nMessageSize > 21) {
 			return ERR_MESSAGE_TOO_LONG;
@@ -129,10 +130,20 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 
 		PACKET_TYPE queryType;
 		if (nBlockOnSend) {
-			queryType = QUERY_J1708MSG_BLOCK_PKT;
+			if (ctype == Conn_J1708) {
+				queryType = QUERY_J1708MSG_BLOCK_PKT;
+			}
+			else if (ctype == Conn_J1939) {
+				queryType = QUERY_J1939MSG_BLOCK_PKT;
+			}
 		}
 		else {
-			queryType = QUERY_J1708MSG_PKT;
+			if (ctype == Conn_J1708) {
+				queryType = QUERY_J1708MSG_PKT;
+			}
+			else if (ctype == Conn_J1939) {
+				queryType = QUERY_J1939MSG_PKT;
+			}
 		}
 		//send j1708 message to driver app.
 		int cid = (int) nClientID;
@@ -364,13 +375,20 @@ int GetSendQueryPacket(PACKET_TYPE queryId, char* sendBuf, int bufLen,
 	else if (queryId == QUERY_DISCONNECT_CLIENTID_PKT) {
 		return _snprintf(sendBuf, bufLen, "%d,disconnect;", numData);
 	}
-	else if (queryId == QUERY_J1708MSG_PKT || queryId == QUERY_J1708MSG_BLOCK_PKT) {
+	else if (queryId == QUERY_J1708MSG_PKT || queryId == QUERY_J1708MSG_BLOCK_PKT ||
+			queryId == QUERY_J1939MSG_PKT || queryId == QUERY_J1939MSG_BLOCK_PKT) {
 		int len = 0;
 		if (queryId == QUERY_J1708MSG_BLOCK_PKT) {
 			len = _snprintf(sendBuf, bufLen, "%d,j1708blockmsg;", numData);
 		}
-		else {
+		else if (queryId == QUERY_J1708MSG_PKT) {
 			len = _snprintf(sendBuf, bufLen, "%d,j1708msg;", numData);
+		}
+		else if (queryId == QUERY_J1939MSG_BLOCK_PKT) {
+			len = _snprintf(sendBuf, bufLen, "%d,j1939blockmsg;", numData);
+		}
+		else if (queryId == QUERY_J1939MSG_PKT) {
+			len = _snprintf(sendBuf, bufLen, "%d,j1939msg;", numData);
 		}
 		for (int i=0; i < outDataLen; i++) {
 			sendBuf[i+len] = outData[i];
@@ -563,7 +581,8 @@ bool QueryDriverApp(PACKET_TYPE queryId, int localPort,
 			return false;
 		}
 	}
-	else if (queryId == QUERY_J1708MSG_PKT || queryId == QUERY_J1708MSG_BLOCK_PKT) {
+	else if (queryId == QUERY_J1708MSG_PKT || queryId == QUERY_J1708MSG_BLOCK_PKT ||
+		queryId == QUERY_J1939MSG_PKT || queryId == QUERY_J1939MSG_BLOCK_PKT) {
 		intRetVal = atoi(RecvBuf);
 	}
 	else if (queryId == QUERY_SEND_COMMAND) {
