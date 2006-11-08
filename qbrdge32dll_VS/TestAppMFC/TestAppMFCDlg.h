@@ -4,6 +4,39 @@
 #pragma once
 #include "afxwin.h"
 
+class Thread
+{
+public:
+	Thread() : valid(false) {}
+	bool SetupThread ( DWORD (WINAPI * pFun) (void* arg), void* pArg)
+    {
+		if (valid) {
+			return false;
+		}
+		valid = true;
+        _handle = CreateThread (
+            NULL, // Security attributes
+            0, // Stack size
+            pFun,
+            pArg,
+            CREATE_SUSPENDED,
+            &_tid);
+		return true;
+    }
+	~Thread () { } //CloseHandle (_handle);
+    void Resume () { ResumeThread (_handle); }
+    void WaitForDeath ()
+    {
+        WaitForSingleObject (_handle, 2000);
+    }
+
+	bool valid;
+private:
+    HANDLE _handle;
+    DWORD  _tid;     // thread id
+};
+
+extern Thread dThread;
 
 // CTestAppMFCDlg dialog
 class CTestAppMFCDlg : public CDialog
@@ -22,6 +55,10 @@ public:
 	void rp1210ReadMessage(short comClient, short nBlockOnRead);
 	void rp1210SendCommand(short nCommandNumber, short nClientID);
 	void rp1210GetHardwareStatus(short nClientID);
+	
+	void rp1210SendCustomMsg(short comClient, short nBlockOnSend, char far* fpchMsg, short msgSize);
+	
+public:
 // Implementation
 protected:
 	HICON m_hIcon;
@@ -62,4 +99,10 @@ public:
 	afx_msg void OnBnClickedSendresetcmdBtn2();
 public:
 	afx_msg void OnBnClickedSendresetcmdBtn3();
+public:
+	afx_msg void OnBnClickedButton9();
+public:
+	afx_msg void OnBnClickedsendj1939msgbtn();
 };
+
+static DWORD __stdcall DisconnectFunc(void* args);
