@@ -103,6 +103,8 @@ public:
 	afx_msg void OnBnClickedButton9();
 public:
 	afx_msg void OnBnClickedsendj1939msgbtn();
+public:
+	afx_msg void OnBnClickedSetj1708filterbtn();
 };
 
 static DWORD __stdcall DisconnectFunc(void* args);

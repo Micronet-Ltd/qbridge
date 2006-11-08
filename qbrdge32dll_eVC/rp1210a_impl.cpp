@@ -253,7 +253,7 @@ RP1210AReturnType SendCommand (short nCommandNumber, short nClientID, char far* 
 		return ERR_INVALID_CLIENT_ID;
 	}
 	if (connections[nClientID].GetConnectionType() == Conn_Invalid) {
-		return ERR_DLL_NOT_INITIALIZED;
+		return ERR_INVALID_CLIENT_ID;
 	}
 
 	int cid = (int)nClientID;

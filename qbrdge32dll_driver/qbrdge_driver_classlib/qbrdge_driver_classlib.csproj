@@ -51,6 +51,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ClientIDManager.cs" />
+    <Compile Include="J1939Transaction.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="QBSerial.cs" />
     <Compile Include="RP1210DllCom.cs" />

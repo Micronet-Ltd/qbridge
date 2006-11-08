@@ -82,6 +82,7 @@ BEGIN_MESSAGE_MAP(CTestAppMFCDlg, CDialog)
 	ON_BN_CLICKED(IDC_SENDRESETCMD_BTN3, &CTestAppMFCDlg::OnBnClickedSendresetcmdBtn3)
 	ON_BN_CLICKED(IDC_BUTTON9, &CTestAppMFCDlg::OnBnClickedButton9)
 	ON_BN_CLICKED(IDC_sendj1939msgbtn, &CTestAppMFCDlg::OnBnClickedsendj1939msgbtn)
+	ON_BN_CLICKED(IDC_SETJ1708FILTERBTN, &CTestAppMFCDlg::OnBnClickedSetj1708filterbtn)
 END_MESSAGE_MAP()
 
 
@@ -317,6 +318,11 @@ void CTestAppMFCDlg::rp1210SendCommand(short nCommandNumber, short nClientID) {
 		fpchMessage[12] = 0x00;
 		msgLen = 12;
 	}
+	
+	if (nCommandNumber == 7) {
+		fpchMessage[0] = 'T';
+		msgLen = 1;
+	}
 
 	short nRet;
 	nRet = cfunc(nCommandNumber, nClientID, fpchMessage, msgLen);
@@ -380,12 +386,16 @@ void CTestAppMFCDlg::rp1210SendCustomMsg(short comClient, short nBlockOnSend, ch
 void CTestAppMFCDlg::rp1210SendMessage(short comClient, short nBlockOnSend) {		
 	char far fpchMessage[128];
 	//char far* fpchMessage = "1212233223233232144324322341234123443214324321";
-	fpchMessage[0] = 0x01;
-	fpchMessage[1] = 0x41;
-	fpchMessage[2] = 0x42;
-	fpchMessage[3] = 0x43;
-	fpchMessage[4] = 0x44;
-	fpchMessage[20] = 0x5a;
+	fpchMessage[0] = 1;
+	fpchMessage[1] = 'T'; //mid code 0
+	fpchMessage[2] = 'A'; 
+	fpchMessage[3] = 'B';
+	fpchMessage[4] = 'C';
+	fpchMessage[5] = 'D';
+	fpchMessage[6] = 'E';
+	fpchMessage[7] = 'F';
+	fpchMessage[8] = 'G';
+	fpchMessage[20] = 'Z';
 	rp1210SendCustomMsg(comClient, nBlockOnSend, fpchMessage, 21);
 }
 
@@ -436,7 +446,7 @@ void CTestAppMFCDlg::OnBnClickedButton4()
 {
 	char far* fpchProtocol = "J1708";
 	rp1210ClientConnect(3, fpchProtocol, lastCom3Client);
-	rp1210SendCommand(3, lastCom3Client); //set all filter states to pass
+	rp1210SendCommand(3, lastCom3Client); //set all filter states to pass	
 }
 void CTestAppMFCDlg::OnBnClickedCreatecon4Btn()
 {
@@ -472,14 +482,33 @@ void CTestAppMFCDlg::OnBnClickedButton7()
 //DISCONNECT THREAD
 static DWORD __stdcall DisconnectFunc(void * args) {
 	::Sleep(1000);
+	typedef short (WINAPI* fp_RP1210_GetErrorMsg) (
+		short ErrorCode,
+		char far* fpchDescription
+		);	
+	fp_RP1210_GetErrorMsg efunc = (fp_RP1210_GetErrorMsg) GetProcAddress(mod, "RP1210_GetErrorMsg");
+
 	typedef short (WINAPI* fp_RP1210_ClientDisconnect) (
 		short nClientID
 		);
 	fp_RP1210_ClientDisconnect cfunc = (fp_RP1210_ClientDisconnect) GetProcAddress(mod, "RP1210_ClientDisconnect");
 	
 	for (short i = 0; i < 128; i++) {
-		short errcode = cfunc(i);
+		short nRet = cfunc(i);
+		if (nRet < 0) {
+			char pchBuf[256];
+			char far fpchDescription[80];
+
+			if (!efunc(-nRet, fpchDescription))
+				sprintf(pchBuf, "RdErr#: %d. %s", nRet, fpchDescription);
+			else
+				sprintf(pchBuf, "RdErr#: %d. No description available.", nRet);	
+
+			CString c(pchBuf);			
+		}
 	}	
+
+
 	return 0;
 }
 
@@ -524,4 +553,9 @@ void CTestAppMFCDlg::OnBnClickedsendj1939msgbtn()
 		"\x01" "\xFF" "\xFF" "\xFF" "\xFF";
 	short msgLen = 14;
 	rp1210SendCustomMsg(lastCom3Client, 1, msg, msgLen);
+}
+
+void CTestAppMFCDlg::OnBnClickedSetj1708filterbtn()
+{
+	rp1210SendCommand(7, lastCom3Client);
 }
