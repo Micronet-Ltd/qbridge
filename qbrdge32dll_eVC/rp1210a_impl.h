@@ -134,6 +134,9 @@ public:
 		return 0;
 	}
 	int GetReturnCode(short isNotify, int transId) {
+		if (connType == Conn_Invalid) {
+			return ERR_INVALID_CLIENT_ID;
+		}
 		for (list<Transaction>::iterator it = transactions.begin(); 
 			it != transactions.end(); it++) 
 		{
@@ -206,7 +209,7 @@ public:
 
 	int GetReadMsg(char *buff, int buffLen, int &msgLen) {
 		if (GetConnectionType() == Conn_Invalid) {
-			return ERR_CLIENT_DISCONNECTED;
+			return ERR_INVALID_CLIENT_ID;
 		}
 		if (recvMsgQueue.size() == 0) {
 			return ERR_RECV_OPERATION_TIMEOUT;
