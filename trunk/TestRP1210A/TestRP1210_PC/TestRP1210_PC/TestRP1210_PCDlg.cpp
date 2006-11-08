@@ -68,6 +68,7 @@ BEGIN_MESSAGE_MAP(CTestRP1210_PCDlg, CDialog)
 	ON_WM_QUERYDRAGICON()
 	//}}AFX_MSG_MAP
 	ON_BN_CLICKED(CTRL_TEST1, &CTestRP1210_PCDlg::OnBnClickedTest1)
+	ON_BN_CLICKED(CTRL_BTN2, &CTestRP1210_PCDlg::OnBnClickedBtn2)
 END_MESSAGE_MAP()
 
 
@@ -202,4 +203,12 @@ void CTestRP1210_PCDlg::OnBnClickedTest1()
 
 	isTesting = false;
 
+}
+
+/***************************************/
+/* CTestRP1210_PCDlg::OnBnClickedBtn2 */
+/*************************************/
+void CTestRP1210_PCDlg::OnBnClickedBtn2()
+{
+	TestRP1210::KillOrphans(dev, m_dev1.GetCurSel(), m_dev2.GetCurSel());	
 }

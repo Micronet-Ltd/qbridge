@@ -72,4 +72,8 @@
   <Target Name="AfterBuild">
   </Target>
   -->
+  <PropertyGroup>
+    <PostBuildEvent>copy $(TargetFileName) ..\..\..\..\TestRP1210A\TestRP1210_PC\Debug\
+copy $(TargetFileName) ..\..\..\..\TestRP1210A\TestRP1210_PC\Release\</PostBuildEvent>
+  </PropertyGroup>
 </Project>

@@ -17,7 +17,7 @@ public:
 	};
 
 	struct Devices {
-		Devices() : deviceID(0) {}
+		Devices() : deviceID(0), timeStampWeight(1) {}
 		CString dll;
 		CString deviceName;
 		CString deviceDesc;
@@ -28,6 +28,7 @@ public:
 		CString msgString;
 		CString errString;
 		int deviceID;
+		DWORD timeStampWeight;
 	};
 
 	static vector<CString> GetRP1210Implementations();

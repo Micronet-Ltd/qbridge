@@ -40,4 +40,6 @@ public:
 	CRichEditCtrl m_log;
 public:
 	afx_msg void OnBnClickedTest1();
+public:
+	afx_msg void OnBnClickedBtn2();
 };
