@@ -226,6 +226,11 @@ namespace qbrdge_driver_classlib
             }
         }
 
+        public static void FreeMsgId(int msgId)
+        {
+            msgIdAvail[msgId] = true;
+        }
+
         public static void RemovePort(SerialPortInfo sinfo)
         {
             Debug.WriteLine("RemovePort func");

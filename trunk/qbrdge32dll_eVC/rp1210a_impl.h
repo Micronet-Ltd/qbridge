@@ -81,9 +81,15 @@ public:
 		typedef list<Transaction>::iterator transIter;
 		list <transIter> toErase;
 		for (transIter it = transactions.begin(); it != transactions.end(); it++) {
-			Transaction &t = *it;
+			Transaction &t = *it;			
+			if (t.isNotify) {
+				// send freeMsgId	
+				char sendBuf[40];
+				int len = _snprintf(sendBuf, 40, "%d,freeMsgId;", t.transId);				
+				SendUDPPacket(inet_addr("127.0.0.1"), DRIVER_LISTEN_PORT, GetAssignPort(), sendBuf, len);
+			}
 			if (t.isNotify && hwnd != 0) {
-				_DbgTrace(_T("POST error client disconnect"));
+				_DbgTrace(_T("POST error client disconnect\n"));
 				::PostMessage(GetHwnd(), WM_RP1210_ERROR_MESSAGE, ERR_CLIENT_DISCONNECTED, t.transId+128);				
 				toErase.push_back(it);
 			}
@@ -157,12 +163,12 @@ public:
 					//send msg to hwnd
 					if (returnCode == 0) {
 						//Success in SendMessage		
-						_DbgTrace(_T("POST error client success tx"));				
+						_DbgTrace(_T("POST error client success tx\n"));				
 						::PostMessage(GetHwnd(), WM_RP1210_ERROR_MESSAGE, ERR_TXMESSAGE_STATUS, transId);						
 					}
 					else {
 						//Error in SendMessage
-						_DbgTrace(_T("POST error client txt"));
+						_DbgTrace(_T("POST error client txt\n"));
 						::PostMessage(GetHwnd(), WM_RP1210_ERROR_MESSAGE, ERR_TXMESSAGE_STATUS, transId+128);						
 					}
 					RemoveTransaction(isNotify, transId);
@@ -200,6 +206,12 @@ public:
 		for (transIter it = transactions.begin(); it != transactions.end(); it++) {
 			Transaction &t = *it;
 			if (t.transId == transId && t.isNotify == isNotify) {
+				if (t.isNotify) {
+					// send freeMsgId	
+					char sendBuf[40];
+					int len = _snprintf(sendBuf, 40, "%d,freeMsgId;", t.transId);				
+					SendUDPPacket(inet_addr("127.0.0.1"), DRIVER_LISTEN_PORT, GetAssignPort(), sendBuf, len);
+				}
 				transactions.erase(it);
 				return;
 			}

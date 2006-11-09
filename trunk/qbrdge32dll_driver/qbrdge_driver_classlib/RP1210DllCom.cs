@@ -29,7 +29,8 @@ namespace qbrdge_driver_classlib
         private static Timer dllHelloTimer; //timer for sending hello packet periodically to dll
         private static Timer dllHelloReplyTimer; //timer for timing out if no response from dll
         const int dllHelloTimePeriod = 1000; //how often to send hello to dll
-        const int dllHelloReplyTimeLimit = 1000; //time limit for response from dll
+        const int dllHelloReplyTimeLimit = 20000; //time limit for response from dll
+        //const int dllHelloReplyTimeLimit = 1000; 
 
         const int maxClients = 128; //maximum number of clients allowed from dll's
 
@@ -328,6 +329,12 @@ namespace qbrdge_driver_classlib
                     numClients = clients.Count;
                 }
                 UdpSend(numClients.ToString(), iep);
+                return;
+            }
+            else if (cmd == "freeMsgId")
+            {
+                //<msgId>,freeMsgId;<blank>
+                QBSerial.FreeMsgId(intNum1);
                 return;
             }
             else if (cmd == "sendcommand")

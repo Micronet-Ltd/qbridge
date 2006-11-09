@@ -455,13 +455,15 @@ void CTestAppMFCDlg::OnBnClickedCreatecon4Btn()
 {
 	char far* fpchProtocol = "J1708";
 	rp1210ClientConnect(4, fpchProtocol, lastCom4Client);
-	//rp1210SendCommand(3, lastCom4Client); //set all filter states to pass
+	rp1210SendCommand(3, lastCom4Client); //set all filter states to pass
 }
 
 void CTestAppMFCDlg::OnBnClickedSendCom4btn()
 {
-	rp1210SendMessage(lastCom4Client, 1, 0);
-	rp1210SendMessage(lastCom4Client, 0, 1);
+	for (int i = 0; i < 400; i++) {
+		rp1210SendMessage(lastCom4Client, 1, 0);
+	}
+	//rp1210SendMessage(lastCom4Client, 0, 1);
 	return;
 	typedef short (WINAPI* fp_RP1210_ClientDisconnect) (
 		short nClientID
