@@ -51,12 +51,12 @@ public:
 	protected:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV support
 
-	void rp1210SendMessage(short comClient, short nBlockOnSend);
+	void rp1210SendMessage(short comClient, short nNotifyStatusOnTx, short nBlockOnSend);
 	void rp1210ReadMessage(short comClient, short nBlockOnRead);
 	void rp1210SendCommand(short nCommandNumber, short nClientID);
 	void rp1210GetHardwareStatus(short nClientID);
 	
-	void rp1210SendCustomMsg(short comClient, short nBlockOnSend, char far* fpchMsg, short msgSize);
+	void rp1210SendCustomMsg(short comClient, char far* fpchMsg, short msgSize, short nNotifyStatusOnTx, short nBlockOnSend);
 	
 public:
 // Implementation

@@ -226,7 +226,7 @@ void rp1210ClientConnect(short nDeviceID, char far* fpchProtocol, short &comClie
 
 	fp_RP1210_ClientConnect cfunc = (fp_RP1210_ClientConnect) GetProcAddress(mod, "RP1210_ClientConnect");
 		
-	HWND hwndClient = 0;
+	HWND hwndClient = ::GetForegroundWindow();
 	long lTxBufferSize = 8000;
 	long lRcvBufferSize = 8000;
 	short nIsAppPacketizingIncomingMsgs = 0;
@@ -346,7 +346,8 @@ void CTestAppMFCDlg::rp1210SendCommand(short nCommandNumber, short nClientID) {
 		m_editbox.SetWindowTextW(c);
 	}
 }
-void CTestAppMFCDlg::rp1210SendCustomMsg(short comClient, short nBlockOnSend, char far* fpchMsg, short msgSize) {
+void CTestAppMFCDlg::rp1210SendCustomMsg(short comClient, char far* fpchMsg, short msgSize, 
+										 short nNotifyStatusOnTx, short nBlockOnSend) {
 	typedef short (WINAPI* fp_RP1210_SendMessage) (
 		short nClientID,
 		char far* fpchClientMessage,
@@ -364,7 +365,7 @@ void CTestAppMFCDlg::rp1210SendCustomMsg(short comClient, short nBlockOnSend, ch
 	fp_RP1210_GetErrorMsg efunc = (fp_RP1210_GetErrorMsg) GetProcAddress(mod, "RP1210_GetErrorMsg");
 
 	short nRet;
-	nRet = cfunc(comClient, fpchMsg, msgSize, 0, nBlockOnSend);
+	nRet = cfunc(comClient, fpchMsg, msgSize, nNotifyStatusOnTx, nBlockOnSend);
 	if (nRet > 127) {
 		char pchBuf[256];
 		char fpchDescription[80];
@@ -384,7 +385,7 @@ void CTestAppMFCDlg::rp1210SendCustomMsg(short comClient, short nBlockOnSend, ch
 	}
 }
 
-void CTestAppMFCDlg::rp1210SendMessage(short comClient, short nBlockOnSend) {		
+void CTestAppMFCDlg::rp1210SendMessage(short comClient, short nNotifyStatusOnTx, short nBlockOnSend) {		
 	char far fpchMessage[128];
 	//char far* fpchMessage = "1212233223233232144324322341234123443214324321";
 	fpchMessage[0] = 1;
@@ -398,7 +399,7 @@ void CTestAppMFCDlg::rp1210SendMessage(short comClient, short nBlockOnSend) {
 	fpchMessage[7] = 'F';
 	fpchMessage[8] = 'G';
 	fpchMessage[20] = 'Z';
-	rp1210SendCustomMsg(comClient, nBlockOnSend, fpchMessage, 21);
+	rp1210SendCustomMsg(comClient, fpchMessage, 21, nNotifyStatusOnTx, nBlockOnSend);
 }
 
 void CTestAppMFCDlg::rp1210ReadMessage(short comClient, short nBlockOnRead) {	
@@ -454,21 +455,28 @@ void CTestAppMFCDlg::OnBnClickedCreatecon4Btn()
 {
 	char far* fpchProtocol = "J1708";
 	rp1210ClientConnect(4, fpchProtocol, lastCom4Client);
-	rp1210SendCommand(3, lastCom4Client); //set all filter states to pass
+	//rp1210SendCommand(3, lastCom4Client); //set all filter states to pass
 }
 
 void CTestAppMFCDlg::OnBnClickedSendCom4btn()
 {
-	for (int i = 0; i < 6; i++) {
-		rp1210SendMessage(lastCom4Client, 1);
+	rp1210SendMessage(lastCom4Client, 1, 0);
+	rp1210SendMessage(lastCom4Client, 0, 1);
+	typedef short (WINAPI* fp_RP1210_ClientDisconnect) (
+		short nClientID
+		);
+	fp_RP1210_ClientDisconnect cfunc = (fp_RP1210_ClientDisconnect) GetProcAddress(mod, "RP1210_ClientDisconnect");
+	
+	for (short i = 0; i < 128; i++) {
+		short errcode = cfunc(i);
 	}
 }
 void CTestAppMFCDlg::OnBnClickedButton6()
 {
-	rp1210SendMessage(lastCom3Client, 1);
-	rp1210SendMessage(lastCom3Client, 1);
-	rp1210SendMessage(lastCom3Client, 1);
-	rp1210SendMessage(lastCom3Client, 1);
+	rp1210SendMessage(lastCom3Client, 0, 1);
+	rp1210SendMessage(lastCom3Client, 0, 1);
+	rp1210SendMessage(lastCom3Client, 0, 1);
+	rp1210SendMessage(lastCom3Client, 0, 1);
 }
 
 void CTestAppMFCDlg::OnBnClickedReadcom4Btn()
@@ -554,7 +562,7 @@ void CTestAppMFCDlg::OnBnClickedsendj1939msgbtn()
 	char far* msg = "\x03" "\xF0" "\x00" "\x03" "\x06" "\x00" "\xFF" "\xFE" "\x26"
 		"\x01" "\xFF" "\xFF" "\xFF" "\xFF";
 	short msgLen = 14;
-	rp1210SendCustomMsg(lastCom3Client, 1, msg, msgLen);
+	rp1210SendCustomMsg(lastCom3Client, msg, msgLen, 0, 1);
 }
 
 void CTestAppMFCDlg::OnBnClickedSetj1708filterbtn()

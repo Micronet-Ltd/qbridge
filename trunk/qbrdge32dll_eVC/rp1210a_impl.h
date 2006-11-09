@@ -83,6 +83,7 @@ public:
 		for (transIter it = transactions.begin(); it != transactions.end(); it++) {
 			Transaction &t = *it;
 			if (t.isNotify && hwnd != 0) {
+				_DbgTrace(_T("POST error client disconnect"));
 				::PostMessage(GetHwnd(), WM_RP1210_ERROR_MESSAGE, ERR_CLIENT_DISCONNECTED, t.transId+128);				
 				toErase.push_back(it);
 			}
@@ -155,16 +156,14 @@ public:
 				if (isNotify) {
 					//send msg to hwnd
 					if (returnCode == 0) {
-						_DbgTrace(_T("before in send success hwnd msg\n"));
-						//Success in SendMessage
-						::PostMessage(GetHwnd(), WM_RP1210_ERROR_MESSAGE, ERR_TXMESSAGE_STATUS, transId);
-						_DbgTrace(_T("after in send success hwnd msg\n"));
+						//Success in SendMessage		
+						_DbgTrace(_T("POST error client success tx"));				
+						::PostMessage(GetHwnd(), WM_RP1210_ERROR_MESSAGE, ERR_TXMESSAGE_STATUS, transId);						
 					}
 					else {
 						//Error in SendMessage
-						_DbgTrace(_T("before in send err hwnd msg\n"));
-						::PostMessage(GetHwnd(), WM_RP1210_ERROR_MESSAGE, ERR_TXMESSAGE_STATUS, transId+128);
-						_DbgTrace(_T("after in send err hwnd msg\n"));
+						_DbgTrace(_T("POST error client txt"));
+						::PostMessage(GetHwnd(), WM_RP1210_ERROR_MESSAGE, ERR_TXMESSAGE_STATUS, transId+128);						
 					}
 					RemoveTransaction(isNotify, transId);
 					result = true;
@@ -233,6 +232,7 @@ public:
 		}
 		else if (hwnd != 0) {
 			// send notification
+			_DbgTrace(_T("POST notify\n"));	
 			::PostMessage(GetHwnd(), WM_RP1210_MESSAGE_MESSAGE, 0, 0);
 		}
 	}
