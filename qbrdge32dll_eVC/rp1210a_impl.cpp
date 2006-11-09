@@ -150,7 +150,7 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 		_DbgTrace(_T("before query driver app send\n"));
 		if (QueryDriverApp(queryType, GetAssignPort(), cid, fpchClientMessage, nMessageSize, 0) == true) {
 			int msgId = cid;
-			if (nBlockOnSend || nNotifyStatusOnTx) {
+			if (nBlockOnSend || (nNotifyStatusOnTx && cid != 0)) {
 				connections[nClientID].AddTransaction(nNotifyStatusOnTx, msgId);
 			}
 			if (nBlockOnSend) {
@@ -445,7 +445,8 @@ bool QueryDriverApp(PACKET_TYPE queryId, int localPort,
 	const int BufLen = 1024;
 	char RecvBuf[BufLen];
 	int timeoutTime = 5000; // 5 sec
-	int retryLimit = 2;
+	//int retryLimit = 2;
+	int retryLimit = 12;
 	int retryNum = 0;	
 	//for select func:
 	fd_set fdReadSet;
