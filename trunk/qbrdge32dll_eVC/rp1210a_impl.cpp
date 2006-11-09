@@ -329,14 +329,22 @@ bool ConnectToDriverApp(){
 	if(WAIT_OBJECT_0 == ::WaitForSingleObject(hMutex, 10000))
 	{
 		int dmy;
+		bool appon = false;
 		if (QueryDriverApp(QUERY_NEWPORT_PKT, DRIVER_LISTEN_PORT-1, dmy, NULL, 0, 0) == false) {
 			if (OpenDriverApp() == false) {
 				_DbgTrace(_T("Error opening driver app.\n"));
 				::ReleaseMutex(hMutex);
 				return false;
 			}
-			::Sleep(750);
-			if (QueryDriverApp(QUERY_NEWPORT_PKT, DRIVER_LISTEN_PORT-1, dmy, NULL, 0, 0) == false) {
+			for (int i = 0; i < 6; i++)
+			{
+				::Sleep(750);
+				if (QueryDriverApp(QUERY_NEWPORT_PKT, DRIVER_LISTEN_PORT-1, dmy, NULL, 0, 0) == true) {
+					appon = true;
+					break;
+				}
+			}
+			if (appon == false) {
 				_DbgTrace(_T("Error retrieving assigned port from driver application\n"));
 				::ReleaseMutex(hMutex);
 				return false;
