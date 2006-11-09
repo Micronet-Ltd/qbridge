@@ -629,41 +629,7 @@ namespace qbrdge_driver_classlib
                 //received j1708 data
                 if (pktId != lastRecvPktId)
                 {
-                    //add timestamp to j1708 packet
-                    byte[] tstamp = Support.Int32ToBytes(Environment.TickCount, true);
-                    byte[] ptmp = new byte[4 + pktData.Length];
-                    tstamp.CopyTo(ptmp, 0);
-                    pktData.CopyTo(ptmp, 4);
-                    pktData = ptmp;
-
-                    for (int i = 0; i < ClientIDManager.clientIds.Length; i++)
-                    {
-                        ClientIDManager.ClientIDInfo clientInfo = ClientIDManager.clientIds[i];
-                        if (clientInfo.available == false &&
-                            clientInfo.serialInfo.com.PortName == portInfo.com.PortName &&
-                            clientInfo.allowReceive)
-                        {
-                            byte mid = pktData[4];
-                            if (clientInfo.J1708MIDFilter == false)
-                            {
-                                Support.SendClientDataPacket(UDPReplyType.readmessage,
-                                    i, pktData);
-                            }
-                            else
-                            {
-                                for (int j = 0; j < clientInfo.J1708MIDList.Length; j++)
-                                {
-                                    if (mid == clientInfo.J1708MIDList[j])
-                                    {
-                                        //if client is registered to recieving port then send message
-                                        Support.SendClientDataPacket(UDPReplyType.readmessage,
-                                            i, pktData);
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    J1708PktRecv(portInfo.com.PortName, pktData, -1);
                     SendACKPacket(PacketAckCodes.PKT_ACK_OK, pktId, portInfo.com);
                 }
                 else
@@ -865,6 +831,46 @@ namespace qbrdge_driver_classlib
             }
             return;
         }
+
+        public static void J1708PktRecv(string portName, byte[] pktData, int ignoreClientId)
+        {
+            //add timestamp to j1708 packet
+            byte[] tstamp = Support.Int32ToBytes(Environment.TickCount, true);
+            byte[] ptmp = new byte[4 + pktData.Length];
+            tstamp.CopyTo(ptmp, 0);
+            pktData.CopyTo(ptmp, 4);
+            pktData = ptmp;
+
+            for (int i = 0; i < ClientIDManager.clientIds.Length; i++)
+            {
+                ClientIDManager.ClientIDInfo clientInfo = ClientIDManager.clientIds[i];
+                if (clientInfo.available == false &&
+                    clientInfo.serialInfo.com.PortName == portName &&
+                    clientInfo.allowReceive &&
+                    i != ignoreClientId)
+                {
+                    byte mid = pktData[4];
+                    if (clientInfo.J1708MIDFilter == false)
+                    {
+                        Support.SendClientDataPacket(UDPReplyType.readmessage,
+                            i, pktData);
+                    }
+                    else
+                    {
+                        for (int j = 0; j < clientInfo.J1708MIDList.Length; j++)
+                        {
+                            if (mid == clientInfo.J1708MIDList[j])
+                            {
+                                //if client is registered to recieving port then send message
+                                Support.SendClientDataPacket(UDPReplyType.readmessage,
+                                    i, pktData);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
     
 
         private static void SendACKPacket(PacketAckCodes ackCode, byte pktId, SerialPort com)
@@ -984,6 +990,10 @@ namespace qbrdge_driver_classlib
             qbt.numRetries = 2;
             qbt.timePeriod = Support.ackReplyLimit;
             ClientIdToSerialInfo(clientId).QBTransactionNew.Add(qbt);
+
+            //send message to all clients on com, except sender
+            ClientIDManager.ClientIDInfo sendClientInfo = ClientIDManager.clientIds[clientId];
+            J1708PktRecv(sendClientInfo.serialInfo.com.PortName, Support.StringToByteArray(j1708msg), clientId);
             return msgId;
         }
 
