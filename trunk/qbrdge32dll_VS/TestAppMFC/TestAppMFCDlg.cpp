@@ -387,6 +387,7 @@ void CTestAppMFCDlg::rp1210SendMessage(short comClient, short nBlockOnSend) {
 	char far fpchMessage[128];
 	//char far* fpchMessage = "1212233223233232144324322341234123443214324321";
 	fpchMessage[0] = 1;
+	fpchMessage[0] = 0x53; //invalid priority
 	fpchMessage[1] = 'T'; //mid code 0
 	fpchMessage[2] = 'A'; 
 	fpchMessage[3] = 'B';
