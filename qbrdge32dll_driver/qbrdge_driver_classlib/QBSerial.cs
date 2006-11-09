@@ -587,15 +587,13 @@ namespace qbrdge_driver_classlib
                 }
             }
             else if (cmdType == PacketCmdCodes.PKT_CMD_ACK &&
-                ackCode == PacketAckCodes.PKT_ACK_UNABLE_TO_PROCESS &&
+                (ackCode == PacketAckCodes.PKT_ACK_UNABLE_TO_PROCESS ||
+                ackCode == PacketAckCodes.PKT_ACK_INVALID_DATA) &&
                 qbt != null && qbtIdx > -1)
             {
-                //error reply from j1708 packet raw
-                if (qbt.cmdType == PacketCmdCodes.PKT_CMD_RAW_J1708)
-                {
-                    Support.SendClientDataPacket(UDPReplyType.sendJ1708confirmfail, qbt);
-                    portInfo.QBTransactionSent.RemoveAt(qbtIdx);
-                }
+                //error reply from j1708 packet
+                Support.SendClientDataPacket(UDPReplyType.sendJ1708confirmfail, qbt);
+                portInfo.QBTransactionSent.RemoveAt(qbtIdx);
             }
             else if (cmdType == PacketCmdCodes.PKT_CMD_J1708_CONFIRM &&
                 pktData.Length == 5)
