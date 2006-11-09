@@ -83,9 +83,19 @@ namespace qbrdge_driver_classlib
 
         public static void SendClientDataPacket(string pktType, QBTransaction qbt)
         {
+            uint notify;
+            if (qbt.isNotify)
+            {
+                notify = 1;
+            }
+            else
+            {
+                notify = 0;
+            }
+
             //<pkt type>, <client id>, <trans id>, <is notify, 0 or 1>, <data len>;<data>
             ClientIDManager.ClientUDPSend(pktType + "," + qbt.clientId.ToString() + "," +
-                qbt.msgId.ToString(), qbt.clientId);
+                qbt.msgId.ToString() + "," + notify.ToString(), qbt.clientId);
         }
 
         public static void SendClientDataPacket(string pktType, int clientId, byte[] pktData)
