@@ -462,6 +462,7 @@ void CTestAppMFCDlg::OnBnClickedSendCom4btn()
 {
 	rp1210SendMessage(lastCom4Client, 1, 0);
 	rp1210SendMessage(lastCom4Client, 0, 1);
+	return;
 	typedef short (WINAPI* fp_RP1210_ClientDisconnect) (
 		short nClientID
 		);
