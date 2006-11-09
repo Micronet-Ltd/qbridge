@@ -83,6 +83,7 @@ BEGIN_MESSAGE_MAP(CTestAppMFCDlg, CDialog)
 	ON_BN_CLICKED(IDC_BUTTON9, &CTestAppMFCDlg::OnBnClickedButton9)
 	ON_BN_CLICKED(IDC_sendj1939msgbtn, &CTestAppMFCDlg::OnBnClickedsendj1939msgbtn)
 	ON_BN_CLICKED(IDC_SETJ1708FILTERBTN, &CTestAppMFCDlg::OnBnClickedSetj1708filterbtn)
+	ON_BN_CLICKED(IDC_READCOM4_BTN2, &CTestAppMFCDlg::OnBnClickedReadcom4Btn2)
 END_MESSAGE_MAP()
 
 
@@ -387,7 +388,7 @@ void CTestAppMFCDlg::rp1210SendMessage(short comClient, short nBlockOnSend) {
 	char far fpchMessage[128];
 	//char far* fpchMessage = "1212233223233232144324322341234123443214324321";
 	fpchMessage[0] = 1;
-	fpchMessage[0] = 0x53; //invalid priority
+	//fpchMessage[0] = 0x53; //invalid priority
 	fpchMessage[1] = 'T'; //mid code 0
 	fpchMessage[2] = 'A'; 
 	fpchMessage[3] = 'B';
@@ -560,3 +561,9 @@ void CTestAppMFCDlg::OnBnClickedSetj1708filterbtn()
 {
 	rp1210SendCommand(7, lastCom3Client);
 }
+
+void CTestAppMFCDlg::OnBnClickedReadcom4Btn2()
+{
+	rp1210ReadMessage(0, 0);
+}
+

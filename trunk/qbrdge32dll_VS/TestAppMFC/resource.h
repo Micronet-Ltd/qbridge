@@ -20,12 +20,13 @@
 #define IDC_READCOM4_BTN                1010
 #define IDC_BUTTON9                     1011
 #define IDC_sendj1939msgbtn             1012
-#define IDC_BUTTON10                    1013
 #define IDC_SETJ1708FILTERBTN           1013
+#define IDC_CREATECON4_BTN2             1014
 #define IDC_BUTTON8                     1015
 #define IDC_SENDRESETCMD_BTN            1016
 #define IDC_SENDRESETCMD_BTN2           1017
 #define IDC_SENDRESETCMD_BTN3           1018
+#define IDC_READCOM4_BTN2               1019
 
 // Next default values for new objects
 // 
