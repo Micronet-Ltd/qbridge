@@ -998,6 +998,7 @@ namespace qbrdge_driver_classlib
 
             //send message to all clients on com, except sender
             ClientIDManager.ClientIDInfo sendClientInfo = ClientIDManager.clientIds[clientId];
+            j1708msg.Remove(0, 1);
             J1708PktRecv(sendClientInfo.serialInfo.com.PortName, Support.StringToByteArray(j1708msg), clientId);
             return msgId;
         }

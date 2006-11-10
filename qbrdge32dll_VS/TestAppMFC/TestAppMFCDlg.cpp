@@ -389,7 +389,7 @@ void CTestAppMFCDlg::rp1210SendMessage(short comClient, short nNotifyStatusOnTx,
 	char far fpchMessage[128];
 	//char far* fpchMessage = "1212233223233232144324322341234123443214324321";
 	fpchMessage[0] = 1;
-	//fpchMessage[0] = 0x53; //invalid priority
+	fpchMessage[0] = 0x53; //invalid priority
 	fpchMessage[1] = 'T'; //mid code 0
 	fpchMessage[2] = 'A'; 
 	fpchMessage[3] = 'B';
@@ -399,7 +399,8 @@ void CTestAppMFCDlg::rp1210SendMessage(short comClient, short nNotifyStatusOnTx,
 	fpchMessage[7] = 'F';
 	fpchMessage[8] = 'G';
 	fpchMessage[20] = 'Z';
-	rp1210SendCustomMsg(comClient, fpchMessage, 21, nNotifyStatusOnTx, nBlockOnSend);
+	//rp1210SendCustomMsg(comClient, fpchMessage, 21, nNotifyStatusOnTx, nBlockOnSend);
+	rp1210SendCustomMsg(comClient, fpchMessage, 0, nNotifyStatusOnTx, nBlockOnSend);
 }
 
 void CTestAppMFCDlg::rp1210ReadMessage(short comClient, short nBlockOnRead) {	
@@ -477,9 +478,9 @@ void CTestAppMFCDlg::OnBnClickedSendCom4btn()
 void CTestAppMFCDlg::OnBnClickedButton6()
 {
 	rp1210SendMessage(lastCom3Client, 0, 1);
-	rp1210SendMessage(lastCom3Client, 0, 1);
-	rp1210SendMessage(lastCom3Client, 0, 1);
-	rp1210SendMessage(lastCom3Client, 0, 1);
+	//rp1210SendMessage(lastCom3Client, 0, 1);
+	//rp1210SendMessage(lastCom3Client, 0, 1);
+	//rp1210SendMessage(lastCom3Client, 0, 1);
 }
 
 void CTestAppMFCDlg::OnBnClickedReadcom4Btn()
