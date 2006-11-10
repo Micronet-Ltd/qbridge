@@ -280,7 +280,7 @@ void ToAnsi(const TCHAR *unicodeBuf, char *buf, int size) {
 /*************/
 void _DbgTrace(_TCHAR *formatStr, ...)
 {
-	return;
+	//return;
 #ifdef UDP_DEBUG_SEND
 	static bool newLine = true;
 	_TCHAR buf[2048];
