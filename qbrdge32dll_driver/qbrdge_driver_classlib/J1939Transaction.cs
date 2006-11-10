@@ -12,6 +12,7 @@ namespace qbrdge_driver_classlib
 
         private bool useRTSCTS = false;
         private bool useBAM = false;
+        private bool isDone = false;
 
         public void UpdateJ1939Data(string data) {
             useRTSCTS = false;
@@ -44,6 +45,20 @@ namespace qbrdge_driver_classlib
         public byte[] GetCANPacket() {
             byte[] b = new byte[0];
             return b;
+        }
+
+        //call this function to notify class that last
+        //transmit was successful
+        public void TransmitConfirm() {
+            if (useRTSCTS == false && useBAM == false)
+            {
+                isDone = true;
+            }
+        }
+
+        public bool IsDone()
+        {
+            return isDone;
         }
     }
 }

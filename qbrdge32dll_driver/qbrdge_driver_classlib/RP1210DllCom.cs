@@ -287,9 +287,7 @@ namespace qbrdge_driver_classlib
             {
                 // add to blocking queue
                 string j1708msg = sdata.Substring(idx2 + 1);
-                Debug.WriteLine("BEFORE ADDSENDJ1708MSG ");
                 int blockID = QBSerial.AddSendJ1708Msg(intNum1, j1708msg, false);
-                Debug.WriteLine("AFTER BLOCKID: " + blockID.ToString());
                 UdpSend(blockID.ToString(), iep);
             }
             else if (cmd == "j1939msg")
@@ -376,6 +374,7 @@ namespace qbrdge_driver_classlib
                     qbt.timePeriod = Support.ackReplyLimit;
                     qbt.sendCmdType = RP1210SendCommandType.SC_RESET_DEVICE;
                     sinfo.QBTransactionNew.Add(qbt);
+                    Debug.WriteLine("RESET DEVICE COMMAND ADDED");
                 }
                 else if (cmdNum == (int)RP1210SendCommandType.SC_SET_ALL_FILTER_PASS)
                 {
@@ -401,8 +400,32 @@ namespace qbrdge_driver_classlib
                 else if (cmdNum == (int)RP1210SendCommandType.SC_SET_MSG_FILTER_J1708)
                 {
                     //Set Message Filtering for J1708/J1587
-                    ClientIDManager.clientIds[clientId].J1708MIDFilter = true;
-                    ClientIDManager.clientIds[clientId].J1708MIDList = Support.StringToByteArray(cmdData);
+                    if (ClientIDManager.clientIds[clientId].J1708MIDFilter == false)
+                    {
+                        ClientIDManager.clientIds[clientId].J1708MIDFilter = true;
+                        ClientIDManager.clientIds[clientId].J1708MIDList = Support.StringToByteArray(cmdData);
+                    }
+                    else
+                    {
+                        //add mid codes to midlist
+                        string newFilter = cmdData;
+                        string oldFilter = Support.ByteArrayToString(
+                            ClientIDManager.clientIds[clientId].J1708MIDList);
+                        for (int a = 0; a < oldFilter.Length; a++) 
+                        {
+                            bool dup = false;
+                            for (int b = 0; b < newFilter.Length; b++) 
+                            {
+                                if (newFilter[b] == oldFilter[a]) {
+                                    dup = true;
+                                }
+                            }
+                            if (dup == false) {
+                                newFilter.Insert(0, oldFilter.Substring(a, 1));
+                            }
+                        }
+                        ClientIDManager.clientIds[clientId].J1708MIDList = Support.StringToByteArray(newFilter);
+                    }
                     UdpSend("0", iep);
                 }
                 else if (cmdNum == (int)RP1210SendCommandType.SC_GENERIC_DRIVER_CMD)

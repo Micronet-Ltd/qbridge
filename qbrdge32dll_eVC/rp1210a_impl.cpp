@@ -123,8 +123,8 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 
 	ConnectionType ctype = connections[nClientID].GetConnectionType();
 	if (ctype == Conn_J1708 || ctype == Conn_J1939) {
-		//J1708
-		if (nMessageSize > 21) {
+		//J1708, J1939
+		if (nMessageSize > 21 && ctype == Conn_J1708) {
 			return ERR_MESSAGE_TOO_LONG;
 		}
 
