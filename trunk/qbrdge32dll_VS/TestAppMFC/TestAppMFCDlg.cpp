@@ -84,6 +84,7 @@ BEGIN_MESSAGE_MAP(CTestAppMFCDlg, CDialog)
 	ON_BN_CLICKED(IDC_sendj1939msgbtn, &CTestAppMFCDlg::OnBnClickedsendj1939msgbtn)
 	ON_BN_CLICKED(IDC_SETJ1708FILTERBTN, &CTestAppMFCDlg::OnBnClickedSetj1708filterbtn)
 	ON_BN_CLICKED(IDC_READCOM4_BTN2, &CTestAppMFCDlg::OnBnClickedReadcom4Btn2)
+	ON_BN_CLICKED(IDC_BUTTON10, &CTestAppMFCDlg::OnBnClickedButton10)
 END_MESSAGE_MAP()
 
 
@@ -389,7 +390,7 @@ void CTestAppMFCDlg::rp1210SendMessage(short comClient, short nNotifyStatusOnTx,
 	char far fpchMessage[128];
 	//char far* fpchMessage = "1212233223233232144324322341234123443214324321";
 	fpchMessage[0] = 1;
-	fpchMessage[0] = 0x53; //invalid priority
+	//fpchMessage[0] = 0x53; //invalid priority
 	fpchMessage[1] = 'T'; //mid code 0
 	fpchMessage[2] = 'A'; 
 	fpchMessage[3] = 'B';
@@ -399,8 +400,8 @@ void CTestAppMFCDlg::rp1210SendMessage(short comClient, short nNotifyStatusOnTx,
 	fpchMessage[7] = 'F';
 	fpchMessage[8] = 'G';
 	fpchMessage[20] = 'Z';
-	//rp1210SendCustomMsg(comClient, fpchMessage, 21, nNotifyStatusOnTx, nBlockOnSend);
-	rp1210SendCustomMsg(comClient, fpchMessage, 0, nNotifyStatusOnTx, nBlockOnSend);
+	rp1210SendCustomMsg(comClient, fpchMessage, 21, nNotifyStatusOnTx, nBlockOnSend);
+	//rp1210SendCustomMsg(comClient, fpchMessage, 0, nNotifyStatusOnTx, nBlockOnSend);
 }
 
 void CTestAppMFCDlg::rp1210ReadMessage(short comClient, short nBlockOnRead) {	
@@ -526,6 +527,32 @@ static DWORD __stdcall DisconnectFunc(void * args) {
 	return 0;
 }
 
+void CTestAppMFCDlg::rp1210Disconnect(short nClient) {
+	typedef short (WINAPI* fp_RP1210_GetErrorMsg) (
+		short ErrorCode,
+		char far* fpchDescription
+		);	
+	fp_RP1210_GetErrorMsg efunc = (fp_RP1210_GetErrorMsg) GetProcAddress(mod, "RP1210_GetErrorMsg");
+
+	typedef short (WINAPI* fp_RP1210_ClientDisconnect) (
+		short nClientID
+		);
+	fp_RP1210_ClientDisconnect cfunc = (fp_RP1210_ClientDisconnect) GetProcAddress(mod, "RP1210_ClientDisconnect");
+	
+		short nRet = cfunc(nClient);
+		if (nRet < 0) {
+			char pchBuf[256];
+			char far fpchDescription[80];
+
+			if (!efunc(-nRet, fpchDescription))
+				sprintf(pchBuf, "RdErr#: %d. %s", nRet, fpchDescription);
+			else
+				sprintf(pchBuf, "RdErr#: %d. No description available.", nRet);	
+
+			CString c(pchBuf);			
+		}
+}
+
 Thread dThread;
 
 //READ COM3 BLOCK
@@ -579,3 +606,14 @@ void CTestAppMFCDlg::OnBnClickedReadcom4Btn2()
 	rp1210ReadMessage(0, 0);
 }
 
+
+void CTestAppMFCDlg::OnBnClickedButton10()
+{
+	short cid;
+	rp1210ClientConnect(3, "J1708", cid);
+	rp1210SendCustomMsg(cid, "falfdkjslajijel", 15, 0, 1);
+	rp1210Disconnect(cid);
+	rp1210ClientConnect(3, "J1708", cid);
+	rp1210SendCustomMsg(cid, "", 0, 0, 1);
+	rp1210Disconnect(cid);
+}
