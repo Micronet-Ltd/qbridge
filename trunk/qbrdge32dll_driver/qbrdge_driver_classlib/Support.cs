@@ -122,6 +122,8 @@ namespace qbrdge_driver_classlib
         public const string sendJ1708confirmfail = "sendJ1708confirmfail";
         public const string sendJ1708success = "sendJ1708success";
         public const string readmessage = "readmessage";
+        public const string sendJ1939confirmfail = "sendJ1939confirmfail";
+        public const string sendJ1939success = "sendJ1939success";
     }
 
     enum PacketRecvType
@@ -148,7 +150,7 @@ namespace qbrdge_driver_classlib
         PKT_CMD_SEND_J1708 = 0x44,
         PKT_CMD_RECV_J1708 = 0x45,
         PKT_CMD_ENABLE_J1708_CONFIRM = 0x46,
-        PKT_CMD_J1708_CONFIRM = 0x47,
+        PKT_CMD_J1708_CAN_CONFIRM = 0x47,
         PKT_CMD_UPGRADE_FIRMWARE = 0x48,
         PKT_CMD_RESET_QBRIDGE = 0x49,
         PKT_CMD_INFO_REQ = 0x2A,

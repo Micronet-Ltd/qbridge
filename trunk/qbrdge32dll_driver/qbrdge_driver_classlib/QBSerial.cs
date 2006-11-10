@@ -600,30 +600,54 @@ namespace qbrdge_driver_classlib
                 Support.SendClientDataPacket(UDPReplyType.sendJ1708confirmfail, qbt);
                 portInfo.QBTransactionSent.RemoveAt(qbtIdx);
             }
-            else if (cmdType == PacketCmdCodes.PKT_CMD_J1708_CONFIRM &&
+            else if (cmdType == PacketCmdCodes.PKT_CMD_J1708_CAN_CONFIRM &&
                 pktData.Length == 5)
             {
-                //reply from sendJ1708 pkt
-                byte[] j1708pkIdB = new byte[4];
-                Array.Copy(pktData, 1, j1708pkIdB, 0, 4);
-                int j1708pktId = Support.BytesToInt32(j1708pkIdB);
-                Debug.WriteLine("pkt J1708 confirm: " + j1708pktId.ToString());
+                //reply from sendJ1708, or CAN pkt
+                byte[] pktIdB = new byte[4];
+                Array.Copy(pktData, 1, pktIdB, 0, 4);
+                int pktID = Support.BytesToInt32(pktIdB);
+                Debug.WriteLine("pkt J1708/CAN confirm: " + pktID.ToString());
                 for (int i = 0; i < portInfo.QBTransactionSent.Count; i++)
                 {
                     QBTransaction qt = portInfo.QBTransactionSent[i];
-                    if (qt.confirmId == j1708pktId)
+                    if (qt.confirmId == pktID)
                     {
                         qt.StopTimer();
-                        if (pktData[0] == 0x00)
-                        { //j1708 transmit confirm failed, unable to be transmitted, fail
-                            Support.SendClientDataPacket(UDPReplyType.sendJ1708confirmfail, qt);
+                        if (qt.isJ1939)
+                        {
+                            if (pktData[0] == 0x00)
+                            { //CAN transmit confirm failed, unable to be transmitted, fail
+                                Support.SendClientDataPacket(UDPReplyType.sendJ1939confirmfail, qt);
+                                portInfo.QBTransactionSent.RemoveAt(i);
+                                break;
+                            }
+                            else if (pktData[0] == 0x01)
+                            { //CAN transmit confirm, success
+                                qt.j1939transaction.TransmitConfirm();
+                                if (qt.j1939transaction.IsDone())
+                                {
+                                    Support.SendClientDataPacket(UDPReplyType.sendJ1939success, qt);
+                                }
+                                else
+                                {   //get next j1939 packet, and send... or wait..
+
+                                }
+                            }
                         }
-                        else if (pktData[0] == 0x01)
-                        { //j1708 transmit confirm, success
-                            Support.SendClientDataPacket(UDPReplyType.sendJ1708success, qt);
+                        else
+                        {
+                            if (pktData[0] == 0x00)
+                            { //j1708 transmit confirm failed, unable to be transmitted, fail
+                                Support.SendClientDataPacket(UDPReplyType.sendJ1708confirmfail, qt);
+                            }
+                            else if (pktData[0] == 0x01)
+                            { //j1708 transmit confirm, success
+                                Support.SendClientDataPacket(UDPReplyType.sendJ1708success, qt);
+                            }
+                            portInfo.QBTransactionSent.RemoveAt(i);
+                            break;
                         }
-                        portInfo.QBTransactionSent.RemoveAt(i);
-                        break;
                     }
                 }
                 // send ACK ok
@@ -934,6 +958,14 @@ namespace qbrdge_driver_classlib
 
                     try
                     {
+                        Debug.Write("OUT DATA: ");
+                        for (int j = 0; j < qbt.lastSentPkt.Length; j++)
+                        {
+                            byte b = (byte)qbt.lastSentPkt[j];
+                            Debug.Write(b.ToString() + ",");
+                        }
+                        Debug.WriteLine("");
+
                         serialInfo.com.Write(qbt.lastSentPkt, 0, qbt.lastSentPkt.Length);
                         qbt.RestartTimer();
                         serialInfo.QBTransactionSent.Add(qbt);

@@ -567,7 +567,9 @@ void CTestAppMFCDlg::OnBnClickedButton8()
 
 void CTestAppMFCDlg::OnBnClickedSendresetcmdBtn()
 {
-	rp1210SendCommand(0, lastCom3Client);
+	short cid;
+	rp1210ClientConnect(3, "J1708", cid);
+	rp1210SendCommand(0, cid);
 }
 
 void CTestAppMFCDlg::OnBnClickedSendresetcmdBtn2()
