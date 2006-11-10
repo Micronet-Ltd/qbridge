@@ -21,7 +21,7 @@
 #define IDC_BUTTON9                     1011
 #define IDC_sendj1939msgbtn             1012
 #define IDC_SETJ1708FILTERBTN           1013
-#define IDC_CREATECON4_BTN2             1014
+#define IDC_BUTTON10                    1014
 #define IDC_BUTTON8                     1015
 #define IDC_SENDRESETCMD_BTN            1016
 #define IDC_SENDRESETCMD_BTN2           1017
@@ -34,7 +34,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        129
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1014
+#define _APS_NEXT_CONTROL_VALUE         1015
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

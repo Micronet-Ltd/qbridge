@@ -56,6 +56,8 @@ public:
 	void rp1210SendCommand(short nCommandNumber, short nClientID);
 	void rp1210GetHardwareStatus(short nClientID);
 	
+	void rp1210Disconnect(short nClient);
+	
 	void rp1210SendCustomMsg(short comClient, char far* fpchMsg, short msgSize, short nNotifyStatusOnTx, short nBlockOnSend);
 	
 public:
@@ -107,6 +109,8 @@ public:
 	afx_msg void OnBnClickedSetj1708filterbtn();
 public:
 	afx_msg void OnBnClickedReadcom4Btn2();
+public:
+	afx_msg void OnBnClickedButton10();
 };
 
 static DWORD __stdcall DisconnectFunc(void* args);

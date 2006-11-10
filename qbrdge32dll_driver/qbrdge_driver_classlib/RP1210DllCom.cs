@@ -287,7 +287,9 @@ namespace qbrdge_driver_classlib
             {
                 // add to blocking queue
                 string j1708msg = sdata.Substring(idx2 + 1);
+                Debug.WriteLine("BEFORE ADDSENDJ1708MSG ");
                 int blockID = QBSerial.AddSendJ1708Msg(intNum1, j1708msg, false);
+                Debug.WriteLine("AFTER BLOCKID: " + blockID.ToString());
                 UdpSend(blockID.ToString(), iep);
             }
             else if (cmd == "j1939msg")

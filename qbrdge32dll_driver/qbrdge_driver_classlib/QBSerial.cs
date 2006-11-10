@@ -998,7 +998,10 @@ namespace qbrdge_driver_classlib
 
             //send message to all clients on com, except sender
             ClientIDManager.ClientIDInfo sendClientInfo = ClientIDManager.clientIds[clientId];
-            j1708msg.Remove(0, 1);
+            if (j1708msg.Length > 0)
+            {
+                j1708msg.Remove(0, 1);
+            }
             J1708PktRecv(sendClientInfo.serialInfo.com.PortName, Support.StringToByteArray(j1708msg), clientId);
             return msgId;
         }
@@ -1095,6 +1098,10 @@ namespace qbrdge_driver_classlib
         public static void RemoveSentQBTransaction(QBTransaction qbt)
         {
             SerialPortInfo sinfo = ClientIDManager.clientIds[qbt.clientId].serialInfo;
+            if (sinfo == null)
+            {
+                return;
+            }
             for (int i = 0; i < sinfo.QBTransactionSent.Count; i++)
             {
                 QBTransaction qbts = sinfo.QBTransactionSent[i];
