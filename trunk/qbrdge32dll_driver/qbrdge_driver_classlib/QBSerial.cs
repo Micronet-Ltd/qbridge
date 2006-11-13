@@ -1032,7 +1032,7 @@ namespace qbrdge_driver_classlib
             ClientIDManager.ClientIDInfo sendClientInfo = ClientIDManager.clientIds[clientId];
             if (j1708msg.Length > 0)
             {
-                j1708msg.Remove(0, 1);
+                j1708msg = j1708msg.Remove(0, 1);
             }
             J1708PktRecv(sendClientInfo.serialInfo.com.PortName, Support.StringToByteArray(j1708msg), clientId);
             return msgId;

@@ -525,7 +525,7 @@ namespace qbrdge_driver_classlib
                 else if (cmdNum == (int)RP1210SendCommandType.SC_SET_MSG_RECEIVE)
                 {
                     //Set Message Recieve
-                    if (cmdDataBytes.Length == 0)
+                    if (cmdDataBytes.Length != 1)
                     {
                         returnCode = (int)RP1210ErrorCodes.ERR_INVALID_COMMAND;
                         UdpSend(returnCode.ToString(), iep);

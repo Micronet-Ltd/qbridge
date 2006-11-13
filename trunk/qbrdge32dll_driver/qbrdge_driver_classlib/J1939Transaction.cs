@@ -8,6 +8,7 @@ namespace qbrdge_driver_classlib
     {
         public J1939Transaction()
         {
+            PendingCAN = new List<byte[]>();
         }
 
         private bool useRTSCTS = false;
@@ -15,9 +16,16 @@ namespace qbrdge_driver_classlib
         private bool isDone = false;
 
         public void UpdateJ1939Data(string data) {
+            PendingCAN.Clear();
+            PendingIDX = 0;
             useRTSCTS = false;
             useBAM = false;
+            byte PS_GE = (byte)data[0];
+            byte PF = (byte)data[1];
+            byte R_DP = (byte)data[2];
             byte how_priority = (byte)data[3];
+            byte SA = (byte)data[4];
+            byte DA = (byte)data[5];
             if ((how_priority & 0x80) != 0)
             {
                 useBAM = true; // BAM
@@ -26,8 +34,7 @@ namespace qbrdge_driver_classlib
             {
                 useRTSCTS = true; // RTS/CTS
             }
-            byte da = (byte)data[5];
-            if (da == 0xFF) // global address 
+            if (DA == 0xFF) // global address 
             {
                 useBAM = true;
                 useRTSCTS = false;
@@ -37,14 +44,42 @@ namespace qbrdge_driver_classlib
             {
                 useRTSCTS = false;
                 useBAM = false;
+                byte[] can_pkt = new byte[4 + msgDataLen];
+                //set priority, reserv, and dp bits
+                can_pkt[0] = (byte)(can_pkt[0] | R_DP);
+                can_pkt[0] = (byte)(can_pkt[0] | (how_priority & 0x03));
+                //set PDU Format (PF)
+                can_pkt[1] = PF;
+                //set PDU Specific (PS), DA or GE
+                if (PF >= 240)
+                {
+                    can_pkt[2] = PS_GE;
+                }
+                else
+                {
+                    can_pkt[2] = DA;
+                }
+                //set source address
+                can_pkt[3] = SA;
+                Support.StringToByteArray(data).CopyTo(can_pkt, 4);
+                PendingCAN.Add(can_pkt);
             }
-            //UNFINISHED
-                    
+            //UNFINISHED                    
         }
 
+        List<byte[]> PendingCAN;
+        int PendingIDX = 0;
+
         public byte[] GetCANPacket() {
-            byte[] b = new byte[0];
-            return b;
+            if (useRTSCTS == false && useBAM == false)
+            {
+                if (PendingIDX >= PendingCAN.Count)
+                {
+                    return new byte[0];
+                }
+                return PendingCAN[PendingIDX++];
+            }
+            return new byte[0];
         }
 
         //call this function to notify class that last
@@ -52,7 +87,10 @@ namespace qbrdge_driver_classlib
         public void TransmitConfirm() {
             if (useRTSCTS == false && useBAM == false)
             {
-                isDone = true;
+                if (PendingIDX >= PendingCAN.Count)
+                {
+                    isDone = true;
+                }
             }
         }
 

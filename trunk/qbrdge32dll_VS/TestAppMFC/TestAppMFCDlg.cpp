@@ -85,6 +85,9 @@ BEGIN_MESSAGE_MAP(CTestAppMFCDlg, CDialog)
 	ON_BN_CLICKED(IDC_SETJ1708FILTERBTN, &CTestAppMFCDlg::OnBnClickedSetj1708filterbtn)
 	ON_BN_CLICKED(IDC_READCOM4_BTN2, &CTestAppMFCDlg::OnBnClickedReadcom4Btn2)
 	ON_BN_CLICKED(IDC_BUTTON10, &CTestAppMFCDlg::OnBnClickedButton10)
+	ON_BN_CLICKED(IDC_BUTTON11, &CTestAppMFCDlg::OnBnClickedButton11)
+	ON_BN_CLICKED(IDC_BUTTON12, &CTestAppMFCDlg::OnBnClickedButton12)
+	ON_BN_CLICKED(IDC_BUTTON13, &CTestAppMFCDlg::OnBnClickedButton13)
 END_MESSAGE_MAP()
 
 
@@ -322,7 +325,7 @@ void CTestAppMFCDlg::rp1210SendCommand(short nCommandNumber, short nClientID) {
 	}
 	
 	if (nCommandNumber == 7) {
-		fpchMessage[0] = 'T';
+		fpchMessage[0] = 114;
 		msgLen = 1;
 	}
 
@@ -382,7 +385,8 @@ void CTestAppMFCDlg::rp1210SendCustomMsg(short comClient, char far* fpchMsg, sho
 	}
 	else
 	{
-
+		CString c("Msg Sent");
+		m_editbox.SetWindowTextW(c);
 	}
 }
 
@@ -618,4 +622,100 @@ void CTestAppMFCDlg::OnBnClickedButton10()
 	rp1210ClientConnect(3, "J1708", cid);
 	rp1210SendCustomMsg(cid, "", 0, 0, 1);
 	rp1210Disconnect(cid);
+}
+
+void CTestAppMFCDlg::OnBnClickedButton11()
+{	
+        short cl1 = 0;
+		rp1210ClientConnect(3, "J1708", cl1);
+        short cl2 = 0;
+		rp1210ClientConnect(3, "J1708", cl2);
+
+        char multiSendFilter = 114;
+		rp1210SendCommand(7, cl1);
+		//rp1210SendCommand(3, cl1);
+
+        char msg[] = { 4, 114, 2 };
+		rp1210SendCustomMsg(cl2, msg, sizeof(msg), false, true);
+
+		rp1210ReadMessage(cl1, true);
+        return;
+}
+
+void CTestAppMFCDlg::OnBnClickedButton12()
+{	
+        CString testName("Zero Length message");
+        char *data = NULL;
+        int len = 0;
+
+        short errClient;
+		rp1210ClientConnect(3, "J1708", errClient);
+
+		rp1210SendCustomMsg(errClient, data, 0, false, true);
+
+		rp1210Disconnect(errClient);
+}
+
+/****************************/
+/* CustomResetSecondThread */
+/**************************/
+UINT __cdecl CustomResetSecondThread ( LPVOID pParam ) {
+        while (true) {
+                DWORD time = GetTickCount();
+                char basicJ1708TxBuf [] = { 4, 112, 'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', ' ', '-', '-', '-', '-' };
+
+				typedef short (WINAPI* fp_RP1210_SendMessage) (
+					short nClientID,
+					char far* fpchClientMessage,
+					short nMessageSize,
+					short nNotifyStatusOnTx,
+					short nBlockOnSend
+					);
+				fp_RP1210_SendMessage cfunc = (fp_RP1210_SendMessage) GetProcAddress(mod, "RP1210_SendMessage");
+
+				typedef short (WINAPI* fp_RP1210_GetErrorMsg) (
+					short ErrorCode,
+					char far* fpchDescription
+					);
+				
+				fp_RP1210_GetErrorMsg efunc = (fp_RP1210_GetErrorMsg) GetProcAddress(mod, "RP1210_GetErrorMsg");
+
+				short nRet;
+				nRet = cfunc(lastCom3Client, basicJ1708TxBuf, sizeof(basicJ1708TxBuf), false, true);
+				if (nRet > 127) {
+					char pchBuf[256];
+					char fpchDescription[80];
+
+					if (!efunc(nRet, fpchDescription))
+						sprintf(pchBuf, "Error #: %d. %s", nRet, fpchDescription);
+					else
+						sprintf(pchBuf, "Error #: %d. No description available.", nRet);	
+
+					CString c(pchBuf);
+					break;
+					
+					//m_editbox.SetWindowTextW(c);
+				}
+				else
+				{
+					CString c("Msg Sent");
+					//m_editbox.SetWindowTextW(c);
+				}
+  
+			while (GetTickCount() < time+500) { Sleep(10); }
+        }
+        return 0;
+}
+
+
+void CTestAppMFCDlg::OnBnClickedButton13()
+{
+	rp1210ClientConnect(3, "J1708", lastCom3Client);
+	AfxBeginThread(CustomResetSecondThread, NULL, 0, 0);
+	::Sleep(500);
+
+	rp1210SendCommand(0, lastCom3Client);
+
+	rp1210ClientConnect(3, "J1708", lastCom3Client);
+	rp1210Disconnect(lastCom3Client);
 }
