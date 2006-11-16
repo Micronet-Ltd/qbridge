@@ -113,7 +113,8 @@ void InitializeClocks(void)
     /* Disable peripheral clocks (External Memory and USB) to save power */
     rccu->per = 0;
     pcu->pll2cr = 7;    //disable pll 2 to save power
-    pcu->pwrcr |= 0x8200;   //put flash into low power mode for 0 wait state operation (up to 33MHz) - ie set FLASH_LP bit
+    pcu->pwrcr |= 0x8000;   //put flash into low power mode for 0 wait state operation (up to 33MHz) - ie set FLASH_LP bit (but must first set the write enable bit)
+    pcu->pwrcr |= 0x0200;   //put flash into low power mode for 0 wait state operation (up to 33MHz) - ie set FLASH_LP bit
 }
 
 /**********************/
