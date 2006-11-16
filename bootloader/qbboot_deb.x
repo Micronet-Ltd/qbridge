@@ -11,8 +11,8 @@ ENTRY(__start)
 
 MEMORY
 {
-	rom 	   : o = 0x40000000 , l = 256k
-	ram        : o = 0x20000000 , l = 64k
+    rom        : o = 0x40000000 , l = 256k
+    ram        : o = 0x20000000 , l = 64k
 }
 
 /* Address Definitions */
@@ -25,80 +25,80 @@ _BootloaderStartAddr = 0x400C2000; /* Store text/data in Bank 1 Sector 1 */
 
 SECTIONS
 {
-	/*********************************/
-	/***** Sections in ROM only ******/
-	/*********************************/
+    /*********************************/
+    /***** Sections in ROM only ******/
+    /*********************************/
 
-	/* Exception Vector Table */
-	.vectors _RamStartAddr :
-	{
-		*(.vectors)
-	} >ram=0xff
+    /* Exception Vector Table */
+    .vectors _RamStartAddr :
+    {
+        *(.vectors)
+    } >ram = 0xff
 
-	.Copyright ALIGN(4) : { *(.Copyright) } >ram=0xff
-	.rodata ALIGN(4) :
-	{
-		*(.rodata)
-		*(.rodata.str1.4)
-	} >ram=0xff
+    .Copyright ALIGN(4) : { *(.Copyright) } >ram = 0xff
+    .rodata ALIGN(4) :
+    {
+        *(.rodata)
+        *(.rodata.str1.4)
+    } >ram = 0xff
 
-	/* Init Code */
-	.arminit ALIGN(4) : { *(.arminit) } >ram=0xff
+    /* Init Code */
+    .arminit ALIGN(4) : { *(.arminit) } >ram = 0xff
 
-  	.text ALIGN(4) :
-  	{
-		_ftext = . ;
-		*(.text)
-		*(.stub)
-		*(.glue_7)
-		*(.glue_7t)
-		_etext = .;
-	} >ram=0xff
+    .text ALIGN(4) :
+    {
+        _ftext = . ;
+        *(.text)
+        *(.stub)
+        *(.glue_7)
+        *(.glue_7t)
+        _etext = .;
+    } >ram = 0xff
 
-	PROVIDE (etext = .);
+    PROVIDE (etext = .);
 
-	/***********************************/
-	/***** Sections in ROM and RAM *****/
-	/***********************************/
+    /***********************************/
+    /***** Sections in ROM and RAM *****/
+    /***********************************/
 
-	_dataROM = ALIGN(4);
-	.data ALIGN(0x2000) : AT ( _dataROM )
-	{
-		_dataRAMBegin = . ;
-		/* _fdata = . ; */
- 		*(.data)
-		_dataRAMEnd = ALIGN(4) ;
-	} >ram=0xff
+    _dataROM = ALIGN(4);
+    .data ALIGN(0x2000) : AT ( _dataROM )
+    {
+        _dataRAMBegin = . ;
+        /* _fdata = . ; */
+        *(.data)
+        _dataRAMEnd = ALIGN(4) ;
+    } >ram = 0xff
 
-	/*********************************/
-	/******* RAM ONLY SECTIONS *******/
-	/*********************************/
+    /*********************************/
+    /******* RAM ONLY SECTIONS *******/
+    /*********************************/
 
-	/* Uninitialized data has no address in ROM */
-	.bss ALIGN(16) (NOLOAD) :
-	{
-		_bss_start = . ;
-		*(.bss)
-		*(COMMON)
-		_bss_end = ALIGN(4) ;
-	} > ram=0
+    /* Uninitialized data has no address in ROM */
+    .bss ALIGN(16) (NOLOAD) :
+    {
+        _bss_start = . ;
+        *(.bss)
+        *(COMMON)
+        _bss_end = ALIGN(4) ;
+    } > ram = 0
 
-	.stack ALIGN(8) (NOLOAD) :
-	{
-		_stackbegin = . ;
-		*(.stack)
-		_stackend = . ;
-		*(.irqstack)
-		_irqstackend = . ;				
-	} > ram=0
+    .stack ALIGN(8) (NOLOAD) :
+    {
+        _stackbegin = . ;
+        *(.stack)
+        _stackend = . ;
+        *(.irqstack)
+        _irqstackend = . ;
+    } > ram = 0
 
-	.BootFlag ALIGN(4) (NOLOAD) :
-	{
-		*(.BootFlag)
-	} > ram=0
+    .BootFlag ALIGN(4) (NOLOAD) :
+    {
+        *(.BootFlag)
+    } > ram = 0
 
-	_heapBegin = ALIGN(16) ;
-	end = . ;
+    _heapBegin = ALIGN(16) ;
+    end = . ;
 
 } /*SECTIONS*/
 
