@@ -7,8 +7,8 @@
 #  Defines  #
 #############
 
-version	        := V0.004
-test_version    := 
+version	        := V0.005
+test_version    := x
 versdash        := -
 
 target	  	:= qbboot
