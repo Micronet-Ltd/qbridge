@@ -553,10 +553,10 @@ void CTestAppMFCDlg::OnBnClickedCreatecon4Btn()
 
 void CTestAppMFCDlg::OnBnClickedSendCom4btn()
 {
-	for (int i = 0; i < 400; i++) {
-		rp1210SendMessage(lastCom4Client, 1, 0);
-	}
-	//rp1210SendMessage(lastCom4Client, 0, 1);
+	//for (int i = 0; i < 400; i++) {
+	//	rp1210SendMessage(lastCom4Client, 1, 0);
+	//}
+	rp1210SendMessage(lastCom4Client, 0, 1);
 	return;
 	typedef short (WINAPI* fp_RP1210_ClientDisconnect) (
 		short nClientID
@@ -768,7 +768,7 @@ UINT __cdecl CustomResetSecondThread ( LPVOID pParam ) {
 				fp_RP1210_GetErrorMsg efunc = (fp_RP1210_GetErrorMsg) GetProcAddress(mod, "RP1210_GetErrorMsg");
 
 				short nRet;
-				nRet = cfunc(lastCom3Client, basicJ1708TxBuf, sizeof(basicJ1708TxBuf), false, true);
+				nRet = cfunc(lastCom4Client, basicJ1708TxBuf, sizeof(basicJ1708TxBuf), false, true);
 				if (nRet > 127) {
 					char pchBuf[256];
 					char fpchDescription[80];

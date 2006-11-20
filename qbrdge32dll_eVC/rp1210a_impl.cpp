@@ -150,10 +150,10 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 		}
 
 		if (ctype == Conn_J1708 && nMessageSize < 1) {
-			return ERR_INVALID_COMMAND;
+			return ERR_MESSAGE_NOT_SENT;
 		}
 		if (ctype == Conn_J1939 && nMessageSize < 6) {
-			return ERR_INVALID_COMMAND;
+			return ERR_MESSAGE_NOT_SENT;
 		}
 
 		//send j1708 message to driver app.
