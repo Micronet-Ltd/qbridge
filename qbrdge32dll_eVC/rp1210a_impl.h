@@ -32,7 +32,7 @@ RP1210AReturnType CreateConnection(int connType, int comPort, HWND hwndClient, l
 RP1210AReturnType Disconnect(short clientID);
 RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessage, short nMessageSize, short nNotifyStatusOnTx, short nBlockOnSend, CritSection &cs);
 RP1210AReturnType ReadRP1210Message (short nClientID, char far* fpchAPIMessage, short nBufferSize, short nBlockOnRead, CritSection &cs);
-RP1210AReturnType SendCommand (short nCommandNumber, short nClientID, char far* fpchClientCommand, short nMessageSize);
+RP1210AReturnType SendCommand (short nCommandNumber, short nClientID, char far* fpchClientCommand, short nMessageSize, CritSection &cs);
 RP1210AReturnType GetHardwareStatus (short nClientID, char far* fpchClientInfo, short nInfoSize, short nBlockOnRequest, CritSection &cs);
 
 void DLLCleanUp();
@@ -131,6 +131,20 @@ public:
 		}
 		transactions.push_back(t);
 	}
+	void AddTransaction(short isNotify, int transId, bool isJ1939AddrClaim, int claimAddr) {
+		Transaction t;
+		t.transId = transId;
+		t.isNotify = isNotify;
+		t.isJ1939AddrClaim = isJ1939AddrClaim;
+		t.claimAddr = claimAddr;
+		if (!isNotify) {			
+			wchar_t lpName[30];
+			swprintf(lpName, L"blockOnSend_Event_%d", transId);
+			t.transEvent = ::CreateEvent(NULL, FALSE, FALSE, lpName);
+			t.returnCode = ERR_NOT_ADDED_TO_BUS;
+		}
+		transactions.push_back(t);
+	}
 	HANDLE GetTransEvent(short isNotify, int transId) {	
 		for (list <Transaction>::iterator it = transactions.begin(); it != transactions.end(); it++) {
 			Transaction &t = *it;
@@ -159,7 +173,7 @@ public:
 		for (list<Transaction>::iterator it = transactions.begin(); it != transactions.end(); it++) {
 			Transaction &t = *it;
 			if (t.isNotify == isNotify && t.transId == transId) {
-				if (isNotify) {
+				if (isNotify && t.isJ1939AddrClaim == false) {
 					//send msg to hwnd
 					if (returnCode == 0) {
 						//Success in SendMessage		
@@ -170,6 +184,16 @@ public:
 						//Error in SendMessage
 						_DbgTrace(_T("POST error client txt\n"));
 						::PostMessage(GetHwnd(), WM_RP1210_ERROR_MESSAGE, ERR_TXMESSAGE_STATUS, transId+128);						
+					}
+					RemoveTransaction(isNotify, transId);
+					result = true;
+				}
+				else if (isNotify && t.isJ1939AddrClaim == true) {
+					//send msg to hwnd
+					if (returnCode != 0) {
+						//Error in addr claim
+						_DbgTrace(_T("POST error client txt\n"));
+						::PostMessage(GetHwnd(), WM_RP1210_ERROR_MESSAGE, ERR_ADDRESS_LOST, t.claimAddr);						
 					}
 					RemoveTransaction(isNotify, transId);
 					result = true;
@@ -235,6 +259,7 @@ public:
 		recvMsgQueue.pop_front();
 		return 0;
 	}
+
 	void AddReadMsg(char *msg, int msgLen) {
 		recvMsgQueue.push_back(RecvMsg(msg, msgLen));
 		if (recvMsgEvents.size() != 0) {
@@ -302,6 +327,8 @@ private:
 		int transId;
 		HANDLE transEvent;
 		int returnCode;
+		bool isJ1939AddrClaim;
+		int claimAddr;
 	};
 	list<Transaction> transactions;
 };

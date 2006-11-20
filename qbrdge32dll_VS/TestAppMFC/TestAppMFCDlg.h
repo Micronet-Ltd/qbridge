@@ -3,6 +3,7 @@
 
 #pragma once
 #include "afxwin.h"
+#include "c:\program files\microsoft visual studio 8\vc\ce\atlmfc\include\afxwin.h"
 
 class Thread
 {
@@ -52,8 +53,9 @@ public:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV support
 
 	void rp1210SendMessage(short comClient, short nNotifyStatusOnTx, short nBlockOnSend);
-	void rp1210ReadMessage(short comClient, short nBlockOnRead);
+	void rp1210ReadMessage(short comClient, short nBlockOnRead, bool isJ1939);
 	void rp1210SendCommand(short nCommandNumber, short nClientID);
+	void rp1210SendCustomCommand(short nCommandNumber, short nClientID, char far* fpchMsg, short msgSize);
 	void rp1210GetHardwareStatus(short nClientID);
 	
 	void rp1210Disconnect(short nClient);
@@ -117,6 +119,26 @@ public:
 	afx_msg void OnBnClickedButton12();
 public:
 	afx_msg void OnBnClickedButton13();
+public:
+	afx_msg void OnBnClickedButton14();
+public:
+	afx_msg void OnBnClickedsendj1939msgbtn2();
+public:
+	afx_msg void OnBnClickedsendj1939msgbtn3();
+public:
+	afx_msg void OnBnClickedsendj1939msgbtn4();
+public:
+	afx_msg void OnBnClickedsendj1939msgbtn5();
+public:
+	afx_msg void OnBnClickedsendj1939msgbtn6();
+public:
+	CEdit m_debugeb;
+public:
+	afx_msg void OnBnClickedReadcom4Btn3();
+public:
+	afx_msg void OnBnClickedsendj1939msgbtn7();
+public:
+	afx_msg void OnBnClickedAddrclaimcom3();
 };
 
 static DWORD __stdcall DisconnectFunc(void* args);

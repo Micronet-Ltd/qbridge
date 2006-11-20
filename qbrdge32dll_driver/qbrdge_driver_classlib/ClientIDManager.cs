@@ -20,6 +20,11 @@ namespace qbrdge_driver_classlib
             public byte[] J1708MIDList = new byte[0];            
 
             public bool allowReceive = true;
+
+            //see j1939-81 for info. on address claiming
+            public int claimAddress = -1; // -1 for not address claimed
+            public byte[] claimAddressName = new byte[8];
+            //needed for multi-frame RTS/CTS recieve or send messages
         }
 
         public static ClientIDInfo[] clientIds = new ClientIDInfo[128];

@@ -550,8 +550,82 @@ namespace qbrdge_driver_classlib
                 else if (cmdNum == (int)RP1210SendCommandType.SC_PROTECT_J1939_ADDRESS)
                 {
                     //Protect J1939 Address, not implemented in QB yet
-                    returnCode = (int)RP1210ErrorCodes.ERR_INVALID_COMMAND;
-                    UdpSend(returnCode.ToString(), iep);
+                    if (cmdDataBytes.Length != 10)
+                    {
+                        returnCode = (int)RP1210ErrorCodes.ERR_INVALID_COMMAND;
+                        UdpSend(returnCode.ToString(), iep);
+                        return;
+                    }
+                    ClientIDManager.ClientIDInfo client = ClientIDManager.clientIds[clientId];
+
+                    if (client.claimAddress >= 0)
+                    {
+                        QBSerial.AbortClientRTSCTS(client.serialInfo, (byte)client.claimAddress);
+                    }   
+                      
+                    client.claimAddress = cmdDataBytes[0];
+                    byte[] addrName = new byte[8];
+                    for (int i = 0; i < addrName.Length; i++)
+                    {
+                        addrName[i] = cmdDataBytes[i+1];
+                    }
+                    client.claimAddressName = addrName;
+
+                    //send address claim cmd to qbridge, send return code when confirmed
+                    int msgId;
+                    bool isNotify = false;
+
+                    if (cmdDataBytes[9] == 1)
+                        isNotify = true;
+
+                    if (isNotify)
+                    {
+                        msgId = QBSerial.GetMsgId();
+                        if (msgId <= 0)
+                        {
+                            UdpSend(msgId.ToString(), iep);
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        msgId = QBSerial.NewMsgBlockId();
+                    }
+
+                    //create address claim message
+                    byte[] msg = new byte[6+8];
+                    //set pgn
+                    msg[1] = 0xEE;
+                    //set how priority
+                    msg[3] = 0x06;
+                    //source address
+                    msg[4] = cmdDataBytes[0];
+                    //dest address
+                    msg[5] = 255;
+                    addrName.CopyTo(msg, 6);
+
+                    SerialPortInfo sinfo = Support.ClientToSerialPortInfo(clientId);
+                    QBTransaction qbt = new QBTransaction();
+                    qbt.clientId = clientId;
+                    qbt.isNotify = isNotify;
+                    qbt.msgId = msgId;
+                    qbt.isJ1939 = true;
+                    qbt.j1939transaction = new J1939Transaction();
+                    qbt.cmdType = PacketCmdCodes.PKT_CMD_SEND_CAN;
+
+                    qbt.j1939transaction.UpdateJ1939Data(Support.ByteArrayToString(msg)); //add message, process
+                    qbt.pktData = qbt.j1939transaction.GetCANPacket(); //get packet for current state.
+
+                    qbt.numRetries = 2;
+                    qbt.timePeriod = Support.ackReplyLimit;
+                    qbt.timeoutReply = UDPReplyType.sendJ1708replytimeout;
+                    QBSerial.ClientIdToSerialInfo(clientId).QBTransactionNew.Add(qbt);                    
+                    
+                    //send message to all clients on com, except sender
+                    ClientIDManager.ClientIDInfo sendClientInfo = ClientIDManager.clientIds[clientId];
+                    QBSerial.J1939PktRecv(sendClientInfo.serialInfo, qbt.pktData, clientId);
+
+                    UdpSend(msgId.ToString(), iep);                    
                     return;
                 }
                 else if (cmdNum == (int)RP1210SendCommandType.SC_UPGRADE_FIRMWARE)

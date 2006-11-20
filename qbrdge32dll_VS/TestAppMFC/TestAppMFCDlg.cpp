@@ -59,6 +59,7 @@ void CTestAppMFCDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_EDIT1, m_editbox);
+	DDX_Control(pDX, DBGEB, m_debugeb);
 }
 
 BEGIN_MESSAGE_MAP(CTestAppMFCDlg, CDialog)
@@ -88,6 +89,15 @@ BEGIN_MESSAGE_MAP(CTestAppMFCDlg, CDialog)
 	ON_BN_CLICKED(IDC_BUTTON11, &CTestAppMFCDlg::OnBnClickedButton11)
 	ON_BN_CLICKED(IDC_BUTTON12, &CTestAppMFCDlg::OnBnClickedButton12)
 	ON_BN_CLICKED(IDC_BUTTON13, &CTestAppMFCDlg::OnBnClickedButton13)
+	ON_BN_CLICKED(IDC_BUTTON14, &CTestAppMFCDlg::OnBnClickedButton14)
+	ON_BN_CLICKED(IDC_sendj1939msgbtn2, &CTestAppMFCDlg::OnBnClickedsendj1939msgbtn2)
+	ON_BN_CLICKED(IDC_sendj1939msgbtn3, &CTestAppMFCDlg::OnBnClickedsendj1939msgbtn3)
+	ON_BN_CLICKED(IDC_sendj1939msgbtn4, &CTestAppMFCDlg::OnBnClickedsendj1939msgbtn4)
+	ON_BN_CLICKED(IDC_sendj1939msgbtn5, &CTestAppMFCDlg::OnBnClickedsendj1939msgbtn5)
+	ON_BN_CLICKED(IDC_sendj1939msgbtn6, &CTestAppMFCDlg::OnBnClickedsendj1939msgbtn6)
+	ON_BN_CLICKED(IDC_READCOM4_BTN3, &CTestAppMFCDlg::OnBnClickedReadcom4Btn3)
+	ON_BN_CLICKED(IDC_sendj1939msgbtn7, &CTestAppMFCDlg::OnBnClickedsendj1939msgbtn7)
+	ON_BN_CLICKED(IDC_AddrClaimCom3, &CTestAppMFCDlg::OnBnClickedAddrclaimcom3)
 END_MESSAGE_MAP()
 
 
@@ -280,6 +290,45 @@ void CTestAppMFCDlg::rp1210GetHardwareStatus(short nClientID) {
 	}
 }
 
+void CTestAppMFCDlg::rp1210SendCustomCommand(short nCommandNumber, short nClientID, char far* fpchMsg, short msgSize) {
+
+	typedef short (WINAPI* fp_RP1210_SendCommand) (
+		short nCommandNumber,
+		short nClientID,
+		char far* fpchClientCommand,
+		short nMessageSize
+		);
+	fp_RP1210_SendCommand cfunc = (fp_RP1210_SendCommand) GetProcAddress(mod, "RP1210_SendCommand");
+
+	typedef short (WINAPI* fp_RP1210_GetErrorMsg) (
+		short ErrorCode,
+		char far* fpchDescription
+		);
+	
+	fp_RP1210_GetErrorMsg efunc = (fp_RP1210_GetErrorMsg) GetProcAddress(mod, "RP1210_GetErrorMsg");
+
+	short nRet;
+	nRet = cfunc(nCommandNumber, nClientID, fpchMsg, msgSize);
+	if (nRet > 127) {
+		char pchBuf[256];
+		char fpchDescription[80];
+
+		if (!efunc(nRet, fpchDescription))
+			sprintf(pchBuf, "Error #: %d. %s", nRet, fpchDescription);
+		else
+			sprintf(pchBuf, "Error #: %d. No description available.", nRet);	
+
+		CString c(pchBuf);
+		
+		m_editbox.SetWindowTextW(c);
+	}
+	else
+	{
+		CString c("Success SendCommand");
+		m_editbox.SetWindowTextW(c);
+	}
+}	
+
 void CTestAppMFCDlg::rp1210SendCommand(short nCommandNumber, short nClientID) {
 	typedef short (WINAPI* fp_RP1210_SendCommand) (
 		short nCommandNumber,
@@ -408,7 +457,7 @@ void CTestAppMFCDlg::rp1210SendMessage(short comClient, short nNotifyStatusOnTx,
 	//rp1210SendCustomMsg(comClient, fpchMessage, 0, nNotifyStatusOnTx, nBlockOnSend);
 }
 
-void CTestAppMFCDlg::rp1210ReadMessage(short comClient, short nBlockOnRead) {	
+void CTestAppMFCDlg::rp1210ReadMessage(short comClient, short nBlockOnRead, bool isJ1939) {	
 	// TODO: Add your control notification handler code here
 	typedef short (WINAPI* fp_RP1210_ReadMessage) (
 		short nClientID,
@@ -425,9 +474,9 @@ void CTestAppMFCDlg::rp1210ReadMessage(short comClient, short nBlockOnRead) {
 	fp_RP1210_GetErrorMsg efunc = (fp_RP1210_GetErrorMsg) GetProcAddress(mod, "RP1210_GetErrorMsg");
 
 
-	char far fpchMessage[512];
+	char far fpchMessage[2200];
 
-	short nRet = (cfunc(comClient, fpchMessage, 512, nBlockOnRead));
+	short nRet = (cfunc(comClient, fpchMessage, 2200, nBlockOnRead));
 	if (nRet < 0) {
 		char pchBuf[256];
 		char far fpchDescription[80];
@@ -439,11 +488,49 @@ void CTestAppMFCDlg::rp1210ReadMessage(short comClient, short nBlockOnRead) {
 
 		CString c(pchBuf);
 		
-		m_editbox.SetWindowTextW(c);
+		m_editbox.SetWindowTextW(c);		
 	}
 	else if (nRet > 0) {
 		CString c(fpchMessage);
 		m_editbox.SetWindowTextW(c);
+		
+		if (isJ1939) {
+			CString dbg;
+			char buffer[65];
+			dbg.Append(CString("RECV: \r\n"));
+			dbg.Append(CString("TIMESTAMP: "));	
+			dbg.Append(CString(itoa((UINT8)fpchMessage[0],buffer,10)));
+			dbg.Append(CString(","));
+			dbg.Append(CString(itoa((UINT8)fpchMessage[1],buffer,10)));
+			dbg.Append(CString(","));
+			dbg.Append(CString(itoa((UINT8)fpchMessage[2],buffer,10)));
+			dbg.Append(CString(","));
+			dbg.Append(CString(itoa((UINT8)fpchMessage[3],buffer,10)));
+			dbg.Append(CString("\r\n"));
+			dbg.Append(CString("PGN: "));	
+			dbg.Append(CString(itoa((UINT8)fpchMessage[4],buffer,10)));
+			dbg.Append(CString(","));
+			dbg.Append(CString(itoa((UINT8)fpchMessage[5],buffer,10)));
+			dbg.Append(CString(","));
+			dbg.Append(CString(itoa((UINT8)fpchMessage[6],buffer,10)));
+			dbg.Append(CString("\r\n"));
+			dbg.Append(CString("How Priority: "));
+			dbg.Append(CString(itoa((UINT8)fpchMessage[7],buffer,10)));
+			dbg.Append(CString("\r\n"));
+			dbg.Append(CString("Source Address: "));
+			dbg.Append(CString(itoa((UINT8)fpchMessage[8],buffer,10)));
+			dbg.Append(CString("\r\n"));
+			dbg.Append(CString("Dest Address: "));
+			dbg.Append(CString(itoa((UINT8)fpchMessage[9],buffer,10)));
+			dbg.Append(CString("\r\n"));
+			dbg.Append(CString("Message Data: "));
+			for (int i = 10; i < nRet; i++) {
+				dbg.Append(CString(itoa((UINT8)fpchMessage[i],buffer,10)));
+				dbg.Append(CString(","));
+			}
+			dbg.Append(CString("\r\n"));
+			m_debugeb.SetWindowTextW(dbg);
+		}
 	}
 	else if (nRet == 0) {
 		CString c("Return 0, no messages for client");
@@ -490,12 +577,12 @@ void CTestAppMFCDlg::OnBnClickedButton6()
 
 void CTestAppMFCDlg::OnBnClickedReadcom4Btn()
 {
-	rp1210ReadMessage(lastCom4Client, 0);
+	rp1210ReadMessage(lastCom4Client, 0, false);
 }
 
 void CTestAppMFCDlg::OnBnClickedButton7()
 {
-	rp1210ReadMessage(lastCom3Client, 0);
+	rp1210ReadMessage(lastCom3Client, 0, false);
 }
 
 //DISCONNECT THREAD
@@ -566,7 +653,7 @@ void CTestAppMFCDlg::OnBnClickedButton8()
 	dThread.SetupThread(DisconnectFunc, arg);
 	dThread.Resume();
 
-	rp1210ReadMessage(lastCom3Client, 1);
+	rp1210ReadMessage(lastCom3Client, 1, false);
 }
 
 void CTestAppMFCDlg::OnBnClickedSendresetcmdBtn()
@@ -609,7 +696,7 @@ void CTestAppMFCDlg::OnBnClickedSetj1708filterbtn()
 
 void CTestAppMFCDlg::OnBnClickedReadcom4Btn2()
 {
-	rp1210ReadMessage(0, 0);
+	rp1210ReadMessage(0, 0, false);
 }
 
 
@@ -638,7 +725,7 @@ void CTestAppMFCDlg::OnBnClickedButton11()
         char msg[] = { 4, 114, 2 };
 		rp1210SendCustomMsg(cl2, msg, sizeof(msg), false, true);
 
-		rp1210ReadMessage(cl1, true);
+		rp1210ReadMessage(cl1, true, false);
         return;
 }
 
@@ -718,4 +805,174 @@ void CTestAppMFCDlg::OnBnClickedButton13()
 
 	rp1210ClientConnect(3, "J1708", lastCom3Client);
 	rp1210Disconnect(lastCom3Client);
+}
+
+void CTestAppMFCDlg::OnBnClickedButton14()
+{
+	char far* fpchProtocol = "J1939";
+	rp1210ClientConnect(4, fpchProtocol, lastCom4Client);
+	rp1210SendCommand(3, lastCom4Client); //set all filter states to pass
+}
+
+void CTestAppMFCDlg::OnBnClickedsendj1939msgbtn2()
+{
+	char far* msg = "\x03" "\xF0" "\x00" "\x83" "\x06" "\xFF" "\xFF" "\xFE" "\x26"
+		"\x01" "A" "Aafdsdafds" "Adfdsf" "Afsd" "ABDADVB";
+	short msgLen = 24;
+	rp1210SendCustomMsg(lastCom3Client, msg, msgLen, 0, 1);
+}
+
+void CTestAppMFCDlg::OnBnClickedsendj1939msgbtn3()
+{
+	char far msg[1791];
+	short msgLen = 1791;
+	for (int i = 0; i < 1791; i++) {
+		msg[i] = 'A';
+	}
+	msg[0] = 0x03;
+	msg[1] = (byte)0xF0;
+	msg[2] = 0x00;
+	msg[3] = (byte)0x83;
+	msg[4] = 0x06;
+	msg[5] = (byte)0xFF;
+	msg[6] = 'Z';
+	msg[1789] = 'Y';
+	msg[1790] = 'Z';
+	rp1210SendCustomMsg(lastCom3Client, msg, msgLen, 0, 1);
+}
+
+void CTestAppMFCDlg::OnBnClickedsendj1939msgbtn4()
+{
+	// TODO: Add your control notification handler code here
+	char far msg[1792];
+	short msgLen = 1792;
+	for (int i = 0; i < 1791; i++) {
+		msg[i] = 'A';
+	}
+	msg[0] = 0x03;
+	msg[1] = (byte)0xF0;
+	msg[2] = 0x00;
+	msg[3] = (byte)0x83;
+	msg[4] = 0x06;
+	msg[5] = (byte)0xFF;
+	msg[6] = 'Z';
+	msg[1790] = 'Y';
+	msg[1791] = 'Z';
+	rp1210SendCustomMsg(lastCom3Client, msg, msgLen, 0, 1);
+}
+
+void CTestAppMFCDlg::OnBnClickedsendj1939msgbtn5()
+{
+	char far msg[1790];
+	short msgLen = 1790;
+	for (int i = 0; i < 1790; i++) {
+		msg[i] = 'A';
+	}
+	msg[0] = 0x03;
+	msg[1] = (byte)0xF0;
+	msg[2] = 0x00;
+	msg[3] = (byte)0x83;
+	msg[4] = 0x06;
+	msg[5] = (byte)0xFF;
+	msg[6] = 'Z';
+	msg[1788] = 'Y';
+	msg[1789] = 'Z';
+	rp1210SendCustomMsg(lastCom3Client, msg, msgLen, 1, 0);
+}
+
+void CTestAppMFCDlg::OnBnClickedsendj1939msgbtn6()
+{
+	char far* msg = "\x03" "\xF0" "\x00" "\x03" "\x06" "\x08" "\xFF" "\xFE" "\x26"
+		"\x01" "A" "Aafdsdafds" "Adfdsf" "Afsd" "ABDADVB";
+	short msgLen = 24;
+	rp1210SendCustomMsg(lastCom3Client, msg, msgLen, 0, 1);
+
+	CString dbg;
+	char buffer[65];
+	dbg.Append(CString("SENT: \r\n"));
+	dbg.Append(CString("PGN: "));	
+	dbg.Append(CString(itoa((UINT8)msg[0],buffer,10)));
+	dbg.Append(CString(","));
+	dbg.Append(CString(itoa((UINT8)msg[1],buffer,10)));
+	dbg.Append(CString(","));
+	dbg.Append(CString(itoa((UINT8)msg[2],buffer,10)));
+	dbg.Append(CString("\r\n"));
+	dbg.Append(CString("How Priority: "));
+	dbg.Append(CString(itoa((UINT8)msg[3],buffer,10)));
+	dbg.Append(CString("\r\n"));
+	dbg.Append(CString("Source Address: "));
+	dbg.Append(CString(itoa((UINT8)msg[4],buffer,10)));
+	dbg.Append(CString("\r\n"));
+	dbg.Append(CString("Dest Address: "));
+	dbg.Append(CString(itoa((UINT8)msg[5],buffer,10)));
+	dbg.Append(CString("\r\n"));
+	dbg.Append(CString("Message Data: "));
+	for (int i = 6; i < msgLen; i++) {
+		dbg.Append(CString(itoa((UINT8)msg[i],buffer,10)));
+		dbg.Append(CString(","));
+	}
+	dbg.Append(CString("\r\n"));
+	m_debugeb.SetWindowTextW(dbg);
+}
+
+void CTestAppMFCDlg::OnBnClickedReadcom4Btn3()
+{
+	rp1210ReadMessage(lastCom4Client, 0, true);
+}
+
+void CTestAppMFCDlg::OnBnClickedsendj1939msgbtn7()
+{
+	char far msg[1791];
+	short msgLen = 1791;
+	for (int i = 0; i < 1791; i++) {
+		msg[i] = 'A';
+	}
+	msg[0] = 0x03;
+	msg[1] = (byte)0xF0;
+	msg[2] = 0x00;
+	msg[3] = (byte)0x03;
+	msg[4] = 0x06;
+	msg[5] = (byte)0x08;
+	msg[6] = 'Z';
+	msg[1789] = 'Y';
+	msg[1790] = 'Z';
+
+	rp1210SendCustomMsg(lastCom3Client, msg, msgLen, 0, 1);
+
+	CString dbg;
+	char buffer[65];
+	dbg.Append(CString("SENT: \r\n"));
+	dbg.Append(CString("PGN: "));	
+	dbg.Append(CString(itoa((UINT8)msg[0],buffer,10)));
+	dbg.Append(CString(","));
+	dbg.Append(CString(itoa((UINT8)msg[1],buffer,10)));
+	dbg.Append(CString(","));
+	dbg.Append(CString(itoa((UINT8)msg[2],buffer,10)));
+	dbg.Append(CString("\r\n"));
+	dbg.Append(CString("How Priority: "));
+	dbg.Append(CString(itoa((UINT8)msg[3],buffer,10)));
+	dbg.Append(CString("\r\n"));
+	dbg.Append(CString("Source Address: "));
+	dbg.Append(CString(itoa((UINT8)msg[4],buffer,10)));
+	dbg.Append(CString("\r\n"));
+	dbg.Append(CString("Dest Address: "));
+	dbg.Append(CString(itoa((UINT8)msg[5],buffer,10)));
+	dbg.Append(CString("\r\n"));
+	dbg.Append(CString("Message Data: "));
+	for (int i = 6; i < msgLen; i++) {
+		dbg.Append(CString(itoa((UINT8)msg[i],buffer,10)));
+		dbg.Append(CString(","));
+	}
+	dbg.Append(CString("\r\n"));
+	m_debugeb.SetWindowTextW(dbg);
+}
+
+
+void CTestAppMFCDlg::OnBnClickedAddrclaimcom3()
+{
+	char far msg[10];
+	short msgLen = 10;
+	msg[0] = 2;
+	msg[9] = 0; //blcok until done
+	rp1210SendCustomCommand(19, lastCom3Client, msg, msgLen);
 }
