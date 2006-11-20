@@ -6,7 +6,7 @@ using System.Collections.Generic;
 
 namespace qbrdge_driver_classlib
 {
-    class J1939Transaction
+    public class J1939Transaction
     {
         public J1939Transaction()
         {

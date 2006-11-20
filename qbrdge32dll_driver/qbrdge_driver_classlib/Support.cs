@@ -61,6 +61,10 @@ namespace qbrdge_driver_classlib
         {
             return System.BitConverter.ToInt32(fourByteArr, 0);
         }
+        public static UInt64 BytesToUInt64(byte[] eightByteArr)
+        {
+            return System.BitConverter.ToUInt64(eightByteArr, 0);
+        }
         public static byte[] Int32ToBytes(Int32 int32Input, bool bigendien)
         {
             if (bigendien == false)
@@ -176,7 +180,7 @@ namespace qbrdge_driver_classlib
         PKT_ACK_INVALID_DATA = 0x34,
         PKT_ACK_UNABLE_TO_PROCESS = 0x35
     }
-    enum PacketCmdCodes : byte
+    public enum PacketCmdCodes : byte
     {
         PKT_CMD_INIT = 0x40,
         PKT_CMD_ACK = 0x41,
@@ -209,7 +213,7 @@ namespace qbrdge_driver_classlib
         ERR_FW_UPGRADE = 193
     }
 
-    enum RP1210SendCommandType : int
+    public enum RP1210SendCommandType : int
     {
         SC_UNDEFINED = -1,
         SC_RESET_DEVICE = 0,

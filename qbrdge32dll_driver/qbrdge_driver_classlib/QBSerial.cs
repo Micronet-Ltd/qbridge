@@ -1109,15 +1109,40 @@ namespace qbrdge_driver_classlib
                     for (int i = 0; i < ClientIDManager.clientIds.Length; i++)
                     {
                         ClientIDManager.ClientIDInfo client = ClientIDManager.clientIds[i];
-                        if (i != ignoreClientId && portInfo.com.PortName == client.serialInfo.com.PortName)
+                        if (client.serialInfo == null)
                         {
-                            if (SA == client.claimAddress)
+                            //do nothing
+                        }
+                        else if (i != ignoreClientId && portInfo.com.PortName == client.serialInfo.com.PortName)
+                        {
+                            if ((int)SA == (int)client.claimAddress)
                             {
                                 //address claim conflict
-
+                                byte[] claimName = new byte[8];
+                                for (int j = 0; j < 8; j++)
+                                {
+                                    claimName[j] = pktData[5 + j];
+                                }
+                                UInt64 extNameVal = Support.BytesToUInt64(claimName);
+                                UInt64 nameVal = Support.BytesToUInt64(client.claimAddressName);
+                                if (nameVal < extNameVal)
+                                {
+                                    //don't lose claim, send address claim for own address
+                                    //create address claim message
+                                    QBTransaction qbt = null;
+                                    RP1210DllCom.AddAddressClaimMsg(SA, client.claimAddressName, i,
+                                        false, -1, ref qbt);
+                                }
+                                else
+                                {
+                                    //loose claim on address
+                                    AbortClientRTSCTS(client.serialInfo, (byte)client.claimAddress);
+                                    client.claimAddress = -1;
+                                }
                             }
                         }
                     }
+                    return;
                 }
             }
 
@@ -1558,7 +1583,7 @@ namespace qbrdge_driver_classlib
         }
     }
 
-    class QBTransaction
+    public class QBTransaction
     {
         public QBTransaction()
         {

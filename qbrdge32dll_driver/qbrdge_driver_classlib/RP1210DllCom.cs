@@ -593,33 +593,8 @@ namespace qbrdge_driver_classlib
                     }
 
                     //create address claim message
-                    byte[] msg = new byte[6+8];
-                    //set pgn
-                    msg[1] = 0xEE;
-                    //set how priority
-                    msg[3] = 0x06;
-                    //source address
-                    msg[4] = cmdDataBytes[0];
-                    //dest address
-                    msg[5] = 255;
-                    addrName.CopyTo(msg, 6);
-
-                    SerialPortInfo sinfo = Support.ClientToSerialPortInfo(clientId);
-                    QBTransaction qbt = new QBTransaction();
-                    qbt.clientId = clientId;
-                    qbt.isNotify = isNotify;
-                    qbt.msgId = msgId;
-                    qbt.isJ1939 = true;
-                    qbt.j1939transaction = new J1939Transaction();
-                    qbt.cmdType = PacketCmdCodes.PKT_CMD_SEND_CAN;
-
-                    qbt.j1939transaction.UpdateJ1939Data(Support.ByteArrayToString(msg)); //add message, process
-                    qbt.pktData = qbt.j1939transaction.GetCANPacket(); //get packet for current state.
-
-                    qbt.numRetries = 2;
-                    qbt.timePeriod = Support.ackReplyLimit;
-                    qbt.timeoutReply = UDPReplyType.sendJ1708replytimeout;
-                    QBSerial.ClientIdToSerialInfo(clientId).QBTransactionNew.Add(qbt);                    
+                    QBTransaction qbt = null;
+                    AddAddressClaimMsg(cmdDataBytes[0], addrName, clientId, isNotify, msgId, ref qbt);              
                     
                     //send message to all clients on com, except sender
                     ClientIDManager.ClientIDInfo sendClientInfo = ClientIDManager.clientIds[clientId];
@@ -663,6 +638,38 @@ namespace qbrdge_driver_classlib
                     UdpSend(((int)RP1210ErrorCodes.ERR_INVALID_COMMAND).ToString(), iep);
                 }
             }
+        }
+
+        public static void AddAddressClaimMsg(byte claimAddr, byte[] addrName, int clientId, bool isNotify,
+            int msgId, ref QBTransaction qbt)
+        {
+            byte[] msg = new byte[6+8];
+            //set pgn
+            msg[1] = 0xEE;
+            //set how priority
+            msg[3] = 0x06;
+            //source address
+            msg[4] = claimAddr;
+            //dest address
+            msg[5] = 255;
+            addrName.CopyTo(msg, 6);
+            
+            SerialPortInfo sinfo = Support.ClientToSerialPortInfo(clientId);
+            qbt = new QBTransaction();
+            qbt.clientId = clientId;
+            qbt.isNotify = isNotify;
+            qbt.msgId = msgId;
+            qbt.isJ1939 = true;
+            qbt.j1939transaction = new J1939Transaction();
+            qbt.cmdType = PacketCmdCodes.PKT_CMD_SEND_CAN;
+
+            qbt.j1939transaction.UpdateJ1939Data(Support.ByteArrayToString(msg)); //add message, process
+            qbt.pktData = qbt.j1939transaction.GetCANPacket(); //get packet for current state.
+
+            qbt.numRetries = 2;
+            qbt.timePeriod = Support.ackReplyLimit;
+            qbt.timeoutReply = UDPReplyType.sendJ1708replytimeout;
+            QBSerial.ClientIdToSerialInfo(clientId).QBTransactionNew.Add(qbt);     
         }
 
         //send message to debug port

@@ -148,6 +148,14 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 				queryType = QUERY_J1939MSG_PKT;
 			}
 		}
+
+		if (ctype == Conn_J1708 && nMessageSize < 1) {
+			return ERR_INVALID_COMMAND;
+		}
+		if (ctype == Conn_J1939 && nMessageSize < 6) {
+			return ERR_INVALID_COMMAND;
+		}
+
 		//send j1708 message to driver app.
 		int cid = (int) nClientID;
 		_DbgTrace(_T("before query driver app send\n"));
