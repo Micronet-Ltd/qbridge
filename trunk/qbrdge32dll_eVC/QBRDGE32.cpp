@@ -189,7 +189,7 @@ RP1210AReturnType RP1210A_API WINAPI RP1210_ReadMessage (short nClientID, char f
 RP1210AReturnType RP1210A_API WINAPI RP1210_SendCommand (short nCommandNumber, short nClientID, char far* fpchClientCommand, short nMessageSize) {
 	CritSection cs;
 	//ASSERT (IS_PTR_VALID(fpchClientCommand, nMessageSize, TRUE));
-	return SendCommand (nCommandNumber, nClientID, fpchClientCommand, nMessageSize);
+	return SendCommand (nCommandNumber, nClientID, fpchClientCommand, nMessageSize, cs);
 }
 
 /*************************/

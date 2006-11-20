@@ -9,7 +9,7 @@ namespace qbrdge_driver_classlib
     {
         //keep track of reply from comports, if no reply recieved handle appropriately
         public const int ackReplyLimit = 10000; // milliseconds
-        public const int j1708ConfirmLimit = 60000; // 1 minute
+        public const int j1708ConfirmLimit = 20000; // 1 minute
 
         public static System.Object lockThis = new Object();
 
@@ -80,6 +80,39 @@ namespace qbrdge_driver_classlib
                 return a;
             }
         }
+        public static UInt16 BytesToUInt16(byte[] twoByteArr, bool bigendien)
+        {
+            if (bigendien == false)
+            {
+                return System.BitConverter.ToUInt16(twoByteArr, 0);
+            }
+            else
+            {
+                byte[] a = new byte[2];
+                a[0] = twoByteArr[1];
+                a[1] = twoByteArr[0];
+                return System.BitConverter.ToUInt16(a, 0);
+            }
+        }
+        public static byte[] UInt16ToBytes(UInt16 input, bool bigendien)
+        {
+            if (bigendien == false)
+            {
+                return System.BitConverter.GetBytes(input);
+            }
+            else
+            {
+                byte[] a = new byte[2];
+                byte[] b = System.BitConverter.GetBytes(input);
+                int j = 0;
+                for (int i = a.Length - 1; i >= 0; i--)
+                {
+                    a[j] = b[i];
+                    j++;
+                }
+                return a;
+            }
+        }
 
         public static void SendClientDataPacket(string pktType, QBTransaction qbt)
         {
@@ -122,8 +155,10 @@ namespace qbrdge_driver_classlib
         public const string sendJ1708confirmfail = "sendJ1708confirmfail";
         public const string sendJ1708success = "sendJ1708success";
         public const string readmessage = "readmessage";
-        public const string sendJ1939confirmfail = "sendJ1939confirmfail";
-        public const string sendJ1939success = "sendJ1939success";
+        public const string sendJ1939commerr = "sendJ1708commerr";
+        public const string sendJ1939replytimeout = "sendJ1708replytimeout";
+        public const string sendJ1939confirmfail = "sendJ1708confirmfail";
+        public const string sendJ1939success = "sendJ1708success";
     }
 
     enum PacketRecvType
@@ -157,11 +192,15 @@ namespace qbrdge_driver_classlib
         PKT_CMD_RAW_J1708 = 0x2B,
         PKT_CMD_REQUEST_RAW = 0x2C,
         PKT_CMD_J1708_ECHO = 0x2D,
-        PKT_CMD_SEND_CAN = 0x4A
+        PKT_CMD_SEND_CAN = 0x4A,
+        PKT_CMD_RECV_CAN = 0x4B
     }
 
     enum RP1210ErrorCodes : int
     {
+        ERR_ADDRESS_CLAIM_FAILED = 146,
+        ERR_ADDRESS_LOST = 153,
+        ERR_ADDRESS_NEVER_CLAIMED = 157,
         ERR_INVALID_CLIENT_ID = 129,
         ERR_HARDWARE_NOT_RESPONDING = 142,
         ERR_INVALID_COMMAND = 144,

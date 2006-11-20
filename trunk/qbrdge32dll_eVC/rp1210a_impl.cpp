@@ -127,6 +127,9 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 		if (nMessageSize > 21 && ctype == Conn_J1708) {
 			return ERR_MESSAGE_TOO_LONG;
 		}
+		if (nMessageSize > 1791 && ctype == Conn_J1939) {
+			return ERR_MESSAGE_TOO_LONG;
+		}
 
 		PACKET_TYPE queryType;
 		if (nBlockOnSend) {
@@ -248,7 +251,7 @@ RP1210AReturnType ReadRP1210Message (short nClientID, char far* fpchAPIMessage, 
 /****************/
 /* SendCommand */
 /**************/
-RP1210AReturnType SendCommand (short nCommandNumber, short nClientID, char far* fpchClientCommand, short nMessageSize) {
+RP1210AReturnType SendCommand (short nCommandNumber, short nClientID, char far* fpchClientCommand, short nMessageSize, CritSection &cs) {
 	if (nClientID < 0 || nClientID > maxClientID) {
 		return ERR_INVALID_CLIENT_ID;
 	}
@@ -264,6 +267,64 @@ RP1210AReturnType SendCommand (short nCommandNumber, short nClientID, char far* 
 			nCommandNumber == CMD_UPGRADE_FIRMWARE) && returnCode == 0) {
 			//success, device reset, client not connected
 			Disconnect(nClientID);
+		}
+		else if (nCommandNumber == CMD_PROTECT_J1939_ADDRESS) {
+			int msgId = cid;
+			//if blocking
+			short nNotifyStatusOnTx, nBlockOnSend;
+			if (fpchClientCommand[9] == 1) {
+				nNotifyStatusOnTx = 1;
+			}
+			else {
+				nNotifyStatusOnTx = 0;
+			}
+			if (nNotifyStatusOnTx && (connections[nClientID].GetHwnd() == 0)) {
+				return ERR_WINDOW_HANDLE_REQUIRED;
+			}
+			if (fpchClientCommand[9] == 0) {
+				nBlockOnSend = 1;
+			}
+			else {
+				nBlockOnSend = 0;
+			}
+			if ((nBlockOnSend || nNotifyStatusOnTx) && cid != 0) {
+				connections[nClientID].AddTransaction(nNotifyStatusOnTx, msgId, true, fpchClientCommand[0]);
+			}
+			if (nBlockOnSend) {
+				//wait for signal here
+				HANDLE hEvent = connections[nClientID].GetTransEvent(nNotifyStatusOnTx, msgId);
+						
+				if (connections[nClientID].GetConnectionType() == Conn_Invalid) {
+					return ERR_CLIENT_DISCONNECTED;
+				}
+				cs.Pause();
+				::WaitForSingleObject(hEvent, 70000); //SetEvent for release?
+				cs.Unpause();
+				::CloseHandle(hEvent);
+
+				int returnCode = connections[nClientID].GetReturnCode(nNotifyStatusOnTx, msgId);
+				connections[nClientID].RemoveTransaction(nNotifyStatusOnTx, msgId);
+
+				if (connections[nClientID].GetConnectionType() == Conn_Invalid) {
+					return ERR_CLIENT_DISCONNECTED;
+				}
+				return returnCode;
+			} 
+			else if (nNotifyStatusOnTx) {
+				if (cid == 0) {
+					//message queue 1-127 full
+					//_DbgTrace(_T("after query driver app send 2\n"));
+					return ERR_MAX_NOTIFY_EXCEEDED;
+				}
+				else {
+					TRACE (_T("Sent packet to qbridge, notify mode.  PacketID=%d\n"), cid);
+					return cid;
+				}
+			} else {
+				//_DbgTrace(_T("after query driver app send 3\n"));
+				// message sent to QBridge -- no notify or blockign requested
+				return 0;
+			}
 		}
 		return returnCode;
 	}
@@ -456,7 +517,7 @@ bool QueryDriverApp(PACKET_TYPE queryId, int localPort,
 
 	_DbgTrace(_T("QueryDriverApp()\n"));
 		
-	char sendBuf[300];
+	char sendBuf[3000];
 	int sendBufLen = GetSendQueryPacket(queryId, sendBuf, sizeof(sendBuf), 
 		intRetVal, outData, outDataLen, idNum);
 
@@ -733,7 +794,7 @@ static DWORD __stdcall UDPListenFunc(void * args) {
 	SOCKET RecvSocket;
 	sockaddr_in RecvAddr;
 	int Port = assignPort + 1;
-	const int BufLen = 1024;
+	const int BufLen = 2100;
 	char RecvBuf[BufLen];
 	sockaddr_in SenderAddr;
 	int SenderAddrSize = sizeof(SenderAddr);
@@ -968,7 +1029,7 @@ void ProcessDataPacket(char* data, SOCKET RecvSocket, sockaddr_in RecvAddr)
 		}
 		i++;
 		int msgLen = atoi(tmp);
-		char msg[300];
+		char msg[2100];
 		int k = 0;
 		for (size_t p = i; p < (i+msgLen); p++) {
 			msg[k] = data[p];
