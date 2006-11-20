@@ -972,6 +972,10 @@ void CTestAppMFCDlg::OnBnClickedAddrclaimcom3()
 {
 	char far msg[10];
 	short msgLen = 10;
+	for (int i = 0; i < msgLen; i++)
+	{
+		msg[i] = 0xFF;
+	}
 	msg[0] = 2;
 	msg[9] = 0; //blcok until done
 	rp1210SendCustomCommand(19, lastCom3Client, msg, msgLen);

@@ -39,8 +39,8 @@
 #define DBGEB                           1029
 #define IDC_READCOM4_BTN3               1030
 #define IDC_sendj1939msgbtn7            1031
-#define IDC_BUTTON15                    1032
 #define IDC_AddrClaimCom3               1032
+#define IDC_AddrClaimCom4               1033
 
 // Next default values for new objects
 // 
