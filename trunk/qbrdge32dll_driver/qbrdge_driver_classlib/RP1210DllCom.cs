@@ -380,8 +380,12 @@ namespace qbrdge_driver_classlib
                 {
                     //Set All Filter States to Pass
                     ClientIDManager.clientIds[clientId].J1708MIDFilter = false;
+                    ClientIDManager.clientIds[clientId].J1708MIDList = new byte[0];
 
-                    UdpSend("0", iep);
+                    if (cmdData.Length != 0)
+                        UdpSend(((int)RP1210ErrorCodes.ERR_INVALID_COMMAND).ToString(), iep);
+                    else
+                        UdpSend("0", iep);
                 }
                 else if (cmdNum == (int)RP1210SendCommandType.SC_SET_MSG_FILTER_J1939)
                 {
@@ -400,32 +404,25 @@ namespace qbrdge_driver_classlib
                 else if (cmdNum == (int)RP1210SendCommandType.SC_SET_MSG_FILTER_J1708)
                 {
                     //Set Message Filtering for J1708/J1587
-                    if (ClientIDManager.clientIds[clientId].J1708MIDFilter == false)
+                    ClientIDManager.clientIds[clientId].J1708MIDFilter = true;
+                    //add mid codes to midlist
+                    string newFilter = cmdData;
+                    string oldFilter = Support.ByteArrayToString(
+                        ClientIDManager.clientIds[clientId].J1708MIDList);
+                    for (int a = 0; a < oldFilter.Length; a++) 
                     {
-                        ClientIDManager.clientIds[clientId].J1708MIDFilter = true;
-                        ClientIDManager.clientIds[clientId].J1708MIDList = Support.StringToByteArray(cmdData);
-                    }
-                    else
-                    {
-                        //add mid codes to midlist
-                        string newFilter = cmdData;
-                        string oldFilter = Support.ByteArrayToString(
-                            ClientIDManager.clientIds[clientId].J1708MIDList);
-                        for (int a = 0; a < oldFilter.Length; a++) 
+                        bool dup = false;
+                        for (int b = 0; b < newFilter.Length; b++) 
                         {
-                            bool dup = false;
-                            for (int b = 0; b < newFilter.Length; b++) 
-                            {
-                                if (newFilter[b] == oldFilter[a]) {
-                                    dup = true;
-                                }
-                            }
-                            if (dup == false) {
-                                newFilter.Insert(0, oldFilter.Substring(a, 1));
+                            if (newFilter[b] == oldFilter[a]) {
+                                dup = true;
                             }
                         }
-                        ClientIDManager.clientIds[clientId].J1708MIDList = Support.StringToByteArray(newFilter);
+                        if (dup == false) {
+                            newFilter.Insert(0, oldFilter.Substring(a, 1));
+                        }
                     }
+                    ClientIDManager.clientIds[clientId].J1708MIDList = Support.StringToByteArray(newFilter);
                     UdpSend("0", iep);
                 }
                 else if (cmdNum == (int)RP1210SendCommandType.SC_GENERIC_DRIVER_CMD)
@@ -520,7 +517,10 @@ namespace qbrdge_driver_classlib
                     //Set All Filter States To Discard
                     ClientIDManager.clientIds[clientId].J1708MIDFilter = true;
                     ClientIDManager.clientIds[clientId].J1708MIDList = new byte[0];
-                    UdpSend("0", iep);
+                    if (cmdData.Length != 0) 
+                        UdpSend(((int)RP1210ErrorCodes.ERR_INVALID_COMMAND).ToString(), iep);
+                    else
+                        UdpSend("0", iep);
                 }
                 else if (cmdNum == (int)RP1210SendCommandType.SC_SET_MSG_RECEIVE)
                 {
