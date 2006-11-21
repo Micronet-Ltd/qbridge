@@ -5,25 +5,39 @@
 typedef enum _ACKCodes {
     ACK_OK                      = '0',
     ACK_DUPLICATE_PACKET        = '1',
-    ACK_INVALID_PACKET      = '2',
-    ACK_INVALID_COMMAND     = '3',
+    ACK_INVALID_PACKET          = '2',
+    ACK_INVALID_COMMAND         = '3',
     ACK_INVALID_DATA            = '4',
-    ACK_UNABLE_TO_PROCESS   = '5',
+    ACK_UNABLE_TO_PROCESS       = '5',
 } ACKCodes;
 
 typedef enum _Commands {
     Init232                     = '@',
     ACK                         = 'A',
-    InfoReq                     = '*',
-    RawJ1708                        = '+',
-    MIDFilterEnable         = 'B',
+    MIDFilterEnable             = 'B',
     SetMIDState                 = 'C',
-    SendJ1708Packet         = 'D',
-    ReceiveJ1708Packet      = 'E',
-    EnableJ1708TxConfirm        = 'F',
-    J1708TransmitConfirm        = 'G',
-    UpgradeFirmware         = 'H',
+    SendJ1708Packet             = 'D',
+    ReceiveJ1708Packet          = 'E',
+    EnableTxConfirm             = 'F', //for now, one command to enable all
+    EnableJ1708TxConfirm        = 'F', // |
+    EnableJ1939TxConfirm        = 'F', // |
+    EnableCANTxConfirm          = 'F', // |
+    TransmitConfirm             = 'G', //for now, one message back to host to confirm any
+    J1708TransmitConfirm        = 'G', // |
+    J1939TransmitConfirm        = 'G', // |
+    CANTransmitConfirm          = 'G', // |
+    UpgradeFirmware             = 'H',
     ResetQBridge                = 'I',
+    SendCANPacket               = 'J',
+    ReceiveCANPacket            = 'K',
+    CANcontrol                  = 'L',
+    GetInfo                     = 'M',
+    CANbusErr                   = 'N',
+    InfoReq                     = '*',
+    RawJ1708                    = '+',
+    ReqRawPackets               = ',',
+    ReqEcho                     = '-',
+    PJDebug                     = 'p',
 } Commands;
 
 void Initialize232Protocol();
