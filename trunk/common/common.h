@@ -59,6 +59,7 @@
 /**********/
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof(a[0]))
 static inline UINT16 BufToUINT16(UINT8 *buf) { return 256*buf[1] + buf[0]; }
+static inline UINT32 BufToUINT32(UINT8 *buf) { return 256*256*256*buf[3] + 256*256*buf[2] + 256*buf[1] + buf[0]; }
 
 /**************/
 /* Prototypes */
