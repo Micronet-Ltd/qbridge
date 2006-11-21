@@ -58,6 +58,11 @@ namespace qbrdge_driver_classlib
                         Debug.WriteLine("cid: iepport: " + iep.Port.ToString());
                         clientIds[i].dllInPort = iep.Port;
                         clientIds[i].serialInfo = sinfo;
+                        clientIds[i].claimAddress = -1;
+                        clientIds[i].claimAddressName = new byte[8];
+                        clientIds[i].J1708MIDFilter = false;
+                        clientIds[i].J1708MIDList = new byte[0];
+                        clientIds[i].allowReceive = true;
                         if (sinfo.qbInitNeeded)
                         {
                             QBSerial.ReInitSerialPort(ref clientIds[i].serialInfo, i);
