@@ -149,10 +149,13 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 			}
 		}
 
-		if (ctype == Conn_J1708 && nMessageSize < 1) {
+		if (ctype == Conn_J1708 && nMessageSize < 2) {
 			return ERR_MESSAGE_NOT_SENT;
 		}
 		if (ctype == Conn_J1939 && nMessageSize < 6) {
+			return ERR_MESSAGE_NOT_SENT;
+		}
+		if (ctype == Conn_J1939 && fpchClientMessage[0] > 0x07) {
 			return ERR_MESSAGE_NOT_SENT;
 		}
 
@@ -161,6 +164,9 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 		_DbgTrace(_T("before query driver app send\n"));
 		if (QueryDriverApp(queryType, GetAssignPort(), cid, fpchClientMessage, nMessageSize, 0) == true) {
 			int msgId = cid;
+			if (msgId > 127) {
+				return msgId; // error code returned
+			}
 			if (nBlockOnSend || (nNotifyStatusOnTx && cid != 0)) {
 				connections[nClientID].AddTransaction(nNotifyStatusOnTx, msgId);
 			}
@@ -1075,6 +1081,10 @@ void ProcessDataPacket(char* data, SOCKET RecvSocket, sockaddr_in RecvAddr)
 		else if (strcmp(pktType, "readmessage") == 0) {
 			connections[clientid].AddReadMsg(msg, msgLen);
 			_DbgTrace(_T("new rp1210 readmessage"));
+		}
+		else if (strcmp(pktType, "sendJ1939addresslost") == 0) {
+			connections[clientid].UpdateTransaction(isnotify, transid, ERR_ADDRESS_LOST);
+			_DbgTrace(_T("sendj1939addresslost"));
 		}
 	}
 }

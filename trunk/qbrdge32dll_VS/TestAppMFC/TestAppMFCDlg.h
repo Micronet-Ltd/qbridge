@@ -139,6 +139,10 @@ public:
 	afx_msg void OnBnClickedsendj1939msgbtn7();
 public:
 	afx_msg void OnBnClickedAddrclaimcom3();
+public:
+	afx_msg void OnBnClickedAddrclaimcom4();
+public:
+	afx_msg void OnBnClickedsendj1939msgbtn8();
 };
 
 static DWORD __stdcall DisconnectFunc(void* args);

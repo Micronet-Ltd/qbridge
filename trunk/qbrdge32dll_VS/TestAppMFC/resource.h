@@ -41,6 +41,7 @@
 #define IDC_sendj1939msgbtn7            1031
 #define IDC_AddrClaimCom3               1032
 #define IDC_AddrClaimCom4               1033
+#define IDC_sendj1939msgbtn8            1034
 
 // Next default values for new objects
 // 
