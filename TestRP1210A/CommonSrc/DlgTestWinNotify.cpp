@@ -71,7 +71,7 @@ LRESULT DlgTestWinNotify::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 			}
 			sent.insert(msgNum);
 		} else if (wParam == 0xFFFFFFFF) {
-			TRACE ("  Got this message %d\n", lParam);
+			TRACE (_T("  Got this message %d.  Tick Count=%d\n"), lParam, GetTickCount());
 		}
 	} else if (message == notifyMsg) {
 		recvCount++;
@@ -87,6 +87,7 @@ BOOL DlgTestWinNotify::OnInitDialog()
 {
 	CDialog::OnInitDialog();
 
+TRACE ("Init Dialog\n");
 	PostMessage(WM_APP);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
@@ -113,7 +114,7 @@ void DlgTestWinNotify::PerformTest() {
 	DWORD tick;
 	set<int> msgNums;
 	bool floodPass = false;
-
+TRACE (_T("Starting Notify test\n"));
 	int clientID = test->api1->pRP1210_ClientConnect(*this, dev.deviceID, "J1708", 0,0,0);
 	if (!IsValid(clientID)) {
 		log.LogText (_T("    Couldn't open client for testing"), Log::Red);
@@ -160,6 +161,7 @@ PostMessage(errMsg, 0xFFFFFFFF, 3);
 			break;
 		}
 	}
+TRACE ("After wait loop\n");
 	if (sent != msgNums) {
 		vector <int> leftover(msgNums.size());
 		size_t count = set_difference(msgNums.begin(), msgNums.end(), sent.begin(), sent.end(), leftover.begin()) - leftover.begin();
@@ -180,7 +182,7 @@ PostMessage(errMsg, 0xFFFFFFFF, 3);
 			} else if (result == 0) {
 				log.LogText (_T("    Received 0 as a message number from SendMessage!"), Log::Red);
 			} else if (!IsValid(result)) {
-				TRACE ("Error (%d) at %d of flood\n", result, i);
+				TRACE (_T("Error (%d) at %d of flood\n"), result, i);
 				test->LogError(*test->api1, result);
 			}
 
@@ -236,5 +238,6 @@ veryEnd:
 		Sleep(20);
 		TestRP1210::DoEvents();
 	}
+TRACE (_T("Ending Notify test\n"));
 
 }

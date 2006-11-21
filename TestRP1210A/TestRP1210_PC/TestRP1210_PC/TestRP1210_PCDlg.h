@@ -34,12 +34,8 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	CComboBox m_dev1;
-public:
 	CComboBox m_dev2;
-public:
 	CRichEditCtrl m_log;
-public:
 	afx_msg void OnBnClickedTest1();
-public:
 	afx_msg void OnBnClickedBtn2();
 };

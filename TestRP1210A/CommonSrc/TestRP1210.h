@@ -120,6 +120,7 @@ private:
 
 	bool threadsMustDie;
 	static bool firstAlreadyCreated;
+	bool sendSpectrum;
 
 	void TestReadVersion();
 	void TestConnect(vector<INIMgr::Devices> &devs, int idx1);
@@ -131,7 +132,22 @@ private:
 	void TestAdvancedSend(INIMgr::Devices &dev, int primaryClient);
 	void TestWinNotify(INIMgr::Devices &dev);
 
+	int VerifyConnect(INIMgr::Devices &dev, char *protocol = "J1708");
+	int VerifyDisconnect(int clientID);
+	int VerifiedRead (int clientID, char *rxBuf, int rxLen, bool block);
+	void VerifyValidSendCommand (int cmd, CString text, int clientID, char *cmdData, int len, bool logSuccess);
+	void VerifyInvalidSendCommand(int cmd, CString text, int clientID, char *cmdData, int len, int expectedResult);
+	void VerifyInvalidClientIDSendCommand(int cmd, CString text, char *cmdData, int len) { VerifyInvalidSendCommand (cmd, text + _T("<invalid client ID>"), 127, cmdData, len, ERR_INVALID_CLIENT_ID); }
+	void TestSendCommandReset(INIMgr::Devices &dev, int &primaryClient);
+	void TestFilterStatesOnOffMessagePassOnOff(INIMgr::Devices &dev, int primaryClient);
+	void TestFilters(INIMgr::Devices &dev, int primaryClient);
+
+	void TestCustomMultiread(INIMgr::Devices &dev, INIMgr::Devices &dev2);
+	void TestCustomAdvSend(INIMgr::Devices &dev);
+	void TestCustomReset (INIMgr::Devices &dev,  INIMgr::Devices &dev2);
+
 	list <RecvMsgPacket> secondaryRxMsgs;
 	friend struct ErrorSend;
 	friend class DlgTestWinNotify;
+	friend struct CollectMessageArray;
 };
