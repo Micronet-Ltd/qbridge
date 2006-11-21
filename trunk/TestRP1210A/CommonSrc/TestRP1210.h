@@ -109,7 +109,7 @@ private:
 	static UINT __cdecl KillSpecifiedConnection( LPVOID pParam );
 	void KillThreads();
 	static void DestroyThread(CWinThread *&thread);
-	void SetupWorkerThread(CWinThread *&thread, AFX_THREADPROC threadProc, bool autoDelete);
+	void SetupWorkerThread(CWinThread *&thread, AFX_THREADPROC threadProc, bool autoDelete, CString threadName);
 
 	RP1210API *api1, *api2;
 	CWinThread *helperTxThread;

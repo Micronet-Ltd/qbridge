@@ -9,6 +9,36 @@
 
 #define PARM(a,b) (a), L#a L##b
 
+#define MS_VC_EXCEPTION 0x406D1388
+typedef struct tagTHREADNAME_INFO
+{
+   DWORD dwType; // Must be 0x1000.
+   LPCSTR szName; // Pointer to name (in user addr space).
+   DWORD dwThreadID; // Thread ID (-1=caller thread).
+   DWORD dwFlags; // Reserved for future use, must be zero.
+} THREADNAME_INFO;
+
+/******************/
+/* SetThreadName */
+/****************/
+void SetThreadName( DWORD dwThreadID, LPCSTR szThreadName)
+{
+   THREADNAME_INFO info;
+   info.dwType = 0x1000;
+   info.szName = szThreadName;
+   info.dwThreadID = dwThreadID;
+   info.dwFlags = 0;
+
+   __try
+   {
+      RaiseException( MS_VC_EXCEPTION, 0, sizeof(info)/sizeof(DWORD), (DWORD*)&info );
+   }
+   __except(EXCEPTION_CONTINUE_EXECUTION)
+   {
+   }
+}
+
+
 // Note:
 // Things to search for when implementing 1939 include:
 // "J1708"
@@ -266,8 +296,8 @@ void TestRP1210::Test (vector<INIMgr::Devices> &devs, int idx1, int idx2) {
 		secondaryClient = -1;
 		goto end;
 	}
-	SetupWorkerThread (helperTxThread, SecondaryDeviceTXThread, false);
-	SetupWorkerThread (helperRxThread, SecondaryDeviceRXThread, false);
+	SetupWorkerThread (helperTxThread, SecondaryDeviceTXThread, false, _T("Secondary_TX"));
+	SetupWorkerThread (helperRxThread, SecondaryDeviceRXThread, false, _T("Secondary_RX"));
 
 	// Setup Primary Client
 	int primaryClient = api1->pRP1210_ClientConnect(NULL, devs[idx1].deviceID, "J1708", 0, 0, 0);
@@ -467,7 +497,7 @@ void TestRP1210::TestAdvancedRead(INIMgr::Devices &dev, int primaryClient) {
 			CWinThread *worker;
 			{
 				CritSection crit; // need to get rid of this variable as soon as we are ready to read so that the other thread can progress
-				SetupWorkerThread(worker, KillSpecifiedConnection, true);
+				SetupWorkerThread(worker, KillSpecifiedConnection, true, _T("Adv_read_kill_connection"));
 			}
 			result = api1->pRP1210_ReadMessage(toKillClient, largeBuf, sizeof(largeBuf), true);
 		
@@ -737,7 +767,7 @@ void TestRP1210::TestAdvancedSend(INIMgr::Devices &dev, int primaryClient) {
 			CWinThread *worker;
 			{
 				CritSection crit; // need to get rid of this variable as soon as we are ready to read so that the other thread can progress
-				SetupWorkerThread(worker, KillSpecifiedConnection, true);
+				SetupWorkerThread(worker, KillSpecifiedConnection, true, _T("Adv_Send_Kill_Conn"));
 			}
 		
 			// This timing here is very tricky.  It may not be possible to reliably test this.
@@ -1160,9 +1190,12 @@ void TestRP1210::LogError (RP1210API &api, int code, COLORREF clr) {
 /**********************************/
 /* TestRP1210::SetupWorkerThread */
 /********************************/
-void TestRP1210::SetupWorkerThread(CWinThread *&thread, AFX_THREADPROC threadProc, bool autoDelete) {
+void TestRP1210::SetupWorkerThread(CWinThread *&thread, AFX_THREADPROC threadProc, bool autoDelete, CString threadName) {
 	thread = AfxBeginThread(threadProc, (LPVOID)this, 0, CREATE_SUSPENDED);
 	thread->m_bAutoDelete = autoDelete;
+
+	SetThreadName(thread->m_nThreadID, INIMgr::ToAnsi(threadName));
+
 	ResumeThread(thread->m_hThread);
 }
 
