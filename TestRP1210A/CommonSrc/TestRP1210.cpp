@@ -679,12 +679,14 @@ void TestRP1210::TestBasicSend (int primaryClient) {
 					}
 					i++;
 					if (i >= 3) {
+						goto doubleBreak;
 						break;
 					}
 				}
 			}
 			Sleep(10);
 		}
+doubleBreak:
 
 		if (i >= 3) {
 			log.LogText(_T("    Passed (") + state + _T(")"));
