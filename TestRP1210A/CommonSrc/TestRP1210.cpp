@@ -643,12 +643,13 @@ void TestRP1210::TestBasicSend (int primaryClient) {
 	int j;
 
 	for (j = 0; j < 2; j++) {
+		int i = 0;
 		CString state = (j == 0) ? _T("Blocking") : _T("Non-Blocking");
 		bool blocking = j == 0;
 
 		char txBuf[] = { 4, PrimarySend, '0' };
 		DWORD time = GetTickCount();
-		for (int i = 0; i < 3; i++) {
+		for (i = 0; i < 3; i++) {
 			txBuf[2] = i+'0';
 			api1->pRP1210_SendMessage(primaryClient, txBuf, sizeof(txBuf), false, blocking);
 		}
@@ -659,7 +660,7 @@ void TestRP1210::TestBasicSend (int primaryClient) {
 
 		Sleep(40);
 		DWORD tick = GetTickCount();
-		int i = 0;
+		i = 0;
 		while (tick + (blocking ? 25 : 2000) > GetTickCount()) {
 			{
 				CritSection sec;
@@ -1007,6 +1008,7 @@ void TestRP1210::TestFilterStatesOnOffMessagePassOnOff(INIMgr::Devices &dev, int
 /* TestRP1210::TestFilters */
 /**************************/
 void TestRP1210::TestFilters(INIMgr::Devices &dev, int primaryClient) {
+	const int delay = 15000;
 	log.LogText (_T("Testing: SendCommand(SetMessageFilteringForJ1708)"), Log::Blue);
 
 	struct CollectMessageArray {
@@ -1089,7 +1091,7 @@ TRACE (_T("Received message (woor=%d).  MID=%d, msg=%s\n"), warnOutOfRange, pkt.
 	VerifyValidSendCommand(PARM(SetMessageFilteringForJ1708,""), primaryClient, filterArray+0, 3, false);
 	primary.Clear();
 	alt.Clear();
-	Sleep(1500);
+	Sleep(delay);
 	primary.Parse(this, primaryClient, true);
 	alt.Parse(this, clRx, false);
 	if (primary.Test(true, true, true, false, false, false, _T("primary <enable 3 filters>")) && alt.Test(true, true, true, true, true, true, _T("alt1"))) {
@@ -1102,7 +1104,7 @@ TRACE (_T("Received message (woor=%d).  MID=%d, msg=%s\n"), warnOutOfRange, pkt.
 	while (VerifiedRead(clRx, rxBuf, sizeof(rxBuf), false) > 0); 	// clear read buffer
 	primary.Clear();
 	alt.Clear();
-	Sleep(1500);
+	Sleep(delay);
 	primary.Parse(this, primaryClient, true);
 	alt.Parse(this, clRx, false);
 	if (primary.Test(true, true, true, true, false, false, _T("primary <enable 4 filters>")) && alt.Test(true, true, true, true, true, true, _T("alt2"))) {
@@ -1115,7 +1117,7 @@ TRACE (_T("Received message (woor=%d).  MID=%d, msg=%s\n"), warnOutOfRange, pkt.
 	while (VerifiedRead(clRx, rxBuf, sizeof(rxBuf), false) > 0); 	// clear read buffer
 	primary.Clear();
 	alt.Clear();
-	Sleep(1500);
+	Sleep(delay);
 	primary.Parse(this, primaryClient, true);
 	alt.Parse(this, clRx, false);
 	if (primary.Test(false, false, false, false, false, false, _T("primary <disable all filters>")) && alt.Test(true, true, true, true, true, true, _T("alt3"))) {
@@ -1124,7 +1126,7 @@ TRACE (_T("Received message (woor=%d).  MID=%d, msg=%s\n"), warnOutOfRange, pkt.
 
 	// now try from a shared port client
 	sendSpectrum = false;
-	Sleep(500);
+	Sleep(delay/3);
 	while (VerifiedRead(primaryClient, rxBuf, sizeof(rxBuf), false) > 0); 	// clear read buffer
 	while (VerifiedRead(clRx, rxBuf, sizeof(rxBuf), false) > 0); 	// clear read buffer
 
@@ -1140,7 +1142,7 @@ TRACE (_T("Received message (woor=%d).  MID=%d, msg=%s\n"), warnOutOfRange, pkt.
 		}
 	}
 
-	Sleep(100);
+	Sleep(delay/15);
 	primary.Parse(this, primaryClient, true);
 	alt.Parse(this, clRx, false);
 	if (primary.Test(false, false, false, true, true, true, _T("primary <enable 3 filters, same client tx>")) && alt.Test(true, true, true, true, true, true, _T("alt4"))) {
@@ -1161,7 +1163,7 @@ TRACE (_T("Received message (woor=%d).  MID=%d, msg=%s\n"), warnOutOfRange, pkt.
 			LogError (*api1, result);
 		}
 	}
-	Sleep(1500);
+	Sleep(delay);
 	primary.Parse(this, primaryClient, true);
 	alt.Parse(this, clRx, false);
 	if (primary.Test(true, true, true, false, false, false, _T("primary <test multiread copy>")) && alt.Test(false, false, false, false, false, false, _T("alt <multiread copy>"))) {
@@ -1222,6 +1224,7 @@ void TestRP1210::DestroyThread(CWinThread *&thread) {
 		VERIFY(GetExitCodeThread(thread->m_hThread, &exitCode));
 		while (exitCode == STILL_ACTIVE) {
 			Sleep(1);
+			DoEvents();
 			VERIFY(GetExitCodeThread(thread->m_hThread, &exitCode));
 		}
 		delete thread;
