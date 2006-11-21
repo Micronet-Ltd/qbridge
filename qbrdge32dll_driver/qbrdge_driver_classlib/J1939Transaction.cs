@@ -13,7 +13,7 @@ namespace qbrdge_driver_classlib
             PendingCAN = new List<byte[]>();
         }
 
-        private bool useRTSCTS = false;
+        public bool useRTSCTS = false;
         private bool useBAM = false;
         private bool isDone = false;
         private bool isComplete = false;
@@ -246,12 +246,14 @@ namespace qbrdge_driver_classlib
         }
 
         //abort RTS CTS
-        public void Abort()
+        public void AddressAbort()
         {
             isDone = true;
             isComplete = false;
             PendingCAN.Clear();
+            addrLost = true;
         }
+        public bool addrLost = false;
 
         //this function is called by the timer class when
         //the bampacket recieve has timed out

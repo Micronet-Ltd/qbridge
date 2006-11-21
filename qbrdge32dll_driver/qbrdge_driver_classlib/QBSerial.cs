@@ -1369,6 +1369,13 @@ namespace qbrdge_driver_classlib
             qbt.j1939transaction.UpdateJ1939Data(msg); //add message, process
             qbt.pktData = qbt.j1939transaction.GetCANPacket(); //get packet for current state.
 
+            if (qbt.j1939transaction.useRTSCTS && (ClientIDManager.clientIds[clientId].claimAddress < 0 ||
+                qbt.j1939transaction.SA != ClientIDManager.clientIds[clientId].claimAddress))
+            {
+                //need claimed address for RTS/CTS
+                return (int)RP1210ErrorCodes.ERR_ADDRESS_NEVER_CLAIMED;
+            }
+
             qbt.numRetries = 2;
             qbt.timePeriod = Support.ackReplyLimit;
             qbt.timeoutReply = UDPReplyType.sendJ1708replytimeout;
@@ -1576,7 +1583,18 @@ namespace qbrdge_driver_classlib
                 {
                     if (qt.j1939transaction.SA == oldAddr)
                     {
-                        qt.j1939transaction.Abort();
+                        qt.j1939transaction.AddressAbort();
+                        Support.SendClientDataPacket(UDPReplyType.sendJ1939addresslost, qt);                   
+                        if (i < portInfo.QBTransactionNew.Count)
+                        {
+                            portInfo.QBTransactionNew.RemoveAt(i);
+                            i--;
+                        }
+                        else
+                        {
+                            portInfo.QBTransactionSent.RemoveAt(i - portInfo.QBTransactionNew.Count);
+                            i--;
+                        }
                     }
                 }
             }

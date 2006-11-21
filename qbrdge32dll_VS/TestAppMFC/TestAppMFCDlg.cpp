@@ -98,6 +98,8 @@ BEGIN_MESSAGE_MAP(CTestAppMFCDlg, CDialog)
 	ON_BN_CLICKED(IDC_READCOM4_BTN3, &CTestAppMFCDlg::OnBnClickedReadcom4Btn3)
 	ON_BN_CLICKED(IDC_sendj1939msgbtn7, &CTestAppMFCDlg::OnBnClickedsendj1939msgbtn7)
 	ON_BN_CLICKED(IDC_AddrClaimCom3, &CTestAppMFCDlg::OnBnClickedAddrclaimcom3)
+	ON_BN_CLICKED(IDC_AddrClaimCom4, &CTestAppMFCDlg::OnBnClickedAddrclaimcom4)
+	ON_BN_CLICKED(IDC_sendj1939msgbtn8, &CTestAppMFCDlg::OnBnClickedsendj1939msgbtn8)
 END_MESSAGE_MAP()
 
 
@@ -974,9 +976,57 @@ void CTestAppMFCDlg::OnBnClickedAddrclaimcom3()
 	short msgLen = 10;
 	for (int i = 0; i < msgLen; i++)
 	{
-		msg[i] = 0xFF;
+		msg[i] = (char)0xFF;
 	}
-	msg[0] = 2;
+	msg[0] = 6;
 	msg[9] = 0; //blcok until done
 	rp1210SendCustomCommand(19, lastCom3Client, msg, msgLen);
+}
+
+void CTestAppMFCDlg::OnBnClickedAddrclaimcom4()
+{
+	char far msg[10];
+	short msgLen = 10;
+	for (int i = 0; i < msgLen; i++)
+	{
+		msg[i] = 0x01;
+	}
+	msg[0] = 6;
+	msg[9] = 0; //block until done
+	rp1210SendCustomCommand(19, lastCom4Client, msg, msgLen);
+}
+
+void CTestAppMFCDlg::OnBnClickedsendj1939msgbtn8()
+{
+	char far* msg = "\x03" "\xF0" "\x00" "\x03" "\x06" "\x08" "\xFF" "\xFE" "\x26"
+		"\x01" "A" "Aafdsdafds" "Adfdsf" "Afsd" "ABDADVB";
+	short msgLen = 24;
+	rp1210SendCustomMsg(lastCom4Client, msg, msgLen, 0, 1);
+
+	CString dbg;
+	char buffer[65];
+	dbg.Append(CString("SENT: \r\n"));
+	dbg.Append(CString("PGN: "));	
+	dbg.Append(CString(itoa((UINT8)msg[0],buffer,10)));
+	dbg.Append(CString(","));
+	dbg.Append(CString(itoa((UINT8)msg[1],buffer,10)));
+	dbg.Append(CString(","));
+	dbg.Append(CString(itoa((UINT8)msg[2],buffer,10)));
+	dbg.Append(CString("\r\n"));
+	dbg.Append(CString("How Priority: "));
+	dbg.Append(CString(itoa((UINT8)msg[3],buffer,10)));
+	dbg.Append(CString("\r\n"));
+	dbg.Append(CString("Source Address: "));
+	dbg.Append(CString(itoa((UINT8)msg[4],buffer,10)));
+	dbg.Append(CString("\r\n"));
+	dbg.Append(CString("Dest Address: "));
+	dbg.Append(CString(itoa((UINT8)msg[5],buffer,10)));
+	dbg.Append(CString("\r\n"));
+	dbg.Append(CString("Message Data: "));
+	for (int i = 6; i < msgLen; i++) {
+		dbg.Append(CString(itoa((UINT8)msg[i],buffer,10)));
+		dbg.Append(CString(","));
+	}
+	dbg.Append(CString("\r\n"));
+	m_debugeb.SetWindowTextW(dbg);
 }
