@@ -27,7 +27,11 @@ void InitializeTimers() {
     tcr2.value = 0;
     tcr1.TimerCountEnable = 1;
     tcr2.TimerOverflowInterruptEnable = 1;
-    tcr2.PrescalerDivisionFactor = (2*bauddiv_9600); // 8 ticks = 1 baud at 9600 -- useful for logging event data on the j1708 bus
+    tcr2.PrescalerDivisionFactor = 5;//new oscillator causes overflow if we attempt
+                                     //to keep everything the way it was.... so since we
+                                     //have to change anyway, make it so that time calc is easier
+                                     //this value was.....(2*bauddiv_9600); // 8 ticks = 1 baud at 9600 -- useful for logging event data on the j1708 bus
+                                     //NOW our MainTimer increment is 1/4 microsecond (250nS)
 
     MainTimer.timer->ControlRegister1 = tcr1.value;
     MainTimer.timer->ControlRegister2 = tcr2.value;
@@ -132,9 +136,56 @@ void Timer1IRQ() {
 /* GetTimerTime */
 /***************/
 UINT64 GetTimerTime(Timer *timer) {
-    UINT64 retVal = timer->wrapCounter;
+    UINT32 t1;
+    UINT32 t2;
+    UINT32 t3;
+    UINT32 t4;
+    t2 = timer->timer->Counter;
+    t1 = timer->wrapCounter;
+    t3 = timer->timer->Counter;
+    t4 = timer->wrapCounter;
+    if( (t2 > t3) || (t1 != t4) ){   //wrap occured right before our very eyes!
+        t2 = timer->timer->Counter;
+        t1 = timer->wrapCounter;
+    }
+    UINT64 retVal = t1;
     retVal <<= 16;
-    retVal |= timer->timer->Counter;
+    retVal |= t2;
+    return retVal;
+}
+
+/********************/
+/* Get_uS_TimeStamp */
+/********************/
+UINT32 Get_uS_TimeStamp( void ) {
+    //this routine seems to take a long time... about 2uS
+    //I found that reading hw registers can take about 8 wait states
+    //I found that reading memory can take about 3 wait states
+    //NOTE: This method works unless interrupts are disabled
+    // also, a 32 bit number in uS gives a time of about 71 minutes between rollovers
+    // this should be adequate for measuring most things... the problem will be if you
+    // are attempting to measure some time near the 71 minute mark then you may need the 64 bit version
+    //NOTE: Although this method is known to work, due to the speed and architecture of the
+    // processor, it is possible for us to read the counter as it rolls to 0 and then read
+    // the wrapCounter before the interrupt occurs... in that case, t2 is NOT greater than
+    // t3 and so we do not reread the wrapCounter... to solve this problem, I've had to add
+    // an additional check
+    Timer *timer = &MainTimer;
+    UINT32 t1;
+    UINT32 t2;
+    UINT32 t3;
+    UINT32 t4;
+    t2 = timer->timer->Counter;
+    t1 = timer->wrapCounter;
+    t3 = timer->timer->Counter;
+    t4 = timer->wrapCounter;
+    if( (t2 > t3) || (t1 != t4) ){   //wrap occured right before our very eyes!
+        t2 = timer->timer->Counter;
+        t1 = timer->wrapCounter;
+    }
+    UINT32 retVal = t1;    //Remember our MainTimer is in 1/4 microsecond ticks... so divide by 4 makes it 1uS tick
+    retVal <<= 14;         //we should shift by 16, but whole thing will be shifted right by 2
+    retVal |= (t2 >> 2);
     return retVal;
 }
 
@@ -142,7 +193,17 @@ UINT64 GetTimerTime(Timer *timer) {
 /* GetTimerTimeInBaudTicks */
 /**************************/
 UINT32 GetMainTimeInBaudTicks() {
-    return (MainTimer.wrapCounter << 13) | (MainTimer.timer->Counter >> 3);
+    UINT64 time = GetTimerTime(&MainTimer);
+    //now to convert this number to baud ticks (9600 baud)
+    // baud tick rate is 1/9600 = 104.166uS per tick
+    // our MainTimer runs at a rate of .25uS per tick
+    // so our scale factor has to be .25/104.166 = .0024 (need to divide by 416.6)
+    time >>= 1;         //half microsecond resolution is okay
+    time &= 0xffffffffffull; //we are multiplying by 24bit... want 24x40 = 64
+    time *= 80531;      //.0024*2^24 rsult is now in Q24 notation, this routine should only return the "whole" part
+    time += 8388608;    //round by adding 1/2 (.5*2^24)
+
+    return( time>>24 );
 }
 
 /************************/
