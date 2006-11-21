@@ -100,6 +100,7 @@ BEGIN_MESSAGE_MAP(CTestAppMFCDlg, CDialog)
 	ON_BN_CLICKED(IDC_AddrClaimCom3, &CTestAppMFCDlg::OnBnClickedAddrclaimcom3)
 	ON_BN_CLICKED(IDC_AddrClaimCom4, &CTestAppMFCDlg::OnBnClickedAddrclaimcom4)
 	ON_BN_CLICKED(IDC_sendj1939msgbtn8, &CTestAppMFCDlg::OnBnClickedsendj1939msgbtn8)
+	ON_BN_CLICKED(IDC_BUTTON16, &CTestAppMFCDlg::OnBnClickedButton16)
 END_MESSAGE_MAP()
 
 
@@ -768,7 +769,9 @@ UINT __cdecl CustomResetSecondThread ( LPVOID pParam ) {
 					);
 				
 				fp_RP1210_GetErrorMsg efunc = (fp_RP1210_GetErrorMsg) GetProcAddress(mod, "RP1210_GetErrorMsg");
-
+				
+				rp1210ClientConnect(4, "J1708", lastCom4Client);
+				
 				short nRet;
 				nRet = cfunc(lastCom4Client, basicJ1708TxBuf, sizeof(basicJ1708TxBuf), false, true);
 				if (nRet > 127) {
@@ -1029,4 +1032,9 @@ void CTestAppMFCDlg::OnBnClickedsendj1939msgbtn8()
 	}
 	dbg.Append(CString("\r\n"));
 	m_debugeb.SetWindowTextW(dbg);
+}
+
+void CTestAppMFCDlg::OnBnClickedButton16()
+{
+	rp1210SendCustomCommand(17, lastCom4Client, "a", 1);
 }

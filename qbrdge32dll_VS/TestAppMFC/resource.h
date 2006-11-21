@@ -42,6 +42,7 @@
 #define IDC_AddrClaimCom3               1032
 #define IDC_AddrClaimCom4               1033
 #define IDC_sendj1939msgbtn8            1034
+#define IDC_BUTTON16                    1035
 
 // Next default values for new objects
 // 
@@ -49,7 +50,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        129
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1033
+#define _APS_NEXT_CONTROL_VALUE         1036
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
