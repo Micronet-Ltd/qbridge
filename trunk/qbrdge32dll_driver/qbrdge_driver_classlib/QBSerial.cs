@@ -565,6 +565,13 @@ namespace qbrdge_driver_classlib
 
             Debug.WriteLine("pkt valid recv");
 
+            //check if last packet was disable can filters
+            if (qbt.cmdType == PacketCmdCodes.PKT_CMD_CAN_CONTROL)
+            {
+                portInfo.QBTransactionSent.RemoveAt(qbtIdx);
+                return;
+            }
+
             if (cmdType == PacketCmdCodes.PKT_CMD_ACK &&
                 ackCode == PacketAckCodes.PKT_ACK_OK &&
                 pktData.Length == 6 &&
@@ -729,6 +736,17 @@ namespace qbrdge_driver_classlib
                         qbt.RestartTimer();
                         portInfo.QBTransactionNew.Add(qbt);
                         portInfo.QBTransactionSent.RemoveAt(qbtIdx);
+                        //send can filter off
+                        QBTransaction qt = new QBTransaction();
+                        pData = new byte[2];
+                        pData[0] = 0x65;
+                        pData[1] = 0x00;
+                        qt.pktData = pData;
+                        qt.cmdType = PacketCmdCodes.PKT_CMD_CAN_CONTROL;
+                        qt.numRetries = 2;
+                        qt.timePeriod = Support.ackReplyLimit;
+                        qt.timeoutReply = UDPReplyType.sendJ1939replytimeout;
+                        portInfo.QBTransactionNew.Add(qt);
                     }
                     else if (qbt.cmdType == PacketCmdCodes.PKT_CMD_MID_FILTER)
                     {
