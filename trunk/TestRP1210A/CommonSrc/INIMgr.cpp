@@ -2,13 +2,22 @@
 #include "INIMgr.h"
 
 #include <fstream>
-#include <io.h>
 #include<algorithm>
 
+#ifndef WINCE
+#include <io.h>
+#endif
+
+/*******************/
+/* INIMgr::INIMgr */
+/*****************/
 INIMgr::INIMgr(void)
 {
 }
 
+/********************/
+/* INIMgr::~INIMgr */
+/******************/
 INIMgr::~INIMgr(void)
 {
 }
@@ -18,7 +27,7 @@ INIMgr::~INIMgr(void)
 /*************************/
 CString INIMgr::GetWindowsPath() {
 #ifdef WINCE
-	TCHAR path[] = { _T("\windows") };
+	TCHAR path[] = { _T("\\HardDisk\\BIN") };
 #else 
 	TCHAR path[MAX_PATH];
 
@@ -74,7 +83,7 @@ vector<INIMgr::Devices> INIMgr::GetDevices() {
 	for (i = 0; i < impls.size(); i++) {
 TRACE (_T("Implementation: %s\n"), impls[i]);
 		CString fname = GetWindowsPath() + _T("\\") + impls[i] + _T(".ini");
-		if (_taccess(fname, 0x04) != 0) {
+		if (GetFileAttributes(fname) == 0xFFFFFFFF) {
 			TRACE (_T("Unable to open %s\n"), fname);
 			continue;
 		}

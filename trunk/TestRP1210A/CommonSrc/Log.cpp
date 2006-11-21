@@ -16,6 +16,63 @@ Log::~Log(void)
 {
 }
 
+#ifdef WINCE
+/*****************/
+/* Log::LogText */
+/***************/
+void Log::LogText (const CString &text, COLORREF clr) {
+	if (re == NULL) {
+		return;
+	}
+
+	re->SetSel(-1, -1);
+	
+	CString reallyAdd;
+	if (GetRValue(clr) > __max(GetGValue(clr), GetBValue(clr))) {
+		reallyAdd = _T(" !!  ") + text;
+	} else {
+		reallyAdd = _T("     ") + text;
+	}
+	re->ReplaceSel(_T("\r\n") + reallyAdd, false);
+	re->SetSel(-1, -1);
+
+	
+	int visLines = 20;
+	int count = re->GetLineCount();
+	int cur = re->GetFirstVisibleLine();
+	if (count < visLines) { 
+		re->LineScroll(-cur, 0);
+	} else {
+		re->LineScroll(count-visLines-cur, 0);
+	}
+	re->UpdateWindow();
+}
+
+/****************/
+/* Log::LogDot */
+/**************/
+void Log::LogDot() {
+	if (re == NULL) {
+		return;
+	}
+
+	re->SetSel(-1, -1);
+	
+	re->ReplaceSel(_T("."), false);
+
+	int visLines = 20;
+	int count = re->GetLineCount();
+	int cur = re->GetFirstVisibleLine();
+	if (count < visLines) { 
+		re->LineScroll(-cur, 0);
+	} else {
+		re->LineScroll(count-visLines-cur, 0);
+	}
+	re->UpdateWindow();
+
+}
+
+#else // WINCE
 /*****************/
 /* Log::LogText */
 /***************/
@@ -72,3 +129,4 @@ void Log::LogDot() {
 	}
 	re->UpdateWindow();
 }
+#endif // WINCE

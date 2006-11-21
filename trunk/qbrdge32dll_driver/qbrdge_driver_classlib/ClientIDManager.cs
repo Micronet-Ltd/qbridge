@@ -26,7 +26,7 @@ namespace qbrdge_driver_classlib
             public byte[] claimAddressName = new byte[8];
             //needed for multi-frame RTS/CTS recieve or send messages
         }
-
+        
         public static ClientIDInfo[] clientIds = new ClientIDInfo[128];
 
         public static void Init()

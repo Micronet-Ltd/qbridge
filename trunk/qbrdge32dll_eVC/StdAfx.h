@@ -12,11 +12,13 @@
 // Insert your headers here
 #define WIN32_LEAN_AND_MEAN		// Exclude rarely-used stuff from Windows headers
 
+#pragma warning (disable:4786)
 #include <list>
 #include <map>
 #include <deque>
 #include <vector>
 using namespace std;
+#pragma warning (disable:4786)
 
 #include <windows.h>
 
