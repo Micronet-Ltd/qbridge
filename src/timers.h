@@ -1,11 +1,11 @@
 #ifndef TIMERS_H
 #define TIMERS_H
 
-#define TIMER_IRQ_PRIORITY 9
+#define TIMER_IRQ_PRIORITY 10
 
 typedef struct _Timer {
    TimerRegisterMap *timer;
-    UINT32 wrapCounter;
+    volatile UINT32 wrapCounter;
 } Timer;
 
 extern Timer MainTimer;
@@ -33,5 +33,13 @@ extern inline int GetJ1708IdleTime();
 extern inline void StartJ1708IdleTimer();
 extern void CancelJ1708IdleTimer();
 extern UINT32 GetMainTimeInBaudTicks();
+
+UINT32 Get_uS_TimeStamp( void ); //uses main timer
+#define One_millisecond              1000 //<---- in uS
+#define One_Eighth_of_a_Second     125000 //<---- in uS
+#define One_Quarter_of_a_Second    250000 //<---- in uS
+#define One_Half_of_a_Second       500000 //<---- in uS
+#define Three_Quarters_of_a_Second 750000 //<---- in uS
+#define One_Second                1000000 //<---- in uS
 
 #endif // TIMERS_H
