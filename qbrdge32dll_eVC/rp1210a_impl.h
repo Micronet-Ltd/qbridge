@@ -124,6 +124,7 @@ public:
 		Transaction t;
 		t.transId = transId;
 		t.isNotify = isNotify;
+		t.isJ1939AddrClaim = false;
 		if (!isNotify) {			
 			wchar_t lpName[30];
 			swprintf(lpName, L"blockOnSend_Event_%d", transId);
