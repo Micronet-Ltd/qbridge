@@ -32,6 +32,8 @@
 #include "protocol232.h"
 #include "timers.h"
 #include "J1708.h"
+//#include "J1939.h"
+#include "CAN.h"
 
 /***********/
 /* Pragmas */
@@ -151,6 +153,7 @@ int main(void) {
     InitializeTimers();
     InitializeJ1708();
     Initialize232Protocol();
+    InitializeCAN();
 
     extern const unsigned char BuildDateStr[];
     DebugPrint ("Starting QBridge. Version %s. %s.", VERSION, BuildDateStr);
@@ -160,6 +163,10 @@ int main(void) {
         Transmit232IfReady();
         ProcessJ1708TransmitQueue();
         ProcessJ1708RecvPacket();
+//        ProcessJ1939TransmitQueue();
+//        ProcessJ1939RecievePacket();
+        ProcessCANTransmitQueue();
+        ProcessCANRecievePacket();
     }
 
     LockProgram();
