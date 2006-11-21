@@ -695,6 +695,7 @@ void CTestAppMFCDlg::OnBnClickedsendj1939msgbtn()
 void CTestAppMFCDlg::OnBnClickedSetj1708filterbtn()
 {
 	rp1210SendCommand(7, lastCom3Client);
+	rp1210SendCustomCommand(7, lastCom3Client, "abcd", 4);
 }
 
 void CTestAppMFCDlg::OnBnClickedReadcom4Btn2()
