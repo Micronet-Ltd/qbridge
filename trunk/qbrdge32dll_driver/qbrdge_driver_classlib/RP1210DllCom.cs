@@ -419,7 +419,7 @@ namespace qbrdge_driver_classlib
                             }
                         }
                         if (dup == false) {
-                            newFilter.Insert(0, oldFilter.Substring(a, 1));
+                            newFilter = newFilter.Insert(0, oldFilter.Substring(a, 1));
                         }
                     }
                     ClientIDManager.clientIds[clientId].J1708MIDList = Support.StringToByteArray(newFilter);
