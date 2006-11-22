@@ -84,9 +84,9 @@ public:
 		for (transIter it = transactions.begin(); it != transactions.end(); it++) {
 			Transaction &t = *it;			
 			if (t.isNotify) {				
-					wchar_t buff[100];
-					swprintf(buff, 100, L"Send FreeMsgId2: %d\n", t.transId);
-					_DbgTrace(buff);
+				//	wchar_t buff[100];
+//					swprintf(buff, 100, L"Send FreeMsgId2: %d\n", t.transId);
+//					_DbgTrace(buff);
 				// send freeMsgId	
 				char sendBuf[40];
 				int len = _snprintf(sendBuf, 40, "%d,freeMsgId;", t.transId);				
@@ -136,9 +136,9 @@ public:
 			t.transEvent = ::CreateEvent(NULL, FALSE, FALSE, lpName);
 		}
 		else {
-			wchar_t buff[100];
-			swprintf(buff, 100, L"Notify ID1: %d\n", transId);
-			_DbgTrace(buff);
+			//wchar_t buff[100];
+			//swprintf(buff, 100, L"Notify ID1: %d\n", transId);
+			//_DbgTrace(buff);
 		}
 		transactions.push_back(t);
 	}
@@ -155,9 +155,9 @@ public:
 			t.returnCode = ERR_NOT_ADDED_TO_BUS;
 		}
 		else {
-			wchar_t buff[100];
-			swprintf(buff, 100, L"Notify ID2: %d\n", transId);
-			_DbgTrace(buff);
+			//wchar_t buff[100];
+//			swprintf(buff, 100, L"Notify ID2: %d\n", transId);
+//			_DbgTrace(buff);
 		}
 		transactions.push_back(t);
 	}
@@ -247,9 +247,9 @@ public:
 			Transaction &t = *it;
 			if (t.transId == transId && t.isNotify == isNotify) {
 				if (t.isNotify) {					
-					wchar_t buff[100];
-					swprintf(buff, 100, L"Send FreeMsgId1: %d\n", transId);
-					_DbgTrace(buff);
+					//wchar_t buff[100];
+//					swprintf(buff, 100, L"Send FreeMsgId1: %d\n", transId);
+//					_DbgTrace(buff);
 					// send freeMsgId	
 					char sendBuf[40];
 					int len = _snprintf(sendBuf, 40, "%d,freeMsgId;", t.transId);				
