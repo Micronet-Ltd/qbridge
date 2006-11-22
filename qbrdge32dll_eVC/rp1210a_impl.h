@@ -65,6 +65,7 @@ public:
 
 	void SetupConnection(int inTxQueueMax, int inRxQueueMax, ConnectionType connectionType, HWND inHwnd)
 	{
+		Clear();
 		txQueueMax = inTxQueueMax;
 		rxQueueMax = inRxQueueMax;
 		hwnd = inHwnd;	
@@ -82,14 +83,17 @@ public:
 		list <transIter> toErase;
 		for (transIter it = transactions.begin(); it != transactions.end(); it++) {
 			Transaction &t = *it;			
-			if (t.isNotify) {
+			if (t.isNotify) {				
+					wchar_t buff[100];
+					swprintf(buff, 100, L"Send FreeMsgId2: %d\n", t.transId);
+					_DbgTrace(buff);
 				// send freeMsgId	
 				char sendBuf[40];
 				int len = _snprintf(sendBuf, 40, "%d,freeMsgId;", t.transId);				
 				SendUDPPacket(inet_addr("127.0.0.1"), DRIVER_LISTEN_PORT, GetAssignPort(), sendBuf, len);
 			}
 			if (t.isNotify && hwnd != 0) {
-				_DbgTrace(_T("POST error client disconnect\n"));
+				//_DbgTrace(_T("POST error client disconnect\n"));
 				::PostMessage(GetHwnd(), WM_RP1210_ERROR_MESSAGE, ERR_CLIENT_DISCONNECTED, t.transId+128);				
 				toErase.push_back(it);
 			}
@@ -130,6 +134,11 @@ public:
 			swprintf(lpName, L"blockOnSend_Event_%d", transId);
 			t.transEvent = ::CreateEvent(NULL, FALSE, FALSE, lpName);
 		}
+		else {
+			wchar_t buff[100];
+			swprintf(buff, 100, L"Notify ID1: %d\n", transId);
+			_DbgTrace(buff);
+		}
 		transactions.push_back(t);
 	}
 	void AddTransaction(short isNotify, int transId, bool isJ1939AddrClaim, int claimAddr) {
@@ -143,6 +152,11 @@ public:
 			swprintf(lpName, L"blockOnSend_Event_%d", transId);
 			t.transEvent = ::CreateEvent(NULL, FALSE, FALSE, lpName);
 			t.returnCode = ERR_NOT_ADDED_TO_BUS;
+		}
+		else {
+			wchar_t buff[100];
+			swprintf(buff, 100, L"Notify ID2: %d\n", transId);
+			_DbgTrace(buff);
 		}
 		transactions.push_back(t);
 	}
@@ -178,12 +192,12 @@ public:
 					//send msg to hwnd
 					if (returnCode == 0) {
 						//Success in SendMessage		
-						_DbgTrace(_T("POST error client success tx\n"));				
+						//_DbgTrace(_T("POST error client success tx\n"));				
 						::PostMessage(GetHwnd(), WM_RP1210_ERROR_MESSAGE, ERR_TXMESSAGE_STATUS, transId);						
 					}
 					else {
 						//Error in SendMessage
-						_DbgTrace(_T("POST error client txt\n"));
+						//_DbgTrace(_T("POST error client txt\n"));
 						::PostMessage(GetHwnd(), WM_RP1210_ERROR_MESSAGE, ERR_TXMESSAGE_STATUS, transId+128);						
 					}
 					RemoveTransaction(isNotify, transId);
@@ -193,7 +207,7 @@ public:
 					//send msg to hwnd
 					if (returnCode != 0) {
 						//Error in addr claim
-						_DbgTrace(_T("POST error client txt\n"));
+						//_DbgTrace(_T("POST error client txt\n"));
 						::PostMessage(GetHwnd(), WM_RP1210_ERROR_MESSAGE, ERR_ADDRESS_LOST, t.claimAddr);						
 					}
 					RemoveTransaction(isNotify, transId);
@@ -210,7 +224,7 @@ public:
 						tbuf[i] = buff[i];
 					}
 					tbuf[BufLen] = 0;
-					_DbgTrace(tbuf);
+					//_DbgTrace(tbuf);
 
 					t.returnCode = returnCode;	
 					for (int j = 0; j < 40; j++) {
@@ -231,7 +245,10 @@ public:
 		for (transIter it = transactions.begin(); it != transactions.end(); it++) {
 			Transaction &t = *it;
 			if (t.transId == transId && t.isNotify == isNotify) {
-				if (t.isNotify) {
+				if (t.isNotify) {					
+					wchar_t buff[100];
+					swprintf(buff, 100, L"Send FreeMsgId1: %d\n", transId);
+					_DbgTrace(buff);
 					// send freeMsgId	
 					char sendBuf[40];
 					int len = _snprintf(sendBuf, 40, "%d,freeMsgId;", t.transId);				
@@ -270,7 +287,7 @@ public:
 		}
 		else if (hwnd != 0) {
 			// send notification
-			_DbgTrace(_T("POST notify\n"));	
+			//_DbgTrace(_T("POST notify\n"));	
 			::PostMessage(GetHwnd(), WM_RP1210_MESSAGE_MESSAGE, 0, 0);
 		}
 	}

@@ -222,6 +222,7 @@ namespace qbrdge_driver_classlib
             }
             else
             {
+                RP1210DllCom._DbgTrace("GM: " + msgIdIdx.ToString() + "\n");
                 msgIdAvail[msgIdIdx] = false;
                 return (msgIdIdx + 1);
             }
@@ -229,7 +230,8 @@ namespace qbrdge_driver_classlib
 
         public static void FreeMsgId(int msgId)
         {
-            msgIdAvail[msgId] = true;
+            RP1210DllCom._DbgTrace("FM: " + ((int)(msgId - 1)).ToString() + "\n");
+            msgIdAvail[msgId - 1] = true;
         }
 
         public static void RemovePort(SerialPortInfo sinfo)
@@ -296,13 +298,13 @@ namespace qbrdge_driver_classlib
             Array.Copy(inData, idx1 + pktLen - 2, pktCrc, 0, 2);
             verCrc = GetCRC16(pkt);
 
-            Debug.Write("CRC Pkt: ");
+            //Debug.Write("CRC Pkt: ");
             for (int i = 0; i < pkt.Length; i++)
             {
-                Debug.Write(pkt[i].ToString() + ",");
+                //Debug.Write(pkt[i].ToString() + ",");
             }
-            Debug.WriteLine(" pkt: " + pktCrc[0].ToString() + "," + pktCrc[1].ToString() +
-                " ver: " + verCrc[0].ToString() + "," + verCrc[1].ToString());
+            //Debug.WriteLine(" pkt: " + pktCrc[0].ToString() + "," + pktCrc[1].ToString() +
+                //" ver: " + verCrc[0].ToString() + "," + verCrc[1].ToString());
 
             //copy data section
             pktData = new byte[pktLen - 6];
@@ -451,15 +453,15 @@ namespace qbrdge_driver_classlib
 
         private static void port_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
-            Debug.WriteLine("Lock port_DataReceived");
+            //Debug.WriteLine("Lock port_DataReceived");
             lock (Support.lockThis)
             {
-                Debug.WriteLine("Lock2 port_DataReceived");
+                //Debug.WriteLine("Lock2 port_DataReceived");
                 DataReceived(sender);
-                Debug.WriteLine("after DataReceived");
+                //Debug.WriteLine("after DataReceived");
 
                 CheckSendMsgQ();
-                Debug.WriteLine("UnLock port_DataReceived");
+                //Debug.WriteLine("UnLock port_DataReceived");
             }
         }
 
@@ -475,11 +477,11 @@ namespace qbrdge_driver_classlib
                 int inDataLen = com.Read(inData, 0, 300);
                 
                 // Show all the incoming data in the port's buffer
-                Debug.Write(com.PortName + " Data: ");
+                //Debug.Write(com.PortName + " Data: ");
                 for (int i = 0; i < inDataLen; i++)
                 {
                     byte b = (byte)inData[i];
-                    Debug.Write(b.ToString() + ",");
+                    //Debug.Write(b.ToString() + ",");
                 }
 
                 // get port info object
@@ -563,7 +565,7 @@ namespace qbrdge_driver_classlib
                 idx++;
             }
 
-            Debug.WriteLine("pkt valid recv");
+            //Debug.WriteLine("pkt valid recv");
 
             //check if last packet was disable can filters
             if (qbt.cmdType == PacketCmdCodes.PKT_CMD_CAN_CONTROL)
@@ -578,12 +580,12 @@ namespace qbrdge_driver_classlib
                 qbt != null && qbtIdx > -1)
             {
                 //reply from sendJ1708 pkt
-                Debug.WriteLine("pkt ACK recv");
+                //Debug.WriteLine("pkt ACK recv");
                 //get J1708PacketID
                 byte[] j1708pktIdB = new byte[4];
                 Array.Copy(pktData, 2, j1708pktIdB, 0, 4);
                 int j1708pktId = Support.BytesToInt32(j1708pktIdB);
-                Debug.WriteLine("j1708pkid: " + j1708pktId.ToString());
+                //Debug.WriteLine("j1708pkid: " + j1708pktId.ToString());
 
                 if (qbt.cmdType == PacketCmdCodes.PKT_CMD_RAW_J1708)
                 {
@@ -616,7 +618,7 @@ namespace qbrdge_driver_classlib
                 byte[] pktIdB = new byte[4];
                 Array.Copy(pktData, 1, pktIdB, 0, 4);
                 int pktID = Support.BytesToInt32(pktIdB);
-                Debug.WriteLine("pkt J1708/CAN confirm: " + pktID.ToString());
+                //Debug.WriteLine("pkt J1708/CAN confirm: " + pktID.ToString());
                 for (int i = 0; i < portInfo.QBTransactionSent.Count; i++)
                 {
                     QBTransaction qt = portInfo.QBTransactionSent[i];
@@ -1172,12 +1174,12 @@ namespace qbrdge_driver_classlib
             newpkt[8] = SA;
             newpkt[9] = DA;
 
-            Debug.Write("READ PKT: ");
+            //Debug.Write("READ PKT: ");
             for (int i = 0; i < newpkt.Length; i++)
             {
-                Debug.Write(newpkt[i].ToString() + ",");
+                //Debug.Write(newpkt[i].ToString() + ",");
             }
-            Debug.WriteLine("");
+            //Debug.WriteLine("");
 
             NewClientJ1939ReadMessage(newpkt, portName, ignoreClientId);
         }
@@ -1206,12 +1208,12 @@ namespace qbrdge_driver_classlib
             pktData[0] = (byte)ackCode;
             byte[] newpkt = MakeQBridgePacket(PacketCmdCodes.PKT_CMD_ACK, pktData, ref pktId);
             com.Write(newpkt, 0, newpkt.Length);
-            Debug.Write(com.PortName + " ack: ");
+            //Debug.Write(com.PortName + " ack: ");
             for (int i = 0; i < newpkt.Length; i++)
             {
-                Debug.Write(newpkt[i].ToString() + ",");
+                //Debug.Write(newpkt[i].ToString() + ",");
             }
-            Debug.WriteLine("");
+            //Debug.WriteLine("");
         }
 
         public static byte[] MakeQBridgePacket(PacketCmdCodes cmdType, byte[] data, ref byte pktId)
@@ -1274,13 +1276,13 @@ namespace qbrdge_driver_classlib
 
                     try
                     {
-                        Debug.Write("OUT " + serialInfo.com.PortName + ": ");
+                        //Debug.Write("OUT " + serialInfo.com.PortName + ": ");
                         for (int j = 0; j < qbt.lastSentPkt.Length; j++)
                         {
                             byte b = (byte)qbt.lastSentPkt[j];
-                            Debug.Write(b.ToString() + ",");
+                            //Debug.Write(b.ToString() + ",");
                         }
-                        Debug.WriteLine("");
+                        //Debug.WriteLine("");
 
                         serialInfo.com.Write(qbt.lastSentPkt, 0, qbt.lastSentPkt.Length);
                         qbt.RestartTimer();
@@ -1315,7 +1317,7 @@ namespace qbrdge_driver_classlib
         }
 
         //returns msgQID
-        public static int AddSendJ1708Msg(int clientId, string j1708msg, bool isNotify)
+        public static int AddSendJ1708Msg(int clientId, string j1708msg, bool isNotify, bool isBlocking)
         {
             int msgId;
             if (isNotify)
@@ -1326,9 +1328,13 @@ namespace qbrdge_driver_classlib
                     return msgId;
                 }
             }
-            else
+            else if (isBlocking)
             {
                 msgId = NewMsgBlockId();
+            }
+            else
+            {
+                msgId = 0;
             }
             SerialPortInfo sinfo = Support.ClientToSerialPortInfo(clientId);
             QBTransaction qbt = new QBTransaction();
@@ -1360,7 +1366,7 @@ namespace qbrdge_driver_classlib
         }
 
         //returns msgQID
-        public static int AddSendJ1939Msg(int clientId, string msg, bool isNotify)
+        public static int AddSendJ1939Msg(int clientId, string msg, bool isNotify, bool isBlocking)
         {
             int msgId;
             if (isNotify)
@@ -1371,10 +1377,15 @@ namespace qbrdge_driver_classlib
                     return msgId;
                 }
             }
-            else
+            else if (isBlocking)
             {
                 msgId = NewMsgBlockId();
             }
+            else
+            {
+                msgId = 0;
+            }
+
             SerialPortInfo sinfo = Support.ClientToSerialPortInfo(clientId);
             QBTransaction qbt = new QBTransaction();
             qbt.clientId = clientId;
@@ -1421,10 +1432,10 @@ namespace qbrdge_driver_classlib
 
         public static void ComReplyTimeOut(Object stateInfo)
         {
-            Debug.WriteLine("Lock comreplytimout");
+            //Debug.WriteLine("Lock comreplytimout");
             lock (Support.lockThis)
             {
-                Debug.WriteLine("Lock2 comreplytimout");
+                //Debug.WriteLine("Lock2 comreplytimout");
                 QBTransaction qbt = (QBTransaction)stateInfo;
 
                 if (qbt.numRetries > 0 && 
@@ -1466,7 +1477,7 @@ namespace qbrdge_driver_classlib
                     CheckSendMsgQ();
                 }
 
-                Debug.WriteLine("UnLock comreplytimout");
+                //Debug.WriteLine("UnLock comreplytimout");
             }
         }
         public static void RemoveSentQBTransaction(QBTransaction qbt)
