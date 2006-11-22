@@ -222,7 +222,7 @@ namespace qbrdge_driver_classlib
             }
             else
             {
-                RP1210DllCom._DbgTrace("GM: " + msgIdIdx.ToString() + "\n");
+                //RP1210DllCom._DbgTrace("GM: " + msgIdIdx.ToString() + "\n");
                 msgIdAvail[msgIdIdx] = false;
                 return (msgIdIdx + 1);
             }
@@ -230,7 +230,7 @@ namespace qbrdge_driver_classlib
 
         public static void FreeMsgId(int msgId)
         {
-            RP1210DllCom._DbgTrace("FM: " + ((int)(msgId - 1)).ToString() + "\n");
+            //RP1210DllCom._DbgTrace("FM: " + ((int)(msgId - 1)).ToString() + "\n");
             msgIdAvail[msgId - 1] = true;
         }
 

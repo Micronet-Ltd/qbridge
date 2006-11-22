@@ -1079,14 +1079,17 @@ void ProcessDataPacket(char* data, SOCKET RecvSocket, sockaddr_in RecvAddr)
 		int transid = atoi(tid);
 		short isnotify = atoi(nid);
 		if (strcmp(pktType, "sendJ1708commerr") == 0) {
+			CritSection cs;
 			connections[clientid].UpdateTransaction(isnotify, transid, ERR_INVALID_DEVICE);
 			//_DbgTrace(_T("sendJ1708commerr"));
 		}
 		else if (strcmp(pktType, "sendJ1708replytimeout") == 0) {
+			CritSection cs;
 			connections[clientid].UpdateTransaction(isnotify, transid, ERR_HARDWARE_NOT_RESPONDING);
 			//_DbgTrace(_T("sendJ1708replytimeout"));
 		}
 		else if (strcmp(pktType, "sendJ1708confirmfail") == 0) {
+			CritSection cs;
 			connections[clientid].UpdateTransaction(isnotify, transid, ERR_NOT_ADDED_TO_BUS);
 			//_DbgTrace(_T("sendJ1708confirmfail"));
 		}
@@ -1104,10 +1107,12 @@ void ProcessDataPacket(char* data, SOCKET RecvSocket, sockaddr_in RecvAddr)
 			//_DbgTrace(_T("sendJ1708success"));
 		}
 		else if (strcmp(pktType, "readmessage") == 0) {
+			CritSection cs;
 			connections[clientid].AddReadMsg(msg, msgLen);
 			//_DbgTrace(_T("new rp1210 readmessage"));
 		}
 		else if (strcmp(pktType, "sendJ1939addresslost") == 0) {
+			CritSection cs;
 			connections[clientid].UpdateTransaction(isnotify, transid, ERR_ADDRESS_LOST);
 			//_DbgTrace(_T("sendj1939addresslost"));
 		}

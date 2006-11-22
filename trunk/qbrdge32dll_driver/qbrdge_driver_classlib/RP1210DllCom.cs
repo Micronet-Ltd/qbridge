@@ -347,7 +347,7 @@ namespace qbrdge_driver_classlib
             }
             else if (cmd == "freeMsgId")
             {
-                _DbgTrace("freeMsgId Recv: " + intNum1.ToString() + "\n");
+                //_DbgTrace("freeMsgId Recv: " + intNum1.ToString() + "\n");
                 //<msgId>,freeMsgId;<blank>
                 QBSerial.FreeMsgId(intNum1);
                 return;
