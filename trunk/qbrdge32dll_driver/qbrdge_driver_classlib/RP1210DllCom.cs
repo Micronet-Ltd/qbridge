@@ -179,7 +179,7 @@ namespace qbrdge_driver_classlib
             string sdata = Support.ByteArrayToString(data);
             if (sdata != "ack" & sdata != "hello")
             {
-                Debug.WriteLine("parseudp: " + sdata);
+                //Debug.WriteLine("parseudp: " + sdata);
             }
             //check if packet from listenPort-1 and send back
             //an assigned port# if it is
@@ -276,33 +276,47 @@ namespace qbrdge_driver_classlib
                 }
                 UdpSend("ok", iep);
             }
-            else if (cmd == "j1708msg")
+            else if (cmd == "j1708notifymsg")
             {
                 // add to msg queue return msg q#, return 0 if full, <0 if error
                 string j1708msg = sdata.Substring(idx2 + 1);
-                int msgQID = QBSerial.AddSendJ1708Msg(intNum1, j1708msg, true);
+                int msgQID = QBSerial.AddSendJ1708Msg(intNum1, j1708msg, true, false);
                 UdpSend(msgQID.ToString(), iep);
             }
             else if (cmd == "j1708blockmsg")
             {
                 // add to blocking queue
                 string j1708msg = sdata.Substring(idx2 + 1);
-                int blockID = QBSerial.AddSendJ1708Msg(intNum1, j1708msg, false);
+                int blockID = QBSerial.AddSendJ1708Msg(intNum1, j1708msg, false, true);
                 UdpSend(blockID.ToString(), iep);
             }
-            else if (cmd == "j1939msg")
+            else if (cmd == "j1708msg")
+            {   
+                //send non-blocking non-notify msg
+                string j1708msg = sdata.Substring(idx2 + 1);
+                QBSerial.AddSendJ1708Msg(intNum1, j1708msg, false, false);
+                UdpSend("0", iep);
+            }
+            else if (cmd == "j1939notifymsg")
             {
                 //add to msg queue return msg q#, return 0 if full, <0 if error
                 string msg = sdata.Substring(idx2 + 1);
-                int msgQID = QBSerial.AddSendJ1939Msg(intNum1, msg, true);
+                int msgQID = QBSerial.AddSendJ1939Msg(intNum1, msg, true, false);
                 UdpSend(msgQID.ToString(), iep);
             }
             else if (cmd == "j1939blockmsg")
             {
                 //add to blocking queue
                 string msg = sdata.Substring(idx2 + 1);
-                int blockID = QBSerial.AddSendJ1939Msg(intNum1, msg, false);
+                int blockID = QBSerial.AddSendJ1939Msg(intNum1, msg, false, true);
                 UdpSend(blockID.ToString(), iep);
+            }
+            else if (cmd == "j1939msg")
+            {
+                //send non-notify, non-block msg
+                string msg = sdata.Substring(idx2 + 1);
+                QBSerial.AddSendJ1939Msg(intNum1, msg, false, false);
+                UdpSend("0", iep);
             }
             else if (cmd == "newclientid")
             {
@@ -333,6 +347,7 @@ namespace qbrdge_driver_classlib
             }
             else if (cmd == "freeMsgId")
             {
+                _DbgTrace("freeMsgId Recv: " + intNum1.ToString() + "\n");
                 //<msgId>,freeMsgId;<blank>
                 QBSerial.FreeMsgId(intNum1);
                 return;
@@ -374,7 +389,7 @@ namespace qbrdge_driver_classlib
                     qbt.timePeriod = Support.ackReplyLimit;
                     qbt.sendCmdType = RP1210SendCommandType.SC_RESET_DEVICE;
                     sinfo.QBTransactionNew.Add(qbt);
-                    Debug.WriteLine("RESET DEVICE COMMAND ADDED");
+                    //Debug.WriteLine("RESET DEVICE COMMAND ADDED");
                 }
                 else if (cmdNum == (int)RP1210SendCommandType.SC_SET_ALL_FILTER_PASS)
                 {
@@ -409,16 +424,18 @@ namespace qbrdge_driver_classlib
                     string newFilter = cmdData;
                     string oldFilter = Support.ByteArrayToString(
                         ClientIDManager.clientIds[clientId].J1708MIDList);
-                    for (int a = 0; a < oldFilter.Length; a++) 
+                    for (int a = 0; a < oldFilter.Length; a++)
                     {
                         bool dup = false;
-                        for (int b = 0; b < newFilter.Length; b++) 
+                        for (int b = 0; b < newFilter.Length; b++)
                         {
-                            if (newFilter[b] == oldFilter[a]) {
+                            if (newFilter[b] == oldFilter[a])
+                            {
                                 dup = true;
                             }
                         }
-                        if (dup == false) {
+                        if (dup == false)
+                        {
                             newFilter = newFilter.Insert(0, oldFilter.Substring(a, 1));
                         }
                     }
@@ -517,7 +534,7 @@ namespace qbrdge_driver_classlib
                     //Set All Filter States To Discard
                     ClientIDManager.clientIds[clientId].J1708MIDFilter = true;
                     ClientIDManager.clientIds[clientId].J1708MIDList = new byte[0];
-                    if (cmdData.Length != 0) 
+                    if (cmdData.Length != 0)
                         UdpSend(((int)RP1210ErrorCodes.ERR_INVALID_COMMAND).ToString(), iep);
                     else
                         UdpSend("0", iep);
@@ -561,13 +578,13 @@ namespace qbrdge_driver_classlib
                     if (client.claimAddress >= 0)
                     {
                         QBSerial.AbortClientRTSCTS(client.serialInfo, (byte)client.claimAddress);
-                    }   
-                      
+                    }
+
                     client.claimAddress = cmdDataBytes[0];
                     byte[] addrName = new byte[8];
                     for (int i = 0; i < addrName.Length; i++)
                     {
-                        addrName[i] = cmdDataBytes[i+1];
+                        addrName[i] = cmdDataBytes[i + 1];
                     }
                     client.claimAddressName = addrName;
 
@@ -594,13 +611,13 @@ namespace qbrdge_driver_classlib
 
                     //create address claim message
                     QBTransaction qbt = null;
-                    AddAddressClaimMsg(cmdDataBytes[0], addrName, clientId, isNotify, msgId, ref qbt);              
-                    
+                    AddAddressClaimMsg(cmdDataBytes[0], addrName, clientId, isNotify, msgId, ref qbt);
+
                     //send message to all clients on com, except sender
                     ClientIDManager.ClientIDInfo sendClientInfo = ClientIDManager.clientIds[clientId];
                     QBSerial.J1939PktRecv(sendClientInfo.serialInfo, qbt.pktData, clientId);
 
-                    UdpSend(msgId.ToString(), iep);                    
+                    UdpSend(msgId.ToString(), iep);
                     return;
                 }
                 else if (cmdNum == (int)RP1210SendCommandType.SC_UPGRADE_FIRMWARE)

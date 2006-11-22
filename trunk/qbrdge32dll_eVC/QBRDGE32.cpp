@@ -76,11 +76,13 @@ void SetupErrorStrings() {
 #undef SET_ERR_STRING
 }
 
+HANDLE myDLLHandle = NULL;
 BOOL APIENTRY DllMain( HANDLE hModule, 
                        DWORD  ul_reason_for_call, 
                        LPVOID lpReserved
 					 )
 {
+	myDLLHandle = hModule;
 	switch (ul_reason_for_call)
 	{
 		case DLL_PROCESS_ATTACH:
@@ -280,7 +282,7 @@ void ToAnsi(const TCHAR *unicodeBuf, char *buf, int size) {
 /*************/
 void _DbgTrace(_TCHAR *formatStr, ...)
 {
-	return;
+	//return;
 #ifdef UDP_DEBUG_SEND
 	static bool newLine = true;
 	_TCHAR buf[2048];

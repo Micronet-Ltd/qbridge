@@ -16,7 +16,7 @@ void InitializeDLL() {
 	WM_RP1210_ERROR_MESSAGE = RegisterWindowMessage(QBRIDGE_RP1210_ERROR_STRING);
 	//hEvent = CreateEvent(NULL, true, false, NULL);
 
-	_DbgTrace(_T("Initialize DLL Start\r\n"));
+	//_DbgTrace(_T("Initialize DLL Start\r\n"));
 	assignPort = -1;
 }
 
@@ -27,7 +27,7 @@ void GetStatusInfo(TCHAR *buf, int bufLen) {
 	//_sntprintf(buf, bufLen, _T("Mapped Handles %d, freeHandles %d, transmitsPending %d, rxQueueSize %d"), transmitHandles.GetMappedHandlesCount(),
 	//	transmitHandles.GetFreeHandlesCount(), commCoordinator.GetTransmitConfirmActionsCount(), (connection != NULL ? connection->rxQueue.size() : -1) );
 	_tcsncpy(buf, _T("Blablabla"), bufLen);
-	_DbgTrace(_T("GetStatusInfo\n"));
+	//_DbgTrace(_T("GetStatusInfo\n"));
 }
 
 /*********************/
@@ -53,26 +53,26 @@ if (lTxBufferSize <= 0) { lTxBufferSize = 8192; }
 		}
 		else {
 			if (connType == 1) {
-				_DbgTrace(_T("created j1708 conn\n"));
+				//_DbgTrace(_T("created j1708 conn\n"));
 				connections[cid].SetupConnection(lTxBufferSize, lRcvBufferSize, Conn_J1708, hwndClient);
-				_DbgTrace(_T("created j1708 done\n"));
+				//_DbgTrace(_T("created j1708 done\n"));
 				return cid;
 			}
 			else if (connType == 2) {
-				_DbgTrace(_T("created j1939 conn\n"));
+				//_DbgTrace(_T("created j1939 conn\n"));
 				for (int i = 0; i <= maxClientID; i++) {
 					if (connections[cid].GetConnectionType() == Conn_J1939 && 
 						connections[cid].nIsAppPacketizingIncomingMsgs != nIsAppPacketizingIncomingMsgs &&
 						connections[cid].comPort == comPort)
 					{
-						_DbgTrace(_T("conn 1939 err conn not allowed\n"));
+						//_DbgTrace(_T("conn 1939 err conn not allowed\n"));
 						return ERR_CONNECT_NOT_ALLOWED;
 					}
 				}
 				connections[cid].SetupConnection(lTxBufferSize, lRcvBufferSize, Conn_J1939, hwndClient);
 				connections[cid].comPort = comPort;
 				connections[cid].nIsAppPacketizingIncomingMsgs = nIsAppPacketizingIncomingMsgs;
-				_DbgTrace(_T("created j1939 done\n"));
+				//_DbgTrace(_T("created j1939 done\n"));
 				return cid;
 			}
 			return ERR_INVALID_PROTOCOL;
@@ -140,6 +140,14 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 				queryType = QUERY_J1939MSG_BLOCK_PKT;
 			}
 		}
+		else if (nNotifyStatusOnTx) {
+			if (ctype == Conn_J1708) {
+				queryType = QUERY_J1708MSG_NOTIFY_PKT;
+			}
+			else if (ctype == Conn_J1939) {
+				queryType = QUERY_J1939MSG_NOTIFY_PKT;
+			}
+		}
 		else {
 			if (ctype == Conn_J1708) {
 				queryType = QUERY_J1708MSG_PKT;
@@ -161,7 +169,7 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 
 		//send j1708 message to driver app.
 		int cid = (int) nClientID;
-		_DbgTrace(_T("before query driver app send\n"));
+		//_DbgTrace(_T("before query driver app send\n"));
 		if (QueryDriverApp(queryType, GetAssignPort(), cid, fpchClientMessage, nMessageSize, 0) == true) {
 			int msgId = cid;
 			if (msgId > 127) {
@@ -183,7 +191,7 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 					tbuf[i] = buff[i];
 				}
 				tbuf[BufLen] = 0;
-				_DbgTrace(tbuf);
+				//_DbgTrace(tbuf);
 						
 				if (connections[nClientID].GetConnectionType() == Conn_Invalid) {
 					return ERR_CLIENT_DISCONNECTED;
@@ -217,11 +225,11 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 				return 0;
 			}
 		} else {
-			_DbgTrace(_T("after query driver app send 4\n"));
+			//_DbgTrace(_T("after query driver app send 4\n"));
 			return ERR_HARDWARE_NOT_RESPONDING;
 		}
 	}
-				_DbgTrace(_T("after query driver app send 5\n"));
+				//_DbgTrace(_T("after query driver app send 5\n"));
 	return ERR_MESSAGE_NOT_SENT;
 }
 
@@ -407,7 +415,7 @@ bool ConnectToDriverApp(){
 		bool appon = false;
 		if (QueryDriverApp(QUERY_NEWPORT_PKT, DRIVER_LISTEN_PORT-1, dmy, NULL, 0, 0) == false) {
 			if (OpenDriverApp() == false) {
-				_DbgTrace(_T("Error opening driver app.\n"));
+				//_DbgTrace(_T("Error opening driver app.\n"));
 				::ReleaseMutex(hMutex);
 				return false;
 			}
@@ -420,12 +428,12 @@ bool ConnectToDriverApp(){
 				}
 			}
 			if (appon == false) {
-				_DbgTrace(_T("Error retrieving assigned port from driver application\n"));
+				//_DbgTrace(_T("Error retrieving assigned port from driver application\n"));
 				::ReleaseMutex(hMutex);
 				return false;
 			}
 			if (QueryDriverApp(QUERY_PROCID_PKT, GetAssignPort(), dmy, NULL, 0, 0) == false) {
-				_DbgTrace(_T("Error retrieving Process ID from driver application\n"));
+				//_DbgTrace(_T("Error retrieving Process ID from driver application\n"));
 				::ReleaseMutex(hMutex);
 				return false;
 			}
@@ -434,7 +442,7 @@ bool ConnectToDriverApp(){
 	}
 	// end mutex
 	if (GetAssignPort() <= 0) {
-		_DbgTrace(_T("GetAssignPort return <= 0"));
+		//_DbgTrace(_T("GetAssignPort return <= 0"));
 		return false;
 	}
 	return true;
@@ -447,7 +455,7 @@ int GetSendQueryPacket(PACKET_TYPE queryId, char* sendBuf, int bufLen,
 					   int numData, char* outData, int outDataLen,
 					   int idNum) 
 {
-	_DbgTrace(_T("getsendquerypkt\n"));
+	//_DbgTrace(_T("getsendquerypkt\n"));
 	if (queryId == QUERY_HELLO_PKT) {  
 		strncpy(sendBuf, "hello", bufLen);
 		return int(strlen(sendBuf));
@@ -467,16 +475,23 @@ int GetSendQueryPacket(PACKET_TYPE queryId, char* sendBuf, int bufLen,
 		return _snprintf(sendBuf, bufLen, "%d,disconnect;", numData);
 	}
 	else if (queryId == QUERY_J1708MSG_PKT || queryId == QUERY_J1708MSG_BLOCK_PKT ||
+			queryId == QUERY_J1708MSG_NOTIFY_PKT || queryId == QUERY_J1939MSG_NOTIFY_PKT ||
 			queryId == QUERY_J1939MSG_PKT || queryId == QUERY_J1939MSG_BLOCK_PKT) {
 		int len = 0;
 		if (queryId == QUERY_J1708MSG_BLOCK_PKT) {
 			len = _snprintf(sendBuf, bufLen, "%d,j1708blockmsg;", numData);
+		}
+		else if (queryId == QUERY_J1708MSG_NOTIFY_PKT) {
+			len = _snprintf(sendBuf, bufLen, "%d,j1708notifymsg;", numData);
 		}
 		else if (queryId == QUERY_J1708MSG_PKT) {
 			len = _snprintf(sendBuf, bufLen, "%d,j1708msg;", numData);
 		}
 		else if (queryId == QUERY_J1939MSG_BLOCK_PKT) {
 			len = _snprintf(sendBuf, bufLen, "%d,j1939blockmsg;", numData);
+		}
+		else if (queryId == QUERY_J1939MSG_NOTIFY_PKT) {
+			len = _snprintf(sendBuf, bufLen, "%d,j1939notifymsg;", numData);
 		}
 		else if (queryId == QUERY_J1939MSG_PKT) {
 			len = _snprintf(sendBuf, bufLen, "%d,j1939msg;", numData);
@@ -529,7 +544,7 @@ bool QueryDriverApp(PACKET_TYPE queryId, int localPort,
     TIMEVAL timeout = {5, 0}; // 5 second timeout
 	bool isTimeout = false;
 
-	_DbgTrace(_T("QueryDriverApp()\n"));
+	//_DbgTrace(_T("QueryDriverApp()\n"));
 		
 	char sendBuf[3000];
 	int sendBufLen = GetSendQueryPacket(queryId, sendBuf, sizeof(sendBuf), 
@@ -579,7 +594,7 @@ bool QueryDriverApp(PACKET_TYPE queryId, int localPort,
 		FD_SET(RecvSocket, &fdErrorSet);
 		if(select(0, &fdReadSet, NULL, &fdErrorSet, &timeout) != 1)
 		{
-			_DbgTrace(_T("Select in query timeout\n"));
+			//_DbgTrace(_T("Select in query timeout\n"));
 			isTimeout = true;
 			closesocket(RecvSocket);
 		}
@@ -587,7 +602,7 @@ bool QueryDriverApp(PACKET_TYPE queryId, int localPort,
 			if (FD_ISSET(RecvSocket, &fdReadSet)) {
 				// Call the recvfrom function to receive datagrams
 				// on the bound socket.
-				_DbgTrace(_T("Receiving datagrams...\n"));
+				//_DbgTrace(_T("Receiving datagrams...\n"));
 				rv = recvfrom(RecvSocket, 
 					RecvBuf, 
 					BufLen, 
@@ -619,10 +634,10 @@ bool QueryDriverApp(PACKET_TYPE queryId, int localPort,
 		if (WSAETIMEDOUT == WSAGetLastError() ) 
 		{
 			// no reply from app.
-			_DbgTrace(_T("No Reply From app. timed out\n"));
+			//_DbgTrace(_T("No Reply From app. timed out\n"));
 		}
 		else {
-			_DbgTrace(_T("Communication Error with Win App."));
+			//_DbgTrace(_T("Communication Error with Win App."));
 		}
 		WSACleanup();
 		return false;
@@ -631,9 +646,9 @@ bool QueryDriverApp(PACKET_TYPE queryId, int localPort,
 	TCHAR tbuf[BufLen];
 	RecvBuf[rv] = 0;
 	ToUnicode(RecvBuf, tbuf, BufLen);
-	_DbgTrace(_T("recv: "));
-	_DbgTrace(tbuf);
-	_DbgTrace(_T("*\n"));
+	//_DbgTrace(_T("recv: "));
+	//_DbgTrace(tbuf);
+	//_DbgTrace(_T("*\n"));
 
 	closesocket(RecvSocket);
 	WSACleanup();
@@ -653,14 +668,14 @@ bool QueryDriverApp(PACKET_TYPE queryId, int localPort,
 		HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION,FALSE,procId);
 		DWORD lpExitCode;
 		if (!GetExitCodeProcess(hProcess, &lpExitCode)) {
-			_DbgTrace(_T("error getting exit code process\n"));
+			//_DbgTrace(_T("error getting exit code process\n"));
 			return false;
 		}
 		if (lpExitCode != STILL_ACTIVE) {
-			_DbgTrace(_T("process is not active\n"));
+			//_DbgTrace(_T("process is not active\n"));
 			return false;
 		}
-		_DbgTrace(_T("Process recieved and active!\n"));
+		//_DbgTrace(_T("Process recieved and active!\n"));
 	}
 	else if (queryId == QUERY_NEW_CLIENTID_PKT) {
 		intRetVal = atoi(RecvBuf);
@@ -673,7 +688,7 @@ bool QueryDriverApp(PACKET_TYPE queryId, int localPort,
 			return false;
 		}
 	}
-	else if (queryId == QUERY_J1708MSG_PKT || queryId == QUERY_J1708MSG_BLOCK_PKT ||
+	else if (queryId == QUERY_J1708MSG_NOTIFY_PKT || queryId == QUERY_J1708MSG_BLOCK_PKT ||
 		queryId == QUERY_J1939MSG_PKT || queryId == QUERY_J1939MSG_BLOCK_PKT) {
 		intRetVal = atoi(RecvBuf);
 	}
@@ -691,13 +706,23 @@ bool QueryDriverApp(PACKET_TYPE queryId, int localPort,
 /* OpenDriverApp */
 /****************/
 bool OpenDriverApp() {	
-	_DbgTrace(_T("\nOpenDriverApp()\n"));
+	//_DbgTrace(_T("\nOpenDriverApp()\n"));
 	//LPTSTR szCmdline=_tcsdup(TEXT("WindowsApplication1.exe"));
 	//LPPROCESS_INFORMATION procInfo;
 	//CreateProcess(szCmdline, NULL, NULL, NULL, false, CREATE_NEW_CONSOLE, NULL, NULL, NULL, procInfo);
 
+	TCHAR buf[MAX_PATH];
+	extern HANDLE myDLLHandle;
+	GetModuleFileName((HMODULE)myDLLHandle, buf, MAX_PATH);
+	TCHAR *appendPoint = _tcsrchr(buf, _T('\\'));
+	if (appendPoint == NULL) {
+		appendPoint = buf;
+	} else {
+		appendPoint++;
+	}
+	_tcscpy(appendPoint, _T("QBridgeWinCEDriver.exe"));
 	
-	_DbgTrace(_T("OpenDriverFunc&^&#^*()\n"));
+	//_DbgTrace(_T("OpenDriverFunc&^&#^*()\n"));
 	SHELLEXECUTEINFO execInfo;
 	memset(&execInfo, 0, sizeof(execInfo));
 
@@ -706,7 +731,7 @@ bool OpenDriverApp() {
 	execInfo.hwnd = 0;
 	execInfo.lpVerb = _T("open"); //operation to perform
 	//execInfo.lpFile = _T("WindowsApplication2.exe");
-	execInfo.lpFile = _T("QBridgeWinCEDriver.exe");
+	execInfo.lpFile = buf;
 
 	execInfo.lpParameters = _T("");
 	execInfo.lpDirectory = 0;
@@ -728,7 +753,7 @@ void SendUDPClosePacket() {
 	if (assignPort <= 0) {
 		return;
 	}
-  _DbgTrace(_T("SendUDPClosePacket()\n"));
+  //_DbgTrace(_T("SendUDPClosePacket()\n"));
 
   char sendBuf[] = "close";
   int bufLen = 5;
@@ -822,7 +847,7 @@ static DWORD __stdcall UDPListenFunc(void * args) {
 	timeout.tv_usec = 500;
 
 
-	_DbgTrace(_T("UDPListenFunc() Start\n"));
+	//_DbgTrace(_T("UDPListenFunc() Start\n"));
 
 	//-----------------------------------------------
 	// Initialize Winsock
@@ -872,7 +897,7 @@ static DWORD __stdcall UDPListenFunc(void * args) {
 
 		if(select(0, &fdReadSet, NULL, &fdErrorSet, &timeout) != 1)
 		{
-			_DbgTrace(_T("Select 1 timeout\n"));
+			//_DbgTrace(_T("Select 1 timeout\n"));
 			break;
 		}
 		else {
@@ -888,12 +913,12 @@ static DWORD __stdcall UDPListenFunc(void * args) {
 
 				if (rv == SOCKET_ERROR)
 				{
-					_DbgTrace(_T("UDPListen RecvFrom Error\n"));
+					//_DbgTrace(_T("UDPListen RecvFrom Error\n"));
 					break;
 				}
 			}
 			else {
-				_DbgTrace(_T("select 1 error\n"));
+				//_DbgTrace(_T("select 1 error\n"));
 				break;
 			}
 		}
@@ -915,7 +940,7 @@ static DWORD __stdcall UDPListenFunc(void * args) {
 
 			if(select(0, &fdReadSet, NULL, &fdErrorSet, &timeout) != 1)
 			{
-				_DbgTrace(_T("Select 2 timeout\n"));
+				//_DbgTrace(_T("Select 2 timeout\n"));
 				break;
 			}
 			else {
@@ -931,7 +956,7 @@ static DWORD __stdcall UDPListenFunc(void * args) {
 					{
 						int a = WSAGetLastError();
 						if (WSAETIMEDOUT != a) {
-							_DbgTrace(_T("socket error\n"));
+							//_DbgTrace(_T("socket error\n"));
 							break;
 						}
 					}
@@ -946,7 +971,7 @@ static DWORD __stdcall UDPListenFunc(void * args) {
 					}
 				}
 				else {
-					_DbgTrace(_T("Select 2 error set\n"));
+					//_DbgTrace(_T("Select 2 error set\n"));
 					break;
 				}
 			}		
@@ -963,12 +988,12 @@ static DWORD __stdcall UDPListenFunc(void * args) {
 
 	//-----------------------------------------------
 	// Close the socket when finished receiving datagrams
-	_DbgTrace(_T("Finished receiving. Closing socket.\n"));
+	//_DbgTrace(_T("Finished receiving. Closing socket.\n"));
 	closesocket(RecvSocket);
 
 	//-----------------------------------------------
 	// Clean up and exit.
-	_DbgTrace(_T("UDPLFUNC END\n"));
+	//_DbgTrace(_T("UDPLFUNC END\n"));
 	WSACleanup();
 	return 0;
 }
@@ -1055,15 +1080,15 @@ void ProcessDataPacket(char* data, SOCKET RecvSocket, sockaddr_in RecvAddr)
 		short isnotify = atoi(nid);
 		if (strcmp(pktType, "sendJ1708commerr") == 0) {
 			connections[clientid].UpdateTransaction(isnotify, transid, ERR_INVALID_DEVICE);
-			_DbgTrace(_T("sendJ1708commerr"));
+			//_DbgTrace(_T("sendJ1708commerr"));
 		}
 		else if (strcmp(pktType, "sendJ1708replytimeout") == 0) {
 			connections[clientid].UpdateTransaction(isnotify, transid, ERR_HARDWARE_NOT_RESPONDING);
-			_DbgTrace(_T("sendJ1708replytimeout"));
+			//_DbgTrace(_T("sendJ1708replytimeout"));
 		}
 		else if (strcmp(pktType, "sendJ1708confirmfail") == 0) {
 			connections[clientid].UpdateTransaction(isnotify, transid, ERR_NOT_ADDED_TO_BUS);
-			_DbgTrace(_T("sendJ1708confirmfail"));
+			//_DbgTrace(_T("sendJ1708confirmfail"));
 		}
 		else if (strcmp(pktType, "sendJ1708success") == 0) {
 			CritSection cs;
@@ -1074,17 +1099,17 @@ void ProcessDataPacket(char* data, SOCKET RecvSocket, sockaddr_in RecvAddr)
 				::Sleep(10);
 			}*/
 			if (connections[clientid].UpdateTransaction(isnotify, transid, 0) == FALSE) {
-				_DbgTrace(_T("sendj1708succes EARLY :(\n"));
+				//_DbgTrace(_T("sendj1708succes EARLY :(\n"));
 			}
-			_DbgTrace(_T("sendJ1708success"));
+			//_DbgTrace(_T("sendJ1708success"));
 		}
 		else if (strcmp(pktType, "readmessage") == 0) {
 			connections[clientid].AddReadMsg(msg, msgLen);
-			_DbgTrace(_T("new rp1210 readmessage"));
+			//_DbgTrace(_T("new rp1210 readmessage"));
 		}
 		else if (strcmp(pktType, "sendJ1939addresslost") == 0) {
 			connections[clientid].UpdateTransaction(isnotify, transid, ERR_ADDRESS_LOST);
-			_DbgTrace(_T("sendj1939addresslost"));
+			//_DbgTrace(_T("sendj1939addresslost"));
 		}
 	}
 }
