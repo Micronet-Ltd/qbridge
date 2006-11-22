@@ -175,6 +175,7 @@ TRACE ("After wait loop\n");
 	// Try flooding the thing and see what happens
 	// we test twice.  Once where we flood the thing with a pause between events, then again at full speed
 	for (int j = 0; j < 2; j++) {
+		floodPass = false;
 		for (i = 0; i < 200; i++) {
 			result = test->api1->pRP1210_SendMessage(clientID, txBuffer, sizeof(txBuffer), true, false);
 			if (result == ERR_MAX_NOTIFY_EXCEEDED) {
@@ -195,7 +196,7 @@ TRACE ("After wait loop\n");
 		if (floodPass) {
 			log.LogText (_T("    Flood (") + speedString + _T(") test passed"));
 		} else {
-			log.LogText (_T("    Flood (") + speedString + _T(") test failed"));
+			log.LogText (_T("    Flood (") + speedString + _T(") test failed. (for delay test, this can be OK)"), Log::Red);
 		}
 
 		if (j == 0) {

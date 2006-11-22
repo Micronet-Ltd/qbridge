@@ -33,9 +33,12 @@ protected:
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
 public:
+	CCheckListBox m_clb;
 	CComboBox m_dev1;
 	CComboBox m_dev2;
 	CRichEditCtrl m_log;
 	afx_msg void OnBnClickedTest1();
 	afx_msg void OnBnClickedBtn2();
+public:
+	afx_msg void OnBnClickedOk();
 };
