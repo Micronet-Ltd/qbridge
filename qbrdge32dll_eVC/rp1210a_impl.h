@@ -122,6 +122,7 @@ public:
 			::SetEvent(blocked);
 			recvMsgEvents.pop_front();
 		}
+		recvMsgQueue.clear();
 	}
 
 	void AddTransaction(short isNotify, int transId) {
