@@ -60,6 +60,7 @@ void CTestRP1210_PCDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, CTRL_D1, m_dev1);
 	DDX_Control(pDX, CTRL_D2, m_dev2);
 	DDX_Control(pDX, CTRL_RE, m_log);
+	DDX_Control(pDX, CTRL_TESTLIST, m_clb);
 }
 
 BEGIN_MESSAGE_MAP(CTestRP1210_PCDlg, CDialog)
@@ -69,6 +70,7 @@ BEGIN_MESSAGE_MAP(CTestRP1210_PCDlg, CDialog)
 	//}}AFX_MSG_MAP
 	ON_BN_CLICKED(CTRL_TEST1, &CTestRP1210_PCDlg::OnBnClickedTest1)
 	ON_BN_CLICKED(CTRL_BTN2, &CTestRP1210_PCDlg::OnBnClickedBtn2)
+	ON_BN_CLICKED(IDOK, &CTestRP1210_PCDlg::OnBnClickedOk)
 END_MESSAGE_MAP()
 
 
@@ -132,6 +134,24 @@ BOOL CTestRP1210_PCDlg::OnInitDialog()
 
 	m_dev1.SetCurSel(AfxGetApp()->GetProfileInt(_T("Default"), _T("dev1"), -1));
 	m_dev2.SetCurSel(AfxGetApp()->GetProfileInt(_T("Default"), _T("dev2"), -1));
+
+	m_clb.AddString (_T("Read Version"));
+	m_clb.AddString (_T("Connect"));
+	m_clb.AddString (_T("Multiconnect"));
+	m_clb.AddString (_T("J1708 Basic Read"));
+	m_clb.AddString (_T("J1708 Advanced Read"));
+	m_clb.AddString (_T("J1708 Multi Read"));
+	m_clb.AddString (_T("J1708 Basic Send"));
+	m_clb.AddString (_T("J1708 Advanced Send"));
+	m_clb.AddString (_T("J1708 Window Notify"));
+	m_clb.AddString (_T("J1708 Filter States/On Off message"));
+	m_clb.AddString (_T("J1708 Filters"));
+
+	for (int i = 0; i < m_clb.GetCount(); i++) {
+		CString curTestName;
+		m_clb.GetText(i, curTestName);
+		m_clb.SetCheck(i, AfxGetApp()->GetProfileInt(_T("Tests"), curTestName, 1));
+	}
 	
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -197,9 +217,22 @@ void CTestRP1210_PCDlg::OnBnClickedTest1()
 
 	AfxGetApp()->WriteProfileInt(_T("Default"), _T("dev1"), m_dev1.GetCurSel());
 	AfxGetApp()->WriteProfileInt(_T("Default"), _T("dev2"), m_dev2.GetCurSel());
+
+	set <CString> testList;
+	for (int i = 0; i < m_clb.GetCount(); i++) {
+		CString curTestName;
+		m_clb.GetText(i, curTestName);
+		
+		int result = m_clb.GetCheck(i);
+		AfxGetApp()->WriteProfileInt(_T("Tests"), curTestName, result);
+		if (result) {
+			testList.insert(curTestName);
+		}
+	}
+
 		
 	TestRP1210 rtst;
-	rtst.Test (dev, m_dev1.GetCurSel(), m_dev2.GetCurSel());
+	rtst.Test (testList, dev, m_dev1.GetCurSel(), m_dev2.GetCurSel());
 
 	isTesting = false;
 
@@ -211,4 +244,13 @@ void CTestRP1210_PCDlg::OnBnClickedTest1()
 void CTestRP1210_PCDlg::OnBnClickedBtn2()
 {
 	TestRP1210::KillOrphans(dev, m_dev1.GetCurSel(), m_dev2.GetCurSel());	
+}
+
+/*************************************/
+/* CTestRP1210_PCDlg::OnBnClickedOk */
+/***********************************/
+void CTestRP1210_PCDlg::OnBnClickedOk()
+{
+	// TODO: Add your control notification handler code here
+	OnOK();
 }

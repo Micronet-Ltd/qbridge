@@ -8,6 +8,7 @@
 #pragma warning (disable:4996)
 
 #define PARM(a,b) (a), L#a L##b
+#define TEST(a,b) if (testList.find(_T(a)) != testList.end()) { b; }
 
 #define MS_VC_EXCEPTION 0x406D1388
 typedef struct tagTHREADNAME_INFO
@@ -37,6 +38,18 @@ void SetThreadName( DWORD dwThreadID, LPCSTR szThreadName)
    {
    }
 }
+
+/********************/
+/* SleepWithEvents */
+/******************/
+void SleepWithEvents(int length) {
+	DWORD tick = GetTickCount() + length;
+	while (GetTickCount() < tick) {
+		TestRP1210::DoEvents();
+		Sleep(10);
+	}
+}
+#define Sleep SleepWithEvents
 
 
 // Note:
@@ -256,7 +269,7 @@ void TestRP1210::TestCustomReset (INIMgr::Devices &dev, INIMgr::Devices &dev2) {
 /*********************/
 /* TestRP1210::Test */
 /*******************/
-void TestRP1210::Test (vector<INIMgr::Devices> &devs, int idx1, int idx2) {
+void TestRP1210::Test (const set<CString> &testList, vector<INIMgr::Devices> &devs, int idx1, int idx2) {
 	if ((idx1 < 0) || (idx2 < 0) || (idx1 >= (int)devs.size()) || (idx2 >= (int)devs.size())) {
 		log.LogText(_T(" Invalid device index"), Log::Red);
 		return;
@@ -286,9 +299,9 @@ void TestRP1210::Test (vector<INIMgr::Devices> &devs, int idx1, int idx2) {
 //TestCustomReset(devs[idx1], devs[idx2]);
 //return;
 
-	//TestReadVersion();
-	//TestConnect(devs, idx1);
-	//TestMulticonnect(devs, idx1);
+	TEST("Read Version", TestReadVersion());
+	TEST("Connect", TestConnect(devs, idx1));
+	TEST("Multiconnect", TestMulticonnect(devs, idx1));
 
 	// Setup thread for secondary J1708 communication
 // This block controls the second thread
@@ -316,16 +329,16 @@ void TestRP1210::Test (vector<INIMgr::Devices> &devs, int idx1, int idx2) {
 	api1->pRP1210_SendCommand(SetAllFiltersToPass, primaryClient, NULL, 0);
 
 	// RON:  Comment or uncomment these to test
-	//TestBasicRead(devs[idx1], primaryClient);
-	//TestAdvancedRead(devs[idx1], primaryClient);
-	TestMultiRead(devs[idx1], primaryClient);
-	//TestBasicSend(primaryClient);
-	//TestAdvancedSend(devs[idx1], primaryClient);
-	//TestWinNotify(devs[idx1]);
+	TEST("J1708 Basic Read", TestBasicRead(devs[idx1], primaryClient));
+	TEST("J1708 Advanced Read", TestAdvancedRead(devs[idx1], primaryClient));
+	TEST("J1708 Multi Read", TestMultiRead(devs[idx1], primaryClient));
+	TEST("J1708 Basic Send", TestBasicSend(primaryClient));
+	TEST("J1708 Advanced Send", TestAdvancedSend(devs[idx1], primaryClient));
+	TEST("J1708 Window Notify", TestWinNotify(devs[idx1]));
 //
 //	TestSendCommandReset(devs[idx1], primaryClient);
-	//TestFilterStatesOnOffMessagePassOnOff(devs[idx1], primaryClient);
-	//TestFilters (devs[idx1], primaryClient);
+	TEST("J1708 Filter States/On Off message", TestFilterStatesOnOffMessagePassOnOff(devs[idx1], primaryClient));
+	TEST("J1708 Filters", TestFilters (devs[idx1], primaryClient));
 
 end:
 	if (IsValid(primaryClient)) {
@@ -1016,7 +1029,7 @@ void TestRP1210::TestFilterStatesOnOffMessagePassOnOff(INIMgr::Devices &dev, int
 /* TestRP1210::TestFilters */
 /**************************/
 void TestRP1210::TestFilters(INIMgr::Devices &dev, int primaryClient) {
-	const int delay = 15000;
+	const int delay = 1500;
 	log.LogText (_T("Testing: SendCommand(SetMessageFilteringForJ1708)"), Log::Blue);
 
 	struct CollectMessageArray {

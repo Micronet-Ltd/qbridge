@@ -98,7 +98,7 @@ public:
 					SetMessageFilteringForJ1708 = 7, GenericDriverCmd = 14, SetJ1708Mode = 15, SetEchoTxMsgs = 16, 
 					SetAllFilterStatesToDiscard = 17, SetMessageReceive = 18, ProtectJ1939Address = 19 };
 
-	void Test (vector<INIMgr::Devices> &devs, int idx1, int idx2);
+	void Test (const set<CString> &testList, vector<INIMgr::Devices> &devs, int idx1, int idx2);
 	static void LogError (RP1210API &api, int code, COLORREF clr = 0x000090);
 	static void KillOrphans(vector<INIMgr::Devices> &devs, int idx1, int idx2);
 	static bool DoEvents();
