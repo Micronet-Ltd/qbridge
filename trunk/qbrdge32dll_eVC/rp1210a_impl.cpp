@@ -88,7 +88,7 @@ RP1210AReturnType Disconnect(short nClientID) {
 		return ERR_INVALID_CLIENT_ID;
 	}
 	if (connections[nClientID].GetConnectionType() == Conn_Invalid) {
-		return ERR_DLL_NOT_INITIALIZED;
+		return ERR_INVALID_CLIENT_ID;
 	}
 	int cid = (int) nClientID;
 	if (QueryDriverApp(QUERY_DISCONNECT_CLIENTID_PKT, GetAssignPort(), cid, NULL, 0, 0) == false) {
@@ -172,7 +172,7 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 		//_DbgTrace(_T("before query driver app send\n"));
 		if (QueryDriverApp(queryType, GetAssignPort(), cid, fpchClientMessage, nMessageSize, 0) == true) {
 			int msgId = cid;
-			if (msgId > 127) {
+			if (msgId > 127 && nNotifyStatusOnTx) {
 				return msgId; // error code returned
 			}
 			if (nBlockOnSend || (nNotifyStatusOnTx && cid != 0)) {

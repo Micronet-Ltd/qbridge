@@ -122,7 +122,7 @@ namespace qbrdge_driver_classlib
                 catch (Exception exp)
                 {
                     Debug.WriteLine(exp.ToString());
-                    RP1210DllCom.UdpSend("-2", iep);
+                    RP1210DllCom.UdpSend("-4", iep);
                     return;
                 }
             }
@@ -1298,7 +1298,7 @@ namespace qbrdge_driver_classlib
                         }
                         else if (qbt.cmdType == PacketCmdCodes.PKT_CMD_INIT)
                         {
-                            RP1210DllCom.UdpSend("-2", qbt.dllInPort);
+                            RP1210DllCom.UdpSend("-5", qbt.dllInPort);
                         }
                         else if (qbt.cmdType == PacketCmdCodes.PKT_CMD_SEND_J1708 ||
                             qbt.cmdType == PacketCmdCodes.PKT_CMD_RAW_J1708)
@@ -1470,7 +1470,7 @@ namespace qbrdge_driver_classlib
                         qbt.cmdType == PacketCmdCodes.PKT_CMD_ENABLE_J1708_CONFIRM ||
                         qbt.cmdType == PacketCmdCodes.PKT_CMD_MID_FILTER)
                     {
-                        RP1210DllCom.UdpSend("-2", qbt.dllInPort);
+                        RP1210DllCom.UdpSend("-3", qbt.dllInPort);
                         RemoveSentQBTransaction(qbt);
                         ClientIDManager.RemoveClientID(qbt.clientId);
                     }
