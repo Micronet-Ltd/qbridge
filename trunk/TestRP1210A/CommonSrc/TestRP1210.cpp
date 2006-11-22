@@ -49,6 +49,7 @@ CRITICAL_SECTION CritSection::critSection;
 bool CritSection::critSectionInited;
 
 bool TestRP1210::firstAlreadyCreated = false;
+DWORD TestRP1210::baseThreadID;
 
 bool IsValid(int result) { return (result >= 0) && (result < 128); }
 
@@ -62,6 +63,7 @@ TestRP1210::TestRP1210(void) : helperTxThread(NULL), helperRxThread(NULL), threa
 		throw (CString("Cannot create more than one of these objects at a time"));
 	}
 	firstAlreadyCreated = true;
+	baseThreadID = GetCurrentThreadId();
 
 	CritSection::Init();
 }
@@ -98,7 +100,7 @@ void TestRP1210::KillOrphans(vector<INIMgr::Devices> &devs, int idx1, int idx2) 
 	RP1210API api2(devs[idx2].dll);
 
 	CritSection::Init();
-	for (int i = 0; i < 16; i++) {
+	for (int i = 0; i < 127; i++) {
 		int result1 = api1.pRP1210_ClientDisconnect(i);
 		int result2 = api2.pRP1210_ClientDisconnect(i);
 
@@ -284,11 +286,13 @@ void TestRP1210::Test (vector<INIMgr::Devices> &devs, int idx1, int idx2) {
 //TestCustomReset(devs[idx1], devs[idx2]);
 //return;
 
-	TestReadVersion();
-	TestConnect(devs, idx1);
-	TestMulticonnect(devs, idx1);
+	//TestReadVersion();
+	//TestConnect(devs, idx1);
+	//TestMulticonnect(devs, idx1);
 
 	// Setup thread for secondary J1708 communication
+// This block controls the second thread
+#if 1
 	secondaryClient = api2->pRP1210_ClientConnect(NULL, devs[idx2].deviceID, "J1708", 0, 0, 0);
 	if (!IsValid(secondaryClient)) {
 		log.LogText (_T("    Connecting to secondary device failed"), Log::Red);
@@ -298,6 +302,7 @@ void TestRP1210::Test (vector<INIMgr::Devices> &devs, int idx1, int idx2) {
 	}
 	SetupWorkerThread (helperTxThread, SecondaryDeviceTXThread, false, _T("Secondary_TX"));
 	SetupWorkerThread (helperRxThread, SecondaryDeviceRXThread, false, _T("Secondary_RX"));
+#endif
 
 	// Setup Primary Client
 	int primaryClient = api1->pRP1210_ClientConnect(NULL, devs[idx1].deviceID, "J1708", 0, 0, 0);
@@ -311,16 +316,16 @@ void TestRP1210::Test (vector<INIMgr::Devices> &devs, int idx1, int idx2) {
 	api1->pRP1210_SendCommand(SetAllFiltersToPass, primaryClient, NULL, 0);
 
 	// RON:  Comment or uncomment these to test
-	TestBasicRead(devs[idx1], primaryClient);
-	TestAdvancedRead(devs[idx1], primaryClient);
+	//TestBasicRead(devs[idx1], primaryClient);
+	//TestAdvancedRead(devs[idx1], primaryClient);
 	TestMultiRead(devs[idx1], primaryClient);
-	TestBasicSend(primaryClient);
-	TestAdvancedSend(devs[idx1], primaryClient);
-	TestWinNotify(devs[idx1]);
+	//TestBasicSend(primaryClient);
+	//TestAdvancedSend(devs[idx1], primaryClient);
+	//TestWinNotify(devs[idx1]);
 //
 //	TestSendCommandReset(devs[idx1], primaryClient);
-	TestFilterStatesOnOffMessagePassOnOff(devs[idx1], primaryClient);
-	TestFilters (devs[idx1], primaryClient);
+	//TestFilterStatesOnOffMessagePassOnOff(devs[idx1], primaryClient);
+	//TestFilters (devs[idx1], primaryClient);
 
 end:
 	if (IsValid(primaryClient)) {
@@ -545,8 +550,9 @@ void TestRP1210::TestMultiRead(INIMgr::Devices &dev, int primaryClient) {
 	bool passed = true;
 	sendSpectrum = false;
 	for (i = 0; i < 4; i++) {
-TRACE (_T("Opening connection %d\n"), i);
+TRACE (_T("Opening connection %d"), i);
 		connections[i] = api1->pRP1210_ClientConnect(NULL, dev.deviceID, "J1708", 0,0,0);
+TRACE (_T("  clientID=%d\n"), connections[i]);
 		if (!IsValid(connections[i])) {
 			LogError(*api1, connections[i]);
 			passed = false;
@@ -554,6 +560,8 @@ TRACE (_T("Opening connection %d\n"), i);
 		char multiSendFilter = TestMultisend;
 		VerifyValidSendCommand(SetAllFilterStatesToDiscard, _T("Discard"), connections[i], NULL, 0, false);
 		int result = api1->pRP1210_SendCommand(SetMessageFilteringForJ1708, connections[i], &multiSendFilter, 1);
+		char rxBuf[1024];
+		while (api1->pRP1210_ReadMessage(connections[i], rxBuf, sizeof(rxBuf), false) > 0); // clear any pending data
 		//int result = api1->pRP1210_SendCommand(SetAllFiltersToPass, connections[i], &multiSendFilter, 0);
 		if (!IsValid(result)) {
 			LogError(*api1, result);
@@ -614,7 +622,7 @@ TRACE (("Odd Read %d bytes %s\n"), pkt.data.size(), rxBuf+4);
 	}
 
 	for (i = 0; i < 4; i++) {
-TRACE (_T("Closing connection %d\n"), i);
+TRACE (_T("Closing connection %d, clientid=%d\n"), i, connections[i]);
 		int result = api1->pRP1210_ClientDisconnect(connections[i]);
 		if (!IsValid(result)) {
 			LogError(*api1, result);
@@ -1180,13 +1188,18 @@ TRACE (_T("Received message (woor=%d).  MID=%d, msg=%s\n"), warnOutOfRange, pkt.
 /* TestRP1210::LogError */
 /***********************/
 void TestRP1210::LogError (RP1210API &api, int code, COLORREF clr) {
-	CritSection crit;
+	//CritSection crit;
 	char buf[120];
+	CString threadName;
+	if (GetCurrentThreadId() != baseThreadID) {
+		threadName.Format(_T(" (thread=%8x)"), GetCurrentThreadId());
+	}
+
 	if (api.pRP1210_GetErrorMsg(code, buf) == 0) {
-		log.LogText(_T("        API returned error=") + CString(buf), clr);
+		log.LogText(_T("        API returned error=") + CString(buf) + threadName, clr);
 	} else {
 		CString fmt;
-		fmt.Format(_T("        No error code for error %d"), code);
+		fmt.Format(_T("        No error code for error %d") + threadName, code);
 		log.LogText(fmt, clr);
 	}
 }
