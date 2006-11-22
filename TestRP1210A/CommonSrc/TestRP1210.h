@@ -117,6 +117,7 @@ private:
 	int secondaryClient;
 	int toKillClient;
 	DWORD killTime;
+	static DWORD baseThreadID;
 
 	bool threadsMustDie;
 	static bool firstAlreadyCreated;
