@@ -127,6 +127,8 @@ void ToUnicode(char *buf, TCHAR *unicodeBuf, int size);
 #define ERR_NOT_ADDED_TO_BUS					195
 #define ERR_MISC_COMMUNICATION					196
 #define ERR_RECV_OPERATION_TIMEOUT				197
+#define ERR_J1939_SEND_RTS_CTS_TIMEOUT			198
+#define ERR_INVALID_MSG_PACKET					199	
 
 // RP1210 Commands for the RP1210_SendCommand function
 #define CMD_RESET_DEVICE						0

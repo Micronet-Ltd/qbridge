@@ -263,6 +263,7 @@ namespace qbrdge_driver_classlib
             isComplete = false;
             if (useRTSCTS == false)
                 isComplete = true;
+            QBSerial.CheckForCompleteJ1939();
         }
 
         Timer myTimer;
@@ -289,7 +290,7 @@ namespace qbrdge_driver_classlib
     class J1939RTSCTSReceiver
     {
         public J1939RTSCTSReceiver(SerialPortInfo portInfo, byte[] pgn, byte howPriority, byte sourceAddress,
-            byte destAddress, UInt16 msgSize, byte numPkts, byte maxPktSend)
+            byte destAddress, UInt16 msgSize, byte numPkts, byte maxPktSend, int clientidx)
         {
             StartTimer();
             if (pgn.Length != 3)
@@ -306,8 +307,11 @@ namespace qbrdge_driver_classlib
             port_info = portInfo;
             num_retries = 3;
             nextSeq = 1;
+            client_idx = clientidx;
             SendCTSPacket();
         }
+
+        public int client_idx; //client number that has claimed DA
 
         private const int PktTimeout = 8000; //milliseconds
 

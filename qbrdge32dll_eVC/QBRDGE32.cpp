@@ -72,6 +72,8 @@ void SetupErrorStrings() {
 	SET_ERR_STR (ERR_NOT_ADDED_TO_BUS,"The QBridge was unable to place the message on the bus.");
 	SET_ERR_STR (ERR_MISC_COMMUNICATION,"Misc error communicating with QBridge driver process.");
 	SET_ERR_STR (ERR_RECV_OPERATION_TIMEOUT,"No messages recieved, waiting operation aborted.");
+	SET_ERR_STR (ERR_J1939_SEND_RTS_CTS_TIMEOUT, "Send timeout waiting for CTS from destination.");
+	SET_ERR_STR (ERR_INVALID_MSG_PACKET, "Invalid message packet, unable to send.");
 
 #undef SET_ERR_STRING
 }
