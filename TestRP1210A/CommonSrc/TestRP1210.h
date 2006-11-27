@@ -115,6 +115,7 @@ private:
 	CWinThread *helperTxThread;
 	CWinThread *helperRxThread;
 	int secondaryClient;
+	int secondary1939Client;
 	int toKillClient;
 	DWORD killTime;
 	static DWORD baseThreadID;
@@ -122,6 +123,8 @@ private:
 	bool threadsMustDie;
 	static bool firstAlreadyCreated;
 	bool sendSpectrum;
+	bool sendJ1708;
+	bool sendJ1939;
 
 	void TestReadVersion();
 	void TestConnect(vector<INIMgr::Devices> &devs, int idx1);
@@ -133,19 +136,26 @@ private:
 	void TestAdvancedSend(INIMgr::Devices &dev, int primaryClient);
 	void TestWinNotify(INIMgr::Devices &dev);
 
-	int VerifyConnect(INIMgr::Devices &dev, char *protocol = "J1708");
+	void Test1939AddressClaim (INIMgr::Devices &dev1, INIMgr::Devices &dev2);
+	void Test1939BasicRead (INIMgr::Devices &dev);
+
+	enum BlockType { BLOCK_UNTIL_DONE = 0, POST_MESSAGE = 1, RETURN_BEFORE_COMPLETION = 2 };
+	bool VerifyProtectAddress (RP1210API *api, int clientID, int address, int vehicalSystem, int identityNum, BlockType block = BLOCK_UNTIL_DONE); 
+	bool VerifyProtectAddress (RP1210API *api, int clientID, int address, bool arbitraryAddress, int industryGroup, int vehSysInst, int vehSys, int function, int funcInst, int ecuInst, int mfgCode, int identityNum, BlockType block); 
+	int VerifyConnect(INIMgr::Devices &dev, char *protocol);
 	int VerifyDisconnect(int clientID);
 	int VerifiedRead (int clientID, char *rxBuf, int rxLen, bool block);
 	void VerifyValidSendCommand (int cmd, CString text, int clientID, char *cmdData, int len, bool logSuccess);
 	void VerifyInvalidSendCommand(int cmd, CString text, int clientID, char *cmdData, int len, int expectedResult);
 	void VerifyInvalidClientIDSendCommand(int cmd, CString text, char *cmdData, int len) { VerifyInvalidSendCommand (cmd, text + _T("<invalid client ID>"), 127, cmdData, len, ERR_INVALID_CLIENT_ID); }
-	void TestSendCommandReset(INIMgr::Devices &dev, int &primaryClient);
+	void TestSendCommandReset(INIMgr::Devices &dev);
 	void TestFilterStatesOnOffMessagePassOnOff(INIMgr::Devices &dev, int primaryClient);
 	void TestFilters(INIMgr::Devices &dev, int primaryClient);
 
 	void TestCustomMultiread(INIMgr::Devices &dev, INIMgr::Devices &dev2);
 	void TestCustomAdvSend(INIMgr::Devices &dev);
 	void TestCustomReset (INIMgr::Devices &dev,  INIMgr::Devices &dev2);
+
 
 	list <RecvMsgPacket> secondaryRxMsgs;
 	friend struct ErrorSend;

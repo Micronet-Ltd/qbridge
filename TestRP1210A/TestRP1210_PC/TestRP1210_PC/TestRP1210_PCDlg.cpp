@@ -146,6 +146,8 @@ BOOL CTestRP1210_PCDlg::OnInitDialog()
 	m_clb.AddString (_T("J1708 Window Notify"));
 	m_clb.AddString (_T("J1708 Filter States/On Off message"));
 	m_clb.AddString (_T("J1708 Filters"));
+	m_clb.AddString (_T("J1939 Address Claim"));
+	m_clb.AddString (_T("J1939 Basic Read"));
 
 	for (int i = 0; i < m_clb.GetCount(); i++) {
 		CString curTestName;
