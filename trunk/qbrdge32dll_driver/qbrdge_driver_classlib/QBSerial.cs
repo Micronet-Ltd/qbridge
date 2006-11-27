@@ -481,7 +481,7 @@ namespace qbrdge_driver_classlib
                 for (int i = 0; i < inDataLen; i++)
                 {
                     byte b = (byte)inData[i];
-                    Debug.Write(b.ToString("X8") + ",");
+                    Debug.Write(b.ToString("X2") + ",");
                 }
                 Debug.WriteLine("");
 
@@ -567,13 +567,6 @@ namespace qbrdge_driver_classlib
             }
 
             //Debug.WriteLine("pkt valid recv");
-
-            //check if last packet was disable can filters
-            if (qbt.cmdType == PacketCmdCodes.PKT_CMD_CAN_CONTROL)
-            {
-                portInfo.QBTransactionSent.RemoveAt(qbtIdx);
-                return;
-            }
 
             if (cmdType == PacketCmdCodes.PKT_CMD_ACK &&
                 ackCode == PacketAckCodes.PKT_ACK_OK &&
@@ -733,7 +726,23 @@ namespace qbrdge_driver_classlib
                         portInfo.QBTransactionSent.RemoveAt(qbtIdx);
                     }
                     else if (qbt.cmdType == PacketCmdCodes.PKT_CMD_ENABLE_J1708_CONFIRM)
-                    {   //Enable Confirm Ack, send mid filter off
+                    {
+                        //send can filter off
+                        byte[] pData = new byte[2];
+                        pData[0] = 0x65;
+                        pData[1] = 0x00;
+                        qbt.pktData = pData;
+                        qbt.cmdType = PacketCmdCodes.PKT_CMD_CAN_CONTROL;
+                        qbt.numRetries = 2;
+                        qbt.timePeriod = Support.ackReplyLimit;
+                        qbt.timeoutReply = UDPReplyType.sendJ1939replytimeout;
+                        qbt.RestartTimer();
+                        portInfo.QBTransactionNew.Add(qbt);
+                        portInfo.QBTransactionSent.RemoveAt(qbtIdx);
+                    }
+                    else if (qbt.cmdType == PacketCmdCodes.PKT_CMD_CAN_CONTROL)
+                    {
+                        //Enable Confirm Ack, send mid filter off
                         byte[] pData = new byte[1];
                         pData[0] = 0x00;
                         qbt.pktData = pData;
@@ -744,17 +753,6 @@ namespace qbrdge_driver_classlib
                         qbt.RestartTimer();
                         portInfo.QBTransactionNew.Add(qbt);
                         portInfo.QBTransactionSent.RemoveAt(qbtIdx);
-                        //send can filter off
-                        QBTransaction qt = new QBTransaction();
-                        pData = new byte[2];
-                        pData[0] = 0x65;
-                        pData[1] = 0x00;
-                        qt.pktData = pData;
-                        qt.cmdType = PacketCmdCodes.PKT_CMD_CAN_CONTROL;
-                        qt.numRetries = 2;
-                        qt.timePeriod = Support.ackReplyLimit;
-                        qt.timeoutReply = UDPReplyType.sendJ1939replytimeout;
-                        portInfo.QBTransactionNew.Add(qt);
                     }
                     else if (qbt.cmdType == PacketCmdCodes.PKT_CMD_MID_FILTER)
                     {
@@ -1302,7 +1300,7 @@ namespace qbrdge_driver_classlib
             Debug.Write("OUT: " + com.PortName);
             for (int i = 0; i < newpkt.Length; i++)
             {
-                Debug.Write(newpkt[i].ToString("X8") + ",");
+                Debug.Write(newpkt[i].ToString("X2") + ",");
             }
             Debug.WriteLine("");
         }
@@ -1371,7 +1369,7 @@ namespace qbrdge_driver_classlib
                         for (int j = 0; j < qbt.lastSentPkt.Length; j++)
                         {
                             byte b = (byte)qbt.lastSentPkt[j];
-                            Debug.Write(b.ToString("X8") + ",");
+                            Debug.Write(b.ToString("X2") + ",");
                         }
                         Debug.WriteLine("");
 
@@ -1539,7 +1537,7 @@ namespace qbrdge_driver_classlib
                     for (int j = 0; j < qbt.lastSentPkt.Length; j++)
                     {
                         byte b = (byte)qbt.lastSentPkt[j];
-                        Debug.Write(b.ToString("X8") + ",");
+                        Debug.Write(b.ToString("X2") + ",");
                     }
                     Debug.WriteLine("");
 
@@ -1668,7 +1666,7 @@ namespace qbrdge_driver_classlib
                 for (int j = 0; j < outData.Length; j++)
                 {
                     byte b = (byte)outData[j];
-                    Debug.Write(b.ToString("X8") + ",");
+                    Debug.Write(b.ToString("X2") + ",");
                 }
                 Debug.WriteLine("");
 
