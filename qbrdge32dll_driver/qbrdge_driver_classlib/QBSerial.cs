@@ -481,7 +481,7 @@ namespace qbrdge_driver_classlib
                 for (int i = 0; i < inDataLen; i++)
                 {
                     byte b = (byte)inData[i];
-                    Debug.Write(b.ToString() + ",");
+                    Debug.Write(b.ToString("X8") + ",");
                 }
                 Debug.WriteLine("");
 
@@ -1299,12 +1299,12 @@ namespace qbrdge_driver_classlib
             pktData[0] = (byte)ackCode;
             byte[] newpkt = MakeQBridgePacket(PacketCmdCodes.PKT_CMD_ACK, pktData, ref pktId);
             com.Write(newpkt, 0, newpkt.Length);
-            //Debug.Write(com.PortName + " ack: ");
+            Debug.Write("OUT: " + com.PortName);
             for (int i = 0; i < newpkt.Length; i++)
             {
-                //Debug.Write(newpkt[i].ToString() + ",");
+                Debug.Write(newpkt[i].ToString("X8") + ",");
             }
-            //Debug.WriteLine("");
+            Debug.WriteLine("");
         }
 
         public static byte[] MakeQBridgePacket(PacketCmdCodes cmdType, byte[] data, ref byte pktId)
@@ -1371,7 +1371,7 @@ namespace qbrdge_driver_classlib
                         for (int j = 0; j < qbt.lastSentPkt.Length; j++)
                         {
                             byte b = (byte)qbt.lastSentPkt[j];
-                            Debug.Write(b.ToString() + ",");
+                            Debug.Write(b.ToString("X8") + ",");
                         }
                         Debug.WriteLine("");
 
@@ -1534,6 +1534,15 @@ namespace qbrdge_driver_classlib
                     ClientIDManager.clientIds[qbt.clientId].available == false)
                 {
                     SerialPort com = Support.ClientToSerialPort(qbt.clientId);
+
+                    Debug.Write("OUT " + com.PortName + ": ");
+                    for (int j = 0; j < qbt.lastSentPkt.Length; j++)
+                    {
+                        byte b = (byte)qbt.lastSentPkt[j];
+                        Debug.Write(b.ToString("X8") + ",");
+                    }
+                    Debug.WriteLine("");
+
                     com.Write(qbt.lastSentPkt, 0, qbt.lastSentPkt.Length);
                     qbt.numRetries--;
                     qbt.RestartTimer();
@@ -1654,6 +1663,15 @@ namespace qbrdge_driver_classlib
                     break;
                 }
                 outData = Support.StringToByteArray(fileData.Substring(idx1, idx2 - idx1 + 1));
+
+                Debug.Write("OUT " + com.PortName + ": ");
+                for (int j = 0; j < outData.Length; j++)
+                {
+                    byte b = (byte)outData[j];
+                    Debug.Write(b.ToString("X8") + ",");
+                }
+                Debug.WriteLine("");
+
                 com.Write(outData, 0, outData.Length);
                 try
                 {
