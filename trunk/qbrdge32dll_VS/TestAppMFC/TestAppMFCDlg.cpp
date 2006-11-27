@@ -983,7 +983,7 @@ void CTestAppMFCDlg::OnBnClickedAddrclaimcom3()
 		msg[i] = (char)0xFF;
 	}
 	msg[0] = 6;
-	msg[9] = 0; //blcok until done
+	msg[9] = 0; //block until done
 	rp1210SendCustomCommand(19, lastCom3Client, msg, msgLen);
 }
 
