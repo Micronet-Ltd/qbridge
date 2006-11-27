@@ -164,6 +164,7 @@ namespace qbrdge_driver_classlib
         public const string sendJ1939confirmfail = "sendJ1708confirmfail";
         public const string sendJ1939success = "sendJ1708success";
         public const string sendJ1939addresslost = "sendJ1939addresslost";
+        public const string sendJ1939RTSCTStimeout = "sendJ1939RTSCTStimeout";
     }
 
     enum PacketRecvType

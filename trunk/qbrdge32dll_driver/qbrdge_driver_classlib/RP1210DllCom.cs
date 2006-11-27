@@ -122,7 +122,7 @@ namespace qbrdge_driver_classlib
                 Debug.WriteLine(exp.ToString());
             }
         }
-
+ 
         public static void UdpListen()
         {
             // setup udp listener
@@ -587,6 +587,7 @@ namespace qbrdge_driver_classlib
                         addrName[i] = cmdDataBytes[i + 1];
                     }
                     client.claimAddressName = addrName;
+                    client.claimAddrDelayTimer();
 
                     //send address claim cmd to qbridge, send return code when confirmed
                     int msgId;

@@ -477,12 +477,13 @@ namespace qbrdge_driver_classlib
                 int inDataLen = com.Read(inData, 0, 300);
                 
                 // Show all the incoming data in the port's buffer
-                //Debug.Write(com.PortName + " Data: ");
+                Debug.Write(com.PortName + " Data: ");
                 for (int i = 0; i < inDataLen; i++)
                 {
                     byte b = (byte)inData[i];
-                    //Debug.Write(b.ToString() + ",");
+                    Debug.Write(b.ToString() + ",");
                 }
+                Debug.WriteLine("");
 
                 // get port info object
                 for (int i = 0; i < comPorts.Count; i++)
@@ -636,10 +637,15 @@ namespace qbrdge_driver_classlib
                             else if (pktData[0] == 0x01)
                             { //CAN transmit confirm, success
                                 qt.j1939transaction.TransmitConfirm();
-                                if (qt.j1939transaction.IsDone())
+                                if (qt.j1939transaction.IsDone() && qt.j1939transaction.IsComplete())
                                 {
                                     Support.SendClientDataPacket(UDPReplyType.sendJ1939success, qt);
                                     portInfo.QBTransactionSent.RemoveAt(i);
+                                }
+                                else if (qt.j1939transaction.IsDone() && !qt.j1939transaction.IsComplete())
+                                {
+                                    Support.SendClientDataPacket(UDPReplyType.sendJ1939replytimeout, qt);
+                                    portInfo.QBTransactionSent.RemoveAt(i);                               
                                 }
                                 else
                                 {   //get next j1939 packet, and send... or wait..
@@ -832,6 +838,54 @@ namespace qbrdge_driver_classlib
             }
         }
 
+        //check for complete J1939 transactions and remove from lists
+        public static void CheckForCompleteJ1939()
+        {
+            for (int j = 0; j < comPorts.Count; j++)
+            {
+                SerialPortInfo portInfo = comPorts[j];
+                for (int i = 0; i < (portInfo.QBTransactionNew.Count + portInfo.QBTransactionSent.Count); i++)
+                {
+                    QBTransaction qt;
+                    if (i < portInfo.QBTransactionNew.Count)
+                    {
+                        qt = portInfo.QBTransactionNew[i];
+                    }
+                    else
+                    {
+                        qt = portInfo.QBTransactionSent[i - portInfo.QBTransactionNew.Count];
+                    }
+                    if (qt.j1939transaction.IsDone())
+                    {
+                        if (qt.j1939transaction.IsComplete())
+                        {
+                            Support.SendClientDataPacket(UDPReplyType.sendJ1939success, qt);
+                        }
+                        else
+                        {
+                            if (qt.j1939transaction.useRTSCTS)
+                            {
+                                Support.SendClientDataPacket(UDPReplyType.sendJ1939RTSCTStimeout, qt);
+                            }
+                            else
+                            {
+                                Support.SendClientDataPacket(UDPReplyType.sendJ1939replytimeout, qt);
+                            }
+                        }
+                        if (i < portInfo.QBTransactionNew.Count)
+                        {
+                            portInfo.QBTransactionNew.RemoveAt(i);
+                        }
+                        else
+                        {
+                            portInfo.QBTransactionSent.RemoveAt(i);
+                        }
+                        i--;
+                    }
+                }
+            }
+        }
+
         private static void ParseFWUpgrade(SerialPortInfo portInfo)
         {
             if (portInfo.inBuffLen < 1)
@@ -1010,6 +1064,30 @@ namespace qbrdge_driver_classlib
                 else if (pgn[1] == 0xEC && pktData[5] == 16)
                 {
                     //TP.CM_RTS
+
+                    //verify claimed address of a client matches destination address (DA)
+                    int clientIdx = -1;
+                    bool addrFound = false;
+                    for (int i = 0; i < ClientIDManager.clientIds.Length; i++)
+                    {
+                        ClientIDManager.ClientIDInfo client = ClientIDManager.clientIds[i];
+                        if (client.serialInfo != null)
+                        {
+                            if (portInfo.com == client.serialInfo.com)
+                            {
+                                if (client.claimAddress == DA && client.claimAddrAvailable)
+                                {
+                                    addrFound = true;
+                                    clientIdx = i;
+                                }
+                            }
+                        }
+                    }
+                    if (addrFound == false)
+                    {
+                        return;
+                    }
+
                     byte[] data_pgn = new byte[3];
                     data_pgn[0] = pktData[5+7];
                     data_pgn[1] = pktData[5+6];
@@ -1018,7 +1096,7 @@ namespace qbrdge_driver_classlib
                     msg_size[0] = pktData[5 + 1];
                     msg_size[1] = pktData[5 + 2];
                     J1939RTSCTSReceiver recv = new J1939RTSCTSReceiver(portInfo, data_pgn, how_priority, SA, DA,
-                        Support.BytesToUInt16(msg_size, false), pktData[5 + 3], pktData[5 + 4]);
+                        Support.BytesToUInt16(msg_size, false), pktData[5 + 3], pktData[5 + 4], clientIdx);
                     if (recv.IsValid())
                     {
                         RTSCTSRecvList.Add(recv);
@@ -1044,7 +1122,7 @@ namespace qbrdge_driver_classlib
                             BAMRecvList.RemoveAt(i);
                             i--;
                             byte[] rmsg = br.GetRP1210ReadMessage();
-                            NewClientJ1939ReadMessage(rmsg, portName, ignoreClientId);
+                            NewClientsJ1939ReadMessage(rmsg, portName, ignoreClientId);
                         }
                         else if (br.IsValid() == false)
                         {
@@ -1069,7 +1147,7 @@ namespace qbrdge_driver_classlib
                             RTSCTSRecvList.RemoveAt(i);
                             i--;
                             byte[] rmsg = br.GetRP1210ReadMessage();
-                            NewClientJ1939ReadMessage(rmsg, portName, ignoreClientId);
+                            ClientJ1939ReadMsg(rmsg, portName, br.client_idx);
                         }
                         else if (br.IsValid() == false)
                         {
@@ -1110,7 +1188,14 @@ namespace qbrdge_driver_classlib
                                 Support.SendClientDataPacket(UDPReplyType.sendJ1939success, qt);
                             else
                                 Support.SendClientDataPacket(UDPReplyType.sendJ1939replytimeout, qt);
-                            portInfo.QBTransactionNew.RemoveAt(i);
+                            if (i < portInfo.QBTransactionNew.Count)
+                            {
+                                portInfo.QBTransactionNew.RemoveAt(i);
+                            }
+                            else
+                            {
+                                portInfo.QBTransactionSent.RemoveAt(i);
+                            }
                             i--;
                         }
                         else
@@ -1181,23 +1266,29 @@ namespace qbrdge_driver_classlib
             }
             //Debug.WriteLine("");
 
-            NewClientJ1939ReadMessage(newpkt, portName, ignoreClientId);
+            NewClientsJ1939ReadMessage(newpkt, portName, ignoreClientId);
         }
 
-        private static void NewClientJ1939ReadMessage(byte[] readMsg, string portName, int ignoreClientId)
+        private static void NewClientsJ1939ReadMessage(byte[] readMsg, string portName, int ignoreClientId)
         {
             for (int i = 0; i < ClientIDManager.clientIds.Length; i++)
             {
-                ClientIDManager.ClientIDInfo clientInfo = ClientIDManager.clientIds[i];
-                if (clientInfo.available == false &&
-                    clientInfo.serialInfo.com.PortName == portName &&
-                    clientInfo.allowReceive &&
-                    i != ignoreClientId)
+                if (i != ignoreClientId)
                 {
-                    //if client is registered to recieving port then send message
-                    Support.SendClientDataPacket(UDPReplyType.readmessage,
-                        i, readMsg);
+                    ClientJ1939ReadMsg(readMsg, portName, i);
                 }
+            }
+        }
+        private static void ClientJ1939ReadMsg(byte[] readMsg, string portName, int client)
+        {
+            ClientIDManager.ClientIDInfo clientInfo = ClientIDManager.clientIds[client];
+            if (clientInfo.available == false &&
+                clientInfo.serialInfo.com.PortName == portName &&
+                clientInfo.allowReceive) 
+            {
+                //if client is registered to recieving port then send message
+                Support.SendClientDataPacket(UDPReplyType.readmessage,
+                    client, readMsg);
             }
         }
 
@@ -1276,13 +1367,13 @@ namespace qbrdge_driver_classlib
 
                     try
                     {
-                        //Debug.Write("OUT " + serialInfo.com.PortName + ": ");
+                        Debug.Write("OUT " + serialInfo.com.PortName + ": ");
                         for (int j = 0; j < qbt.lastSentPkt.Length; j++)
                         {
                             byte b = (byte)qbt.lastSentPkt[j];
-                            //Debug.Write(b.ToString() + ",");
+                            Debug.Write(b.ToString() + ",");
                         }
-                        //Debug.WriteLine("");
+                        Debug.WriteLine("");
 
                         serialInfo.com.Write(qbt.lastSentPkt, 0, qbt.lastSentPkt.Length);
                         qbt.RestartTimer();
@@ -1399,10 +1490,11 @@ namespace qbrdge_driver_classlib
             qbt.pktData = qbt.j1939transaction.GetCANPacket(); //get packet for current state.
 
             if (qbt.j1939transaction.useRTSCTS && (ClientIDManager.clientIds[clientId].claimAddress < 0 ||
-                qbt.j1939transaction.SA != ClientIDManager.clientIds[clientId].claimAddress))
+                qbt.j1939transaction.SA != ClientIDManager.clientIds[clientId].claimAddress ||
+                ClientIDManager.clientIds[clientId].claimAddrAvailable == false))
             {
                 //need claimed address for RTS/CTS
-                return (int)RP1210ErrorCodes.ERR_ADDRESS_NEVER_CLAIMED;
+                return -(int)RP1210ErrorCodes.ERR_ADDRESS_NEVER_CLAIMED;
             }
 
             qbt.numRetries = 2;
@@ -1415,7 +1507,7 @@ namespace qbrdge_driver_classlib
             byte[] newpkt = new byte[4 + msg.Length];
             timestamp.CopyTo(newpkt, 0);
             Support.StringToByteArray(msg).CopyTo(newpkt, 4);
-            NewClientJ1939ReadMessage(newpkt, sinfo.com.PortName, clientId);
+            NewClientsJ1939ReadMessage(newpkt, sinfo.com.PortName, clientId);
 
             return msgId;
         }

@@ -158,13 +158,13 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 		}
 
 		if (ctype == Conn_J1708 && nMessageSize < 2) {
-			return ERR_MESSAGE_NOT_SENT;
+			return ERR_INVALID_MSG_PACKET;
 		}
 		if (ctype == Conn_J1939 && nMessageSize < 6) {
-			return ERR_MESSAGE_NOT_SENT;
+			return ERR_INVALID_MSG_PACKET;
 		}
 		if (ctype == Conn_J1939 && fpchClientMessage[0] > 0x07) {
-			return ERR_MESSAGE_NOT_SENT;
+			return ERR_INVALID_MSG_PACKET;
 		}
 
 		//send j1708 message to driver app.
@@ -174,6 +174,9 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 			int msgId = cid;
 			if (msgId > 127 && nNotifyStatusOnTx) {
 				return msgId; // error code returned
+			}
+			if (msgId < 0) { // error code
+				return -msgId;
 			}
 			if (nBlockOnSend || (nNotifyStatusOnTx && cid != 0)) {
 				connections[nClientID].AddTransaction(nNotifyStatusOnTx, msgId);
@@ -1087,6 +1090,10 @@ void ProcessDataPacket(char* data, SOCKET RecvSocket, sockaddr_in RecvAddr)
 			CritSection cs;
 			connections[clientid].UpdateTransaction(isnotify, transid, ERR_HARDWARE_NOT_RESPONDING);
 			//_DbgTrace(_T("sendJ1708replytimeout"));
+		}
+		else if (strcmp(pktType, "sendJ1939RTSCTStimeout") == 0) {
+			CritSection cs;
+			connections[clientid].UpdateTransaction(isnotify, transid, ERR_J1939_SEND_RTS_CTS_TIMEOUT);
 		}
 		else if (strcmp(pktType, "sendJ1708confirmfail") == 0) {
 			CritSection cs;

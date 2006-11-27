@@ -2,6 +2,7 @@ using System;
 using System.Net;
 using System.Text;
 using System.IO.Ports;
+using System.Threading;
 using System.Diagnostics;
 using System.Collections.Generic;
 
@@ -24,7 +25,28 @@ namespace qbrdge_driver_classlib
             //see j1939-81 for info. on address claiming
             public int claimAddress = -1; // -1 for not address claimed
             public byte[] claimAddressName = new byte[8];
+            public bool claimAddrAvailable = true;
             //needed for multi-frame RTS/CTS recieve or send messages
+
+            //delay availability of claimAddress to allow
+            //responses from other devices
+            public void claimAddrDelayTimer()
+            {
+                claimAddrAvailable = false;
+                if (myTimer != null)
+                {
+                    myTimer.Dispose();
+                }
+                TimerCallback timerDelegate = new TimerCallback(TimeOut);
+                myTimer = new Timer(timerDelegate, this, 1000, Timeout.Infinite);
+            }
+            private Timer myTimer;
+            //this function is called by the timer class
+            private void TimeOut(Object state)
+            {
+                claimAddrAvailable = true;
+            }
+
         }
         
         public static ClientIDInfo[] clientIds = new ClientIDInfo[128];
