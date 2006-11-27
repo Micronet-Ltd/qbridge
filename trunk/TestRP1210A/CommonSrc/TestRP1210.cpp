@@ -70,7 +70,7 @@ bool IsValid(int result) { return (result >= 0) && (result < 128); }
 /* TestRP1210::TestRP1210 */
 /*************************/
 TestRP1210::TestRP1210(void) : helperTxThread(NULL), helperRxThread(NULL), threadsMustDie(false), secondaryClient(-1), api1(NULL), api2(NULL),
-								toKillClient(-1), sendSpectrum(false)
+								toKillClient(-1), sendSpectrum(false), sendJ1708(false), sendJ1939(false), secondary1939Client(-1)
 {
 	if (firstAlreadyCreated) {
 		throw (CString("Cannot create more than one of these objects at a time"));
@@ -302,15 +302,23 @@ void TestRP1210::Test (const set<CString> &testList, vector<INIMgr::Devices> &de
 	TEST("Read Version", TestReadVersion());
 	TEST("Connect", TestConnect(devs, idx1));
 	TEST("Multiconnect", TestMulticonnect(devs, idx1));
+	TEST("TestSendCommandReset", TestSendCommandReset(devs[idx1]));
 
 	// Setup thread for secondary J1708 communication
 // This block controls the second thread
 #if 1
 	secondaryClient = api2->pRP1210_ClientConnect(NULL, devs[idx2].deviceID, "J1708", 0, 0, 0);
 	if (!IsValid(secondaryClient)) {
-		log.LogText (_T("    Connecting to secondary device failed"), Log::Red);
+		log.LogText (_T("    Connecting to secondary device (1708) failed"), Log::Red);
 		LogError (*api2, secondaryClient);
 		secondaryClient = -1;
+		goto end;
+	}
+	secondary1939Client = api2->pRP1210_ClientConnect(NULL, devs[idx2].deviceID, "J1939", 0, 0, 0);
+	if (!IsValid(secondary1939Client)) {
+		log.LogText (_T("    Connecting to secondary device (1939) failed"), Log::Red);
+		LogError (*api2, secondary1939Client);
+		secondary1939Client = -1;
 		goto end;
 	}
 	SetupWorkerThread (helperTxThread, SecondaryDeviceTXThread, false, _T("Secondary_TX"));
@@ -329,21 +337,28 @@ void TestRP1210::Test (const set<CString> &testList, vector<INIMgr::Devices> &de
 	api1->pRP1210_SendCommand(SetAllFiltersToPass, primaryClient, NULL, 0);
 
 	// RON:  Comment or uncomment these to test
+	// 1708 Tests
+	sendJ1708 = true;
+	sendJ1939 = false;
 	TEST("J1708 Basic Read", TestBasicRead(devs[idx1], primaryClient));
 	TEST("J1708 Advanced Read", TestAdvancedRead(devs[idx1], primaryClient));
 	TEST("J1708 Multi Read", TestMultiRead(devs[idx1], primaryClient));
 	TEST("J1708 Basic Send", TestBasicSend(primaryClient));
 	TEST("J1708 Advanced Send", TestAdvancedSend(devs[idx1], primaryClient));
 	TEST("J1708 Window Notify", TestWinNotify(devs[idx1]));
-//
-//	TestSendCommandReset(devs[idx1], primaryClient);
 	TEST("J1708 Filter States/On Off message", TestFilterStatesOnOffMessagePassOnOff(devs[idx1], primaryClient));
 	TEST("J1708 Filters", TestFilters (devs[idx1], primaryClient));
+	VerifyDisconnect(primaryClient);
+
+	// 1939 Tests
+	sendJ1708 = false;
+	sendJ1939 = true;
+	TEST("J1939 Address Claim", Test1939AddressClaim(devs[idx1], devs[idx2]));
+	TEST("J1939 Basic Read", Test1939BasicRead(devs[idx1]));
+	
+
 
 end:
-	if (IsValid(primaryClient)) {
-		api1->pRP1210_ClientDisconnect(primaryClient);	
-	}
 	log.LogText(_T("Done testing"), Log::Green);
 }
 
@@ -907,9 +922,10 @@ int TestRP1210::VerifiedRead (int clientID, char *rxBuf, int rxLen, bool block) 
 /*************************************/
 /* TestRP1210::TestSendCommandReset */
 /***********************************/
-void TestRP1210::TestSendCommandReset(INIMgr::Devices &dev, int &primaryClient) {
+void TestRP1210::TestSendCommandReset(INIMgr::Devices &dev) {
 	log.LogText (_T("Testing: SendCommand(Reset)"), Log::Blue);
 
+	int primaryClient = VerifyConnect(dev, "J1708");
 	int result = api1->pRP1210_SendCommand(ResetDevice, primaryClient, NULL, 0);
 	if (result != 0) {
 		log.LogText(_T("    Device did not reset!"), Log::Red);
@@ -955,6 +971,7 @@ void TestRP1210::TestSendCommandReset(INIMgr::Devices &dev, int &primaryClient) 
 	// Try with invalid command
 	VerifyInvalidSendCommand (PARM(ResetDevice, "<Invalid command data>"), primaryClient, "\x01", 1, ERR_INVALID_COMMAND);
 	
+	VerifyDisconnect(primaryClient);
 	VerifyDisconnect(client2);
 }
 
@@ -979,8 +996,8 @@ void TestRP1210::TestFilterStatesOnOffMessagePassOnOff(INIMgr::Devices &dev, int
 
 
 	// Read while filters discarding
-	int clientDiscardAll = VerifyConnect (dev);
-	int clientAcceptAll = VerifyConnect(dev);
+	int clientDiscardAll = VerifyConnect (dev, "J1708");
+	int clientAcceptAll = VerifyConnect(dev, "J1708");
 	VerifyValidSendCommand (PARM(SetAllFiltersToPass,""), clientAcceptAll, NULL, 0, false);
 	VerifyValidSendCommand (PARM(SetAllFilterStatesToDiscard,""), clientDiscardAll, NULL, 0, false);
 	struct {
@@ -1081,8 +1098,8 @@ TRACE (_T("Received message (woor=%d).  MID=%d, msg=%s\n"), warnOutOfRange, pkt.
 
 	char rxBuf[1024];
 
-	int clTx = VerifyConnect(dev);
-	int clRx = VerifyConnect(dev);
+	int clTx = VerifyConnect(dev, "J1708");
+	int clRx = VerifyConnect(dev, "J1708");
 
 	if (!IsValid(clTx) || (!IsValid(clRx))) {
 		log.LogText(_T("    Unable to test filters."), Log::Red);
@@ -1196,6 +1213,91 @@ TRACE (_T("Received message (woor=%d).  MID=%d, msg=%s\n"), warnOutOfRange, pkt.
 	VerifyDisconnect (clRx);
 }
 
+/*************************************/
+/* TestRP1210::VerifyProtectAddress */
+/***********************************/
+bool TestRP1210::VerifyProtectAddress (RP1210API *api, int clientID, int address, int vehicalSystem, int identityNum, BlockType block) {
+	return VerifyProtectAddress(api, clientID, address, 1, 0, 0, vehicalSystem, 0, 0, 0, 0, identityNum, block);
+}
+
+/*************************************/
+/* TestRP1210::VerifyProtectAddress */
+/***********************************/
+bool TestRP1210::VerifyProtectAddress (RP1210API *api, int clientID, int address, bool arbitraryAddress, int industryGroup, int vehSysInst, int vehSys, int function, int funcInst, int ecuInst, int mfgCode, int identityNum, BlockType block) {
+	union {
+		struct {
+			unsigned __int64 aac:1;
+			unsigned __int64 ig:3;
+			unsigned __int64 vsi:4;
+			unsigned __int64 vs:7;
+			unsigned __int64 reserved:1;
+			unsigned __int64 func:8;
+			unsigned __int64 funcInst:5;
+			unsigned __int64 ecu:3;
+			unsigned __int64 mfgcode:11;
+			unsigned __int64 identiyNum:21;
+		};
+		char name[8];
+	} u;
+	u.aac=arbitraryAddress;
+	u.ig = industryGroup;
+	u.vsi = vehSysInst;
+	u.vs = vehSys;
+	u.reserved = 0;
+	u.func = function;
+	u.funcInst = funcInst;
+	u.ecu = ecuInst;
+	u.mfgcode = mfgCode;
+	u.identiyNum = identityNum;
+
+	char txBuf[10];
+	txBuf[0] = address;
+	memcpy(txBuf+1, u.name, 8);
+	txBuf[9] = block;
+
+	int result = api->pRP1210_SendCommand(ProtectJ1939Address, clientID, txBuf, 10);
+	if (result == 0) {
+		return true;
+	} else {
+		CString msg;
+		msg.Format (_T("    Error claiming address %d on client %d.  VehSys=%d, identityNum=%d"), address, clientID, vehSys, identityNum);
+		log.LogText(msg, Log::Red);
+		LogError(*api, result);
+		return false;
+	}
+}
+
+
+/*************************************/
+/* TestRP1210::Test1939AddressClaim */
+/***********************************/
+void TestRP1210::Test1939AddressClaim (INIMgr::Devices &dev1, INIMgr::Devices &dev2) {
+	log.LogText (_T("Testing: SendCommand(Protect J1939 Address)"), Log::Blue);
+
+	int cl1a = VerifyConnect(dev1, "J1939");
+	int cl1b = VerifyConnect(dev1, "J1939");
+	int cl2a = VerifyConnect(dev2, "J1939");
+
+	//VerifyInvalidSendCommand (ProtectJ1939Address, _T("Invalid address claim address"), cl1a, " ", 1, ERR_INVALID_COMMAND);
+	VerifyInvalidClientIDSendCommand (ProtectJ1939Address, _T("Address Claim"), "\xFF********\x02", 10);
+
+	// Claim an address
+	if (VerifyProtectAddress(api1, cl1a, 100, 1, 1) && VerifyProtectAddress(api1, cl1a, 101, 1, 2) && VerifyProtectAddress(api2, cl2a, 102, 1, 3)) {
+		log.LogText(_T("    Was able to claim three addresses"));
+	}
+	
+
+	VerifyDisconnect(cl1a);
+	VerifyDisconnect(cl1b);
+	VerifyDisconnect(cl2a);
+}
+
+/**********************************/
+/* TestRP1210::Test1939BasicRead */
+/********************************/
+void TestRP1210::Test1939BasicRead (INIMgr::Devices &dev) {
+	log.LogText (_T("Testing: ReadMessage(J1939) -- Not yet implemented"), Log::Blue);
+}
 
 /*************************/
 /* TestRP1210::LogError */
@@ -1267,26 +1369,30 @@ UINT __cdecl TestRP1210::SecondaryDeviceTXThread( LPVOID pParam ) {
 	int count = 0;
 	while (!thisObj->threadsMustDie) {
 		DWORD time = GetTickCount();
-		//char basicJ1708TxBuf [] = { 4, SecondaryPeriodicTX, 'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd'};
-		char basicJ1708TxBuf [] = { 4, SecondaryPeriodicTX, 'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', ' ', '-', '-', '-', '-' };
-		basicJ1708TxBuf[1] = SecondaryPeriodicTX;
-		char strBuf[24];
-		sprintf (strBuf, "%05d", count++);
-		memcpy(basicJ1708TxBuf + 14, strBuf+strlen(strBuf)-4, 4);
-		int result = thisObj->api2->pRP1210_SendMessage(thisObj->secondaryClient, basicJ1708TxBuf, sizeof(basicJ1708TxBuf), false, true);
-		if (!IsValid(result)) {
-			thisObj->LogError (*(thisObj->api2), result);
-		}
+		if (thisObj->sendJ1708) {
+			char basicJ1708TxBuf [] = { 4, SecondaryPeriodicTX, 'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', ' ', '-', '-', '-', '-' };
+			basicJ1708TxBuf[1] = SecondaryPeriodicTX;
+			char strBuf[24];
+			sprintf (strBuf, "%05d", count++);
+			memcpy(basicJ1708TxBuf + 14, strBuf+strlen(strBuf)-4, 4);
+			int result = thisObj->api2->pRP1210_SendMessage(thisObj->secondaryClient, basicJ1708TxBuf, sizeof(basicJ1708TxBuf), false, true);
+			if (!IsValid(result)) {
+				thisObj->LogError (*(thisObj->api2), result);
+			}
 
-		if (thisObj->sendSpectrum) {
-TRACE ("Sending Spectrum\n");
-			for (int j = SecondaryPeriodicTX+1; j <= SecondaryPeriodicTX+6; j++) {
-				basicJ1708TxBuf[1] = j;
-				result = thisObj->api2->pRP1210_SendMessage(thisObj->secondaryClient, basicJ1708TxBuf, sizeof(basicJ1708TxBuf), false, false);
-				if (!IsValid(result)) {
-					thisObj->LogError (*(thisObj->api2), result);
+			if (thisObj->sendSpectrum) {
+				TRACE ("Sending Spectrum\n");
+				for (int j = SecondaryPeriodicTX+1; j <= SecondaryPeriodicTX+6; j++) {
+					basicJ1708TxBuf[1] = j;
+					result = thisObj->api2->pRP1210_SendMessage(thisObj->secondaryClient, basicJ1708TxBuf, sizeof(basicJ1708TxBuf), false, false);
+					if (!IsValid(result)) {
+						thisObj->LogError (*(thisObj->api2), result);
+					}
 				}
 			}
+		}
+		if (thisObj->sendJ1939) {
+			
 		}
 
 		while (GetTickCount() < time+500) { Sleep(10); }
