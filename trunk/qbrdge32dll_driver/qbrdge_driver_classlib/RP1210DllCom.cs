@@ -569,7 +569,7 @@ namespace qbrdge_driver_classlib
                     //Protect J1939 Address, not implemented in QB yet
                     if (cmdDataBytes.Length != 10)
                     {
-                        returnCode = (int)RP1210ErrorCodes.ERR_INVALID_COMMAND;
+                        returnCode = -(int)RP1210ErrorCodes.ERR_INVALID_COMMAND;
                         UdpSend(returnCode.ToString(), iep);
                         return;
                     }
