@@ -288,6 +288,9 @@ RP1210AReturnType SendCommand (short nCommandNumber, short nClientID, char far* 
 	int idNum = (int)nCommandNumber;
 	if (QueryDriverApp(QUERY_SEND_COMMAND, GetAssignPort(), cid, fpchClientCommand, nMessageSize, idNum)) {
 		short returnCode = (short)cid;	
+		if (returnCode < 0) {
+			return -returnCode;
+		}
 		if ( (nCommandNumber == CMD_RESET_DEVICE || 
 			nCommandNumber == CMD_UPGRADE_FIRMWARE) && returnCode == 0) {
 			//success, device reset, client not connected
