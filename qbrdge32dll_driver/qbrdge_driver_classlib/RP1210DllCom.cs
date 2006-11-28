@@ -614,11 +614,25 @@ namespace qbrdge_driver_classlib
                         UdpSend(returnCode.ToString(), iep);
                         return;
                     }
+                    if (cmdDataBytes[0] == 254) {
+                        //null address, invalid
+                        returnCode = -(int)RP1210ErrorCodes.ERR_ADDRESS_CLAIM_FAILED;
+                        UdpSend(returnCode.ToString(), iep);
+                        return;
+                    }
                     ClientIDManager.ClientIDInfo client = ClientIDManager.clientIds[clientId];
 
                     if (client.claimAddress >= 0)
                     {
                         QBSerial.AbortClientRTSCTS(client.serialInfo, (byte)client.claimAddress);
+                    }
+
+                    if (cmdDataBytes[0] == 255)
+                    {
+                        //global address, clear
+                        client.claimAddress = -1;
+                        UdpSend("-4", iep);
+                        return;
                     }
 
                     client.claimAddress = cmdDataBytes[0];

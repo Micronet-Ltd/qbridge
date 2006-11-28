@@ -289,6 +289,9 @@ RP1210AReturnType SendCommand (short nCommandNumber, short nClientID, char far* 
 	if (QueryDriverApp(QUERY_SEND_COMMAND, GetAssignPort(), cid, fpchClientCommand, nMessageSize, idNum)) {
 		short returnCode = (short)cid;	
 		if (returnCode < 0) {
+			if (returnCode == -4) {
+				return 0;
+			}
 			return -returnCode;
 		}
 		if ( (nCommandNumber == CMD_RESET_DEVICE || 
