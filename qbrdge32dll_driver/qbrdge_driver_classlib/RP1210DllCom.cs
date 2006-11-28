@@ -396,6 +396,8 @@ namespace qbrdge_driver_classlib
                     //Set All Filter States to Pass
                     ClientIDManager.clientIds[clientId].J1708MIDFilter = false;
                     ClientIDManager.clientIds[clientId].J1708MIDList = new byte[0];
+                    ClientIDManager.clientIds[clientId].J1939Filter = false;
+                    ClientIDManager.clientIds[clientId].J1939FilterList.Clear();
 
                     if (cmdData.Length != 0)
                         UdpSend(((int)RP1210ErrorCodes.ERR_INVALID_COMMAND).ToString(), iep);
@@ -405,9 +407,46 @@ namespace qbrdge_driver_classlib
                 else if (cmdNum == (int)RP1210SendCommandType.SC_SET_MSG_FILTER_J1939)
                 {
                     //Set Message Filtering for J1939
-                    //NOT IMPLEMENTED YET
                     returnCode = (int)RP1210ErrorCodes.ERR_INVALID_COMMAND;
-                    UdpSend(returnCode.ToString(), iep);
+                    if ((cmdData.Length % 7) != 0 || cmdData.Length == 0)
+                    {
+                        UdpSend(returnCode.ToString(), iep);
+                    }
+                    else
+                    {
+                        byte[] filterData = new byte[7];
+                        for (int i = 0; i < (cmdData.Length / 7); i++)
+                        {
+                            Array.Copy(cmdDataBytes, i * 7, filterData, 0, 7);
+                            ClientIDManager.J1939Filter jf = new ClientIDManager.J1939Filter();
+                            jf.flag = filterData[0];
+                            jf.pgn[0] = filterData[1];
+                            jf.pgn[1] = filterData[2];
+                            jf.pgn[2] = filterData[3];
+                            jf.priority = filterData[4];
+                            jf.sourceAddr = filterData[5];
+                            jf.destAddr = filterData[6];
+                            if (jf.flag > 15)
+                            {   //invalid Filter Flag
+                                break;
+                            }
+                            byte[] tmp = new byte[4];
+                            Array.Copy(jf.pgn, 0, tmp, 0, 3);
+                            tmp[3] = 0;
+                            if (BitConverter.ToUInt32(tmp, 0) > (UInt32)131071) //0x01FFFF
+                            {   //invalid PGN
+                                break;
+                            }
+                            if (jf.priority > 7)
+                            {   //invalid priority
+                                break;
+                            }
+                            ClientIDManager.clientIds[clientId].J1939Filter = true;
+                            ClientIDManager.clientIds[clientId].J1939FilterList.Add(jf);
+                            returnCode = 0;
+                        }
+                        UdpSend(returnCode.ToString(), iep);
+                    }
                 }
                 else if (cmdNum == (int)RP1210SendCommandType.SC_SET_MSG_FILTER_CAN)
                 {
@@ -534,6 +573,8 @@ namespace qbrdge_driver_classlib
                     //Set All Filter States To Discard
                     ClientIDManager.clientIds[clientId].J1708MIDFilter = true;
                     ClientIDManager.clientIds[clientId].J1708MIDList = new byte[0];
+                    ClientIDManager.clientIds[clientId].J1939Filter = true;
+                    ClientIDManager.clientIds[clientId].J1939FilterList.Clear();
                     if (cmdData.Length != 0)
                         UdpSend(((int)RP1210ErrorCodes.ERR_INVALID_COMMAND).ToString(), iep);
                     else

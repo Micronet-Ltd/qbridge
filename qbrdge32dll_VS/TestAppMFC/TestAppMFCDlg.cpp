@@ -101,6 +101,7 @@ BEGIN_MESSAGE_MAP(CTestAppMFCDlg, CDialog)
 	ON_BN_CLICKED(IDC_AddrClaimCom4, &CTestAppMFCDlg::OnBnClickedAddrclaimcom4)
 	ON_BN_CLICKED(IDC_sendj1939msgbtn8, &CTestAppMFCDlg::OnBnClickedsendj1939msgbtn8)
 	ON_BN_CLICKED(IDC_BUTTON16, &CTestAppMFCDlg::OnBnClickedButton16)
+	ON_BN_CLICKED(IDC_BUTTON15, &CTestAppMFCDlg::OnBnClickedButton15)
 END_MESSAGE_MAP()
 
 
@@ -1038,4 +1039,15 @@ void CTestAppMFCDlg::OnBnClickedsendj1939msgbtn8()
 void CTestAppMFCDlg::OnBnClickedButton16()
 {
 	rp1210SendCustomCommand(17, lastCom4Client, "a", 1);
+}
+
+void CTestAppMFCDlg::OnBnClickedButton15()
+{
+	char far msg[7];
+	short msglen = 7;
+	msg[0] = 1;
+	msg[1] = 0xFF;
+	msg[2] = 0xFF;
+	msg[3] = 0x01;
+	rp1210SendCustomCommand(4, lastCom3Client, msg, msglen);
 }
