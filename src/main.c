@@ -143,6 +143,8 @@ void irq_lockup(void)
 
 void LockProgram();
 
+
+
 /********/
 /* main */
 /********/
@@ -161,6 +163,7 @@ int main(void) {
         ValidateProgramState();
         ProcessReceived232Data();
         Transmit232IfReady();
+        ResetJ1708IdleTimerIfNeeded();
         ProcessJ1708TransmitQueue();
         ProcessJ1708RecvPacket();
 //        ProcessJ1939TransmitQueue();
