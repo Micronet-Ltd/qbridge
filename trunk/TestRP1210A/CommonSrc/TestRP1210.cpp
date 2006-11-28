@@ -306,7 +306,7 @@ void TestRP1210::Test (const set<CString> &testList, vector<INIMgr::Devices> &de
 
 	// Setup thread for secondary J1708 communication
 // This block controls the second thread
-#if 1
+#if 0
 	secondaryClient = api2->pRP1210_ClientConnect(NULL, devs[idx2].deviceID, "J1708", 0, 0, 0);
 	if (!IsValid(secondaryClient)) {
 		log.LogText (_T("    Connecting to secondary device (1708) failed"), Log::Red);
@@ -323,7 +323,6 @@ void TestRP1210::Test (const set<CString> &testList, vector<INIMgr::Devices> &de
 	}
 	SetupWorkerThread (helperTxThread, SecondaryDeviceTXThread, false, _T("Secondary_TX"));
 	SetupWorkerThread (helperRxThread, SecondaryDeviceRXThread, false, _T("Secondary_RX"));
-#endif
 
 	// Setup Primary Client
 	int primaryClient = api1->pRP1210_ClientConnect(NULL, devs[idx1].deviceID, "J1708", 0, 0, 0);
@@ -333,6 +332,7 @@ void TestRP1210::Test (const set<CString> &testList, vector<INIMgr::Devices> &de
 		primaryClient = -1;
 		goto end;
 	}
+
 	// Set filter states to pass
 	api1->pRP1210_SendCommand(SetAllFiltersToPass, primaryClient, NULL, 0);
 
@@ -349,6 +349,7 @@ void TestRP1210::Test (const set<CString> &testList, vector<INIMgr::Devices> &de
 	TEST("J1708 Filter States/On Off message", TestFilterStatesOnOffMessagePassOnOff(devs[idx1], primaryClient));
 	TEST("J1708 Filters", TestFilters (devs[idx1], primaryClient));
 	VerifyDisconnect(primaryClient);
+#endif
 
 	// 1939 Tests
 	sendJ1708 = false;
@@ -1275,21 +1276,21 @@ void TestRP1210::Test1939AddressClaim (INIMgr::Devices &dev1, INIMgr::Devices &d
 	log.LogText (_T("Testing: SendCommand(Protect J1939 Address)"), Log::Blue);
 
 	int cl1a = VerifyConnect(dev1, "J1939");
-	int cl1b = VerifyConnect(dev1, "J1939");
-	int cl2a = VerifyConnect(dev2, "J1939");
+	//int cl1b = VerifyConnect(dev1, "J1939");
+	//int cl2a = VerifyConnect(dev2, "J1939");
 
 	//VerifyInvalidSendCommand (ProtectJ1939Address, _T("Invalid address claim address"), cl1a, " ", 1, ERR_INVALID_COMMAND);
 	VerifyInvalidClientIDSendCommand (ProtectJ1939Address, _T("Address Claim"), "\xFF********\x02", 10);
 
 	// Claim an address
-	if (VerifyProtectAddress(api1, cl1a, 100, 1, 1) && VerifyProtectAddress(api1, cl1a, 101, 1, 2) && VerifyProtectAddress(api2, cl2a, 102, 1, 3)) {
+	if (VerifyProtectAddress(api1, cl1a, 100, 1, 1)) {// && VerifyProtectAddress(api1, cl1a, 101, 1, 2) && VerifyProtectAddress(api2, cl2a, 102, 1, 3)) {
 		log.LogText(_T("    Was able to claim three addresses"));
 	}
 	
 
 	VerifyDisconnect(cl1a);
-	VerifyDisconnect(cl1b);
-	VerifyDisconnect(cl2a);
+//	VerifyDisconnect(cl1b);
+//	VerifyDisconnect(cl2a);
 }
 
 /**********************************/
