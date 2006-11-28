@@ -145,6 +145,8 @@ public:
 	afx_msg void OnBnClickedsendj1939msgbtn8();
 public:
 	afx_msg void OnBnClickedButton16();
+public:
+	afx_msg void OnBnClickedButton15();
 };
 
 static DWORD __stdcall DisconnectFunc(void* args);

@@ -10,6 +10,14 @@ namespace qbrdge_driver_classlib
 {
     class ClientIDManager
     {
+        public class J1939Filter
+        {
+            public byte flag = 0;
+            public byte[] pgn = { 0, 0, 0 };
+            public byte priority = 0;
+            public byte sourceAddr = 0;
+            public byte destAddr = 0;
+        }
         public class ClientIDInfo
         {
             public int dllInPort = 0; // udp port of dll app.
@@ -18,7 +26,10 @@ namespace qbrdge_driver_classlib
 
             //MID filter enable/disable
             public bool J1708MIDFilter = true;
-            public byte[] J1708MIDList = new byte[0];            
+            public byte[] J1708MIDList = new byte[0];         
+            //J1939 msg filtering
+            public bool J1939Filter = true;
+            public List<J1939Filter> J1939FilterList = new List<J1939Filter>();
 
             public bool allowReceive = true;
 
@@ -84,6 +95,8 @@ namespace qbrdge_driver_classlib
                         clientIds[i].claimAddressName = new byte[8];
                         clientIds[i].J1708MIDFilter = true;
                         clientIds[i].J1708MIDList = new byte[0];
+                        clientIds[i].J1939Filter = true;
+                        clientIds[i].J1939FilterList.Clear();
                         clientIds[i].allowReceive = true;
                         if (sinfo.qbInitNeeded)
                         {

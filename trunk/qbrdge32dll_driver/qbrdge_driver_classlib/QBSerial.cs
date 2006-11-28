@@ -1257,12 +1257,14 @@ namespace qbrdge_driver_classlib
             newpkt[8] = SA;
             newpkt[9] = DA;
 
-            //Debug.Write("READ PKT: ");
+            /*
+            Debug.Write("READ PKT: ");
             for (int i = 0; i < newpkt.Length; i++)
             {
-                //Debug.Write(newpkt[i].ToString() + ",");
+                Debug.Write(newpkt[i].ToString() + ",");
             }
-            //Debug.WriteLine("");
+            Debug.WriteLine("");
+             */
 
             NewClientsJ1939ReadMessage(newpkt, portName, ignoreClientId);
         }
@@ -1284,9 +1286,56 @@ namespace qbrdge_driver_classlib
                 clientInfo.serialInfo.com.PortName == portName &&
                 clientInfo.allowReceive) 
             {
-                //if client is registered to recieving port then send message
-                Support.SendClientDataPacket(UDPReplyType.readmessage,
-                    client, readMsg);
+                if (clientInfo.J1939Filter == false)
+                {
+                    //if client is registered to recieving port then send message
+                    Support.SendClientDataPacket(UDPReplyType.readmessage,
+                        client, readMsg);
+                }
+                else
+                {
+                    byte[] msg_pgn = new byte[3];
+                    msg_pgn[0] = readMsg[4];
+                    msg_pgn[1] = readMsg[5];
+                    msg_pgn[2] = readMsg[6];
+                    byte msg_source = readMsg[8];
+                    byte msg_dest = readMsg[9];
+                    byte msg_priority = (byte)((byte)(readMsg[7]*2*2*2*2*2)/2/2/2/2/2);
+                    bool use_pgn, use_source, use_dest, use_priority;
+                    for (int i = 0; i < clientInfo.J1939FilterList.Count; i++)
+                    {
+                        ClientIDManager.J1939Filter jf = clientInfo.J1939FilterList[i];
+                        if ((jf.flag & 0x01) != 0)
+                            use_pgn = true;
+                        else
+                            use_pgn = false;
+                        if ((jf.flag & 0x02) != 0)
+                            use_priority = true;
+                        else
+                            use_priority = false;
+                        if ((jf.flag & 0x04) != 0)
+                            use_source = true;
+                        else
+                            use_source = false;
+                        if ((jf.flag & 0x08) != 0)
+                            use_dest = true;
+                        else
+                            use_dest = false;
+                        if ( ((use_pgn && jf.pgn[0] == msg_pgn[0] && jf.pgn[1] == msg_pgn[1] && jf.pgn[2] == msg_pgn[2]) ||
+                            (use_pgn == false))
+                            &&
+                            ((use_priority && jf.priority == msg_priority) || (use_priority == false))
+                            &&
+                            ((use_source && jf.sourceAddr == msg_source) || (use_source == false))
+                            &&
+                            ((use_dest && jf.destAddr == msg_dest) || (use_dest == false)) )
+                        {
+                            Support.SendClientDataPacket(UDPReplyType.readmessage,
+                                client, readMsg);
+                            return;
+                        }
+                    }
+                }
             }
         }
 
