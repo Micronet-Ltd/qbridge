@@ -4,12 +4,12 @@
 #include "serial.h"
 
 Timer MainTimer;
-Timer J1708IdleTimer;
-Timer J1708RxInterruptTimer;
 
-void Timer0IRQ() __attribute__((interrupt("IRQ")));
 void Timer1IRQ() __attribute__((interrupt("IRQ")));
-void Timer2IRQ() __attribute__((interrupt("IRQ")));
+
+static UINT32 J1708_idle_time=0;
+static UINT32 J1708_last_transition_time=0;
+static bool J1708_bus_not_idle=FALSE;
 
 
 /*********************/
@@ -19,64 +19,26 @@ void InitializeTimers() {
     TimerControlRegister1 tcr1 = {0};
     TimerControlRegister2 tcr2 = {0};
 
-    // Setup the main timer
+    // Setup the Main Timer, used to:
+    //  1. time all events
+    //  2. capture edge times of J1708 bus
+    //  3. generate a J1708 bus idle timer
+    //  4. pseudo random number for backing off from J1708 collisions
     MainTimer.wrapCounter = 0;
-    MainTimer.timer = (TimerRegisterMap *)(TIMER0_REG_BASE);
+    MainTimer.timer = (TimerRegisterMap *)(TIMER1_REG_BASE);
 
     tcr1.value = 0;
     tcr2.value = 0;
     tcr1.TimerCountEnable = 1;
+    tcr1.InputEdgeA = 1;
+    tcr1.InputEdgeB = 0;
+//    tcr2.InputCaptureAInterruptEnable = 1;
+//    tcr2.InputCaptureBInterruptEnable = 0;  //only concerned with bus idle time, not active time
     tcr2.TimerOverflowInterruptEnable = 1;
-    tcr2.PrescalerDivisionFactor = 5;//new oscillator causes overflow if we attempt
-                                     //to keep everything the way it was.... so since we
-                                     //have to change anyway, make it so that time calc is easier
-                                     //this value was.....(2*bauddiv_9600); // 8 ticks = 1 baud at 9600 -- useful for logging event data on the j1708 bus
-                                     //NOW our MainTimer increment is 1/4 microsecond (250nS)
-
+    tcr2.PrescalerDivisionFactor = 5;   //given our 24MHz Pb2 frequency, divide by 6 (ie 5+1) gives F=4MHz, .25uS per tick
     MainTimer.timer->ControlRegister1 = tcr1.value;
     MainTimer.timer->ControlRegister2 = tcr2.value;
     MainTimer.timer->Counter = 0; // reset counter
-    RegisterEICHdlr(EIC_TIMER0, Timer0IRQ, TIMER_IRQ_PRIORITY);
-    EICEnableIRQ(EIC_TIMER0);
-
-    // Setup the J1708 idle timer
-    J1708IdleTimer.wrapCounter = 0;
-    J1708IdleTimer.timer = (TimerRegisterMap *)(TIMER2_REG_BASE);
-
-    tcr1.value = 0;
-    tcr2.value = 0;
-    tcr1.TimerCountEnable = 0;
-    tcr2.TimerOverflowInterruptEnable = 1;
-    // J1708 uses 9600 baud.  Also PClk1 and PClk2 are the same speed
-    // this prescaler should result in a timer that is exactly 16x a bit time.
-    // Call GetJ1708IdleTime to get the amount of idle time (in multiples of
-    // bit times)
-    tcr2.PrescalerDivisionFactor = bauddiv_9600;
-    J1708IdleTimer.timer->ControlRegister1 = tcr1.value;
-    J1708IdleTimer.timer->ControlRegister2 = tcr2.value;
-    J1708IdleTimer.timer->Counter = 0; // reset counter
-    RegisterEICHdlr(EIC_TIMER2, Timer2IRQ, TIMER_IRQ_PRIORITY);
-    EICEnableIRQ(EIC_TIMER2);
-
-    // Setup the J1708 RX interrupt timer
-    // This timer is also used for the pseudo random number for
-    // backing off from a collision
-    J1708RxInterruptTimer.wrapCounter = 0;
-    J1708RxInterruptTimer.timer = (TimerRegisterMap *)(TIMER1_REG_BASE);
-
-    tcr1.value = 0;
-    tcr2.value = 0;
-    tcr1.TimerCountEnable = 1;
-    tcr2.TimerOverflowInterruptEnable = 0;
-    tcr1.InputEdgeA = 1;
-    tcr1.InputEdgeB = 0;
-    tcr2.InputCaptureAInterruptEnable = 1;
-    tcr2.InputCaptureBInterruptEnable = 1;
-    tcr2.TimerOverflowInterruptEnable = 0;
-    tcr2.PrescalerDivisionFactor = 1;
-    J1708RxInterruptTimer.timer->ControlRegister1 = tcr1.value;
-    J1708RxInterruptTimer.timer->ControlRegister2 = tcr2.value;
-    J1708RxInterruptTimer.timer->Counter = 0; // reset counter
     RegisterEICHdlr(EIC_TIMER1, Timer1IRQ, TIMER_IRQ_PRIORITY);
     EICEnableIRQ(EIC_TIMER1);
 
@@ -88,8 +50,6 @@ void InitializeTimers() {
 void StopTimers(void)
 {
     MainTimer.timer->ControlRegister1 = 0;
-    J1708IdleTimer.timer->ControlRegister1 = 0;
-    J1708RxInterruptTimer.timer->ControlRegister1 = 0;
 }
 
 
@@ -108,27 +68,14 @@ void TimerWrap(Timer *timer) {
 }
 
 /**************/
-/* Timer0IRQ */
-/************/
-void Timer0IRQ() {
-    TimerWrap(&MainTimer);
-    EICClearIRQ(EIC_TIMER0);
-}
-
-/**************/
-/* Timer2IRQ */
-/************/
-void Timer2IRQ() {
-    TimerWrap(&J1708IdleTimer);
-    EICClearIRQ(EIC_TIMER2);
-}
-
-/**************/
 /* Timer1IRQ */
 /************/
 void Timer1IRQ() {
-    StartJ1708IdleTimer();
-    J1708RxInterruptTimer.timer->StatusRegister = (UINT16)(~((InputCaptureFlagA) | (InputCaptureFlagB)));
+    if (MainTimer.timer->StatusRegister & TimerOverflow) {
+        TimerWrap(&MainTimer);
+        J1708_idle_time++;
+        if( J1708_idle_time >= 40000 ) J1708_idle_time=40000;
+    }
     EICClearIRQ(EIC_TIMER1);
 }
 
@@ -136,22 +83,44 @@ void Timer1IRQ() {
 /* GetTimerTime */
 /***************/
 UINT64 GetTimerTime(Timer *timer) {
+    IRQSTATE saveState = 0;
     UINT32 t1;
     UINT32 t2;
     UINT32 t3;
-    UINT32 t4;
+    DISABLE_IRQ(saveState);
     t2 = timer->timer->Counter;
     t1 = timer->wrapCounter;
     t3 = timer->timer->Counter;
-    t4 = timer->wrapCounter;
-    if( (t2 > t3) || (t1 != t4) ){   //wrap occured right before our very eyes!
+    if( (t2 > t3) || (timer->timer->StatusRegister & TimerOverflow) ){   //wrap occured right before our very eyes!
         t2 = timer->timer->Counter;
-        t1 = timer->wrapCounter;
+        t1++;
     }
+    RESTORE_IRQ(saveState);
     UINT64 retVal = t1;
     retVal <<= 16;
     retVal |= t2;
     return retVal;
+}
+
+/**********************/
+/* GetTime32          */
+/**********************/
+UINT32 GetTime32( void ) {
+    IRQSTATE saveState = 0;
+    Timer *timer = &MainTimer;
+    UINT32 t1;
+    UINT16 t2;
+    UINT32 t3;
+    DISABLE_IRQ(saveState);
+    t2 = timer->timer->Counter;
+    t1 = timer->wrapCounter;
+    t3 = timer->timer->Counter;
+    if( (t2 > t3) || (timer->timer->StatusRegister & TimerOverflow) ){   //wrap occured right before our very eyes!
+        t2 = timer->timer->Counter;
+        t1++;
+    }
+    RESTORE_IRQ(saveState);
+    return( (t1 << 16) | t2 );
 }
 
 /********************/
@@ -170,22 +139,22 @@ UINT32 Get_uS_TimeStamp( void ) {
     // the wrapCounter before the interrupt occurs... in that case, t2 is NOT greater than
     // t3 and so we do not reread the wrapCounter... to solve this problem, I've had to add
     // an additional check
+    IRQSTATE saveState = 0;
     Timer *timer = &MainTimer;
     UINT32 t1;
     UINT32 t2;
     UINT32 t3;
-    UINT32 t4;
+    DISABLE_IRQ(saveState);
     t2 = timer->timer->Counter;
     t1 = timer->wrapCounter;
     t3 = timer->timer->Counter;
-    t4 = timer->wrapCounter;
-    if( (t2 > t3) || (t1 != t4) ){   //wrap occured right before our very eyes!
-        t2 = timer->timer->Counter;
-        t1 = timer->wrapCounter;
+    if( (t2 > t3) || (timer->timer->StatusRegister & TimerOverflow) ){   //wrap occured right before our very eyes!
+        t1++;
     }
+    RESTORE_IRQ(saveState);
     UINT32 retVal = t1;    //Remember our MainTimer is in 1/4 microsecond ticks... so divide by 4 makes it 1uS tick
     retVal <<= 14;         //we should shift by 16, but whole thing will be shifted right by 2
-    retVal |= (t2 >> 2);
+    retVal |= (t3 >> 2);
     return retVal;
 }
 
@@ -206,35 +175,122 @@ UINT32 GetMainTimeInBaudTicks() {
     return( time>>24 );
 }
 
+//#############################################################################
+//#############################################################################
+//#######  J 1 7 0 8    I D L E    T I M E R    H A N D L E R    C O D E
+//#######  J 1 7 0 8    I D L E    T I M E R    H A N D L E R    C O D E
+//#######  J 1 7 0 8    I D L E    T I M E R    H A N D L E R    C O D E
+//#############################################################################
+//#############################################################################
+// Note that the J1708 spec indicates the idle time is to be
+//    10 + 2*MsgPriority (measured in bit time) MsgPriority = 1-8
+//  when a collision occurs (twice in a row) and you have to retry, the time is
+//    10 + 2*(Rand# + 1) (measured in bit time) Rand # = 0-7
+//  so our min time is 12bits and our max time is 10+2*8=26bits
+// J1708 specifies the baud rate as 9600, thus a bit time is 1/9600 = 104.167uS
+// so our min time is 1.25mS... and max time is 2.7083mS
+//Given that our timer tick rate is 0.25uS per tick, these times correspond
+//to 5000 counts for the min time and 10,833.3 counts for the max time
+//
+//This time needs to saturate so that if the bus is idle for a very long time
+//a transfer may begin immediately
+//
+//
+//This code is designed to 'poll' the idle timer.  This could have been setup
+//to use interrupts, but if there is a misbehaved device on the bus, it could
+//bring our device to it's knees servicing interrupts.  Since we have hardware
+//that will capture the time of the edge (rising or falling edge of the J1708
+//receive signal) we will take advantage of that feature.  The time will be
+//captured and held.  We append the rollover counter onto this time and can
+//do so accurately as long as we poll more often that our counter rolls over.
+//At this point in time, the rollover occurs every 16mS and our typical poll
+//rate (when not busy) is 26uS (a factor of 600+).  It is therefore my beliefe
+//that we have enough margin to do this accurately.
+
 /************************/
 /* StartJ1708IdleTimer */
 /**********************/
 void StartJ1708IdleTimer() {
-    J1708IdleTimer.timer->Counter=0;
-    J1708IdleTimer.timer->ControlRegister1 |= TIMER_COUNT_ENABLE;
-    // This unusual value accounts for the fact that the timer resets to 0xFFFC and will wrap after only 4 ticks.
-    // This does mean that if you call GetJ1708IdleTime within 4 timer ticks of reset, you will get an extremely
-    // large value.  However, since the idle period must always be larger than 4 ticks, this should not matter.
-    J1708IdleTimer.wrapCounter = 0xFFFFFFFF;
+    J1708_idle_time = 0;
+    J1708_last_transition_time = GetTime32();
 }
+
+#define J1708_BUS_ASSERTED() ((((IOPortRegisterMap *)(IOPORT1_REG_BASE))->PD & BIT(4)) == 0 )
+#define UNHANDELED_BUS_TRANSITION() (MainTimer.timer->StatusRegister & (InputCaptureFlagA | InputCaptureFlagB) )
+
+/******************************/
+/* ResetJ1708IdleTimeIfNeeded */
+/******************************/
+// Since we are polling, we may have missed an event.  However, the last
+//event is captured and held for us by the hardware.  We do not attempt
+//to determine which edge occurred first (we could look at the two times,
+//rising edge vs falling edge, and try to resolve things that way).  We
+//simply look first at the falling edge, then the rising edge. In this way,
+//we give priority to the rising edge (bus idle) as it will get the final
+//say.  But then to ensure that if the last event was truely the falling edge
+//we sample the bus and if it is asserted (low), we cancel the timer.
+void ResetJ1708IdleTimerIfNeeded() {
+    if( MainTimer.timer->StatusRegister & InputCaptureFlagB ) {// a low transition has been detected since we last checked
+        J1708_idle_time = 0;
+        MainTimer.timer->StatusRegister = (UINT16)(~(InputCaptureFlagB));
+        J1708_bus_not_idle = TRUE;
+    }
+    if( MainTimer.timer->StatusRegister & InputCaptureFlagA ) {// | (InputCaptureFlagB)) ) {
+        //a rising edge has occured, let's reset our timestamp that indicates time of edge
+        //and also reset our rollover counter that we use to saturate once enough time
+        //has elapsed that we no longer care how long it has really been
+        J1708_idle_time = 0;    //reset the rollover counter
+        UINT32 t1 = MainTimer.timer->InputCaptureA; //only edge we care about is rising edge (J1708 bus not actively being driven)
+        UINT32 t2 = MainTimer.wrapCounter;          //memorize time of this edge... but watch for rollover (handled before we got to this point in the code)
+        UINT32 t3 = MainTimer.timer->Counter;
+        if( (t1 > t3) && ((MainTimer.timer->StatusRegister & TimerOverflow)==0) ) {
+            t2 = MainTimer.wrapCounter-1;
+        }
+        J1708_last_transition_time = (t2 << 16) | t1; //we save a 32bit timestamp
+        MainTimer.timer->StatusRegister = (UINT16)(~(InputCaptureFlagA));
+        J1708_bus_not_idle = FALSE;
+    }
+    if( J1708_BUS_ASSERTED() ) {
+        J1708_idle_time = 0;
+        J1708_bus_not_idle = TRUE;
+    }
+}
+
 
 /*********************/
 /* GetJ1708IdleTime */
 /*******************/
-int GetJ1708IdleTime() {
-    if (J1708IdleTimer.timer->ControlRegister1 & TIMER_COUNT_ENABLE) {
-        // Since the counter resets to FFFC instead of 0000, we have to add 4.
-        // Since this counter runs at 16x the speed of the UART, we divide by 16
-        return (J1708IdleTimer.wrapCounter << 12) + (((UINT16)(J1708IdleTimer.timer->Counter + 4)) / 16);
-    } else {
-DebugPrint ("Timer off!??");
-        return 0;
-    }
+UINT32 GetJ1708IdleTime() {
+    if( J1708_bus_not_idle || J1708_BUS_ASSERTED() || UNHANDELED_BUS_TRANSITION() ) return( 0 );
+    if( J1708_idle_time >= 40000 ) return( 0xffffffff );
+    UINT32 t1 = J1708_last_transition_time;
+    UINT32 t2 = GetTime32();
+// since the timer is not interrupt driven, we don't need to debounce
+//    UINT32 t3 = J1708_last_transition_time;
+//    if( t1 != t3 )  return( 0 ); // a transition happened right before our eyes!
+    return( t2 - t1 );
 }
 
-/*************************/
-/* CancelJ1708IdleTimer */
-/***********************/
-void CancelJ1708IdleTimer() {
-    J1708IdleTimer.timer->ControlRegister1 &= ~TIMER_COUNT_ENABLE;
+
+
+static const UINT32 counttotimerticks[] = { 5000, //(12*(1/9600) / .00000025),
+                                            5834,//(14*(1/9600) / .00000025),
+                                            6667,//(16*(1/9600) / .00000025),
+                                            7500,//(18*(1/9600) / .00000025),
+                                            8334,//(20*(1/9600) / .00000025),
+                                            9167,//(22*(1/9600) / .00000025),
+                                           10000, //(24*(1/9600) / .00000025),
+                                           10834, //(26*(1/9600) / .00000025),
+                                          };
+
+/*************************************/
+/* ConvertJ1708IdleCountToTimerTicks */
+/*************************************/
+UINT32 ConvertJ1708IdleCountToTimerTicks( UINT8 cnt ) {
+    AssertPrint( cnt >= 12, "Can't convert 1708 cnt %d to timer ticks", cnt );
+    AssertPrint( cnt <= 26, "Can't convert 1708 cnt %d to timer ticks", cnt );
+    AssertPrint( (cnt & 1) == 0, "Can't convert 1708 cnt %d to timer ticks", cnt );
+    cnt -= 12;
+    cnt >>= 1;
+    return( counttotimerticks[cnt] );
 }
