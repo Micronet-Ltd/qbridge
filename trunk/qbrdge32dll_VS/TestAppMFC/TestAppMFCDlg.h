@@ -147,6 +147,12 @@ public:
 	afx_msg void OnBnClickedButton16();
 public:
 	afx_msg void OnBnClickedButton15();
+public:
+	afx_msg void OnBnClickedsendj1939msgbtn9();
+public:
+	afx_msg void OnBnClickedsendj1939msgbtn10();
+public:
+	afx_msg void OnBnClickedReadcom4Btn4();
 };
 
 static DWORD __stdcall DisconnectFunc(void* args);

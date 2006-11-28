@@ -102,6 +102,9 @@ BEGIN_MESSAGE_MAP(CTestAppMFCDlg, CDialog)
 	ON_BN_CLICKED(IDC_sendj1939msgbtn8, &CTestAppMFCDlg::OnBnClickedsendj1939msgbtn8)
 	ON_BN_CLICKED(IDC_BUTTON16, &CTestAppMFCDlg::OnBnClickedButton16)
 	ON_BN_CLICKED(IDC_BUTTON15, &CTestAppMFCDlg::OnBnClickedButton15)
+	ON_BN_CLICKED(IDC_sendj1939msgbtn9, &CTestAppMFCDlg::OnBnClickedsendj1939msgbtn9)
+	ON_BN_CLICKED(IDC_sendj1939msgbtn10, &CTestAppMFCDlg::OnBnClickedsendj1939msgbtn10)
+	ON_BN_CLICKED(IDC_READCOM4_BTN4, &CTestAppMFCDlg::OnBnClickedReadcom4Btn4)
 END_MESSAGE_MAP()
 
 
@@ -1050,4 +1053,25 @@ void CTestAppMFCDlg::OnBnClickedButton15()
 	msg[2] = 0xFF;
 	msg[3] = 0x01;
 	rp1210SendCustomCommand(4, lastCom3Client, msg, msglen);
+}
+
+void CTestAppMFCDlg::OnBnClickedsendj1939msgbtn9()
+{
+	char far* msg = "\x03" "\xF0" "\x00" "\x03" "\x06" "\x00" "\xFF" "\xFE" "\x26"
+		"\x01" "\xFF" "\xFF" "\xFF" "\xFF";
+	short msgLen = 14;
+	rp1210SendCustomMsg(lastCom4Client, msg, msgLen, 0, 1);
+}
+
+void CTestAppMFCDlg::OnBnClickedsendj1939msgbtn10()
+{
+	char far* msg = "\xFF" "\xFF" "\x01" "\x03" "\x06" "\x00" "\xFF" "\xFE" "\x26"
+		"\x01" "\xFF" "\xFF" "\xFF" "\xFF";
+	short msgLen = 14;
+	rp1210SendCustomMsg(lastCom4Client, msg, msgLen, 0, 1);
+}
+
+void CTestAppMFCDlg::OnBnClickedReadcom4Btn4()
+{
+	rp1210ReadMessage(lastCom3Client, 0, true);
 }

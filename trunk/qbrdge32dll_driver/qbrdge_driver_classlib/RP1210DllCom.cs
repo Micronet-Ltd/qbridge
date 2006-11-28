@@ -433,11 +433,11 @@ namespace qbrdge_driver_classlib
                             byte[] tmp = new byte[4];
                             Array.Copy(jf.pgn, 0, tmp, 0, 3);
                             tmp[3] = 0;
-                            if (BitConverter.ToUInt32(tmp, 0) > (UInt32)131071) //0x01FFFF
+                            if (BitConverter.ToUInt32(tmp, 0) > (UInt32)131071 && (jf.flag & 0x01) != 0) //0x01FFFF
                             {   //invalid PGN
                                 break;
                             }
-                            if (jf.priority > 7)
+                            if (jf.priority > 7 && (jf.flag & 0x02) != 0)
                             {   //invalid priority
                                 break;
                             }
