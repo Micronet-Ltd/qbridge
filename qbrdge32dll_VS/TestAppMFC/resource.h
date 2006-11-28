@@ -44,6 +44,9 @@
 #define IDC_sendj1939msgbtn8            1034
 #define IDC_BUTTON16                    1035
 #define IDC_BUTTON15                    1036
+#define IDC_sendj1939msgbtn9            1037
+#define IDC_sendj1939msgbtn10           1038
+#define IDC_READCOM4_BTN4               1039
 
 // Next default values for new objects
 // 

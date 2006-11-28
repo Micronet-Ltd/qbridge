@@ -1346,7 +1346,7 @@ namespace qbrdge_driver_classlib
             pktData[0] = (byte)ackCode;
             byte[] newpkt = MakeQBridgePacket(PacketCmdCodes.PKT_CMD_ACK, pktData, ref pktId);
             com.Write(newpkt, 0, newpkt.Length);
-            Debug.Write("OUT: " + com.PortName);
+            Debug.Write("OUT " + com.PortName + ": ");
             for (int i = 0; i < newpkt.Length; i++)
             {
                 Debug.Write(newpkt[i].ToString("X2") + ",");
