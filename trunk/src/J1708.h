@@ -35,7 +35,6 @@ enum J1708State { JST_Passive, JST_Transmitting, JST_IgnoreRxData };
 extern enum J1708State j1708State;
 extern bool j1708RetransmitNeeded;
 extern int  j1708CheckingMIDCharForCollision;
-extern int  j1708RetransmitIdleTime;
 
 #ifdef _DEBUG
 #define _J1708DEBUG
