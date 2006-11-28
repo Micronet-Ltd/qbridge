@@ -21,7 +21,7 @@ int j1708CollisionCount;
 enum J1708State j1708State;
 int j1708CurCollisionCount;
 bool j1708RetransmitNeeded;
-int  j1708RetransmitIdleTime;
+UINT32 j1708RetransmitIdleTime;
 int  j1708CheckingMIDCharForCollision = -1;
 
 bool j1708MIDFilterEnabled = true;
@@ -194,7 +194,7 @@ void ProcessJ1708TransmitQueue() {
     }
 
     if (j1708RetransmitNeeded) {
-        int idleTime = GetJ1708IdleTime();
+        UINT32 idleTime = GetJ1708IdleTime();
         if (idleTime < j1708RetransmitIdleTime) {
             return;
         }
@@ -213,12 +213,12 @@ void ProcessJ1708TransmitQueue() {
         }
 
         // Not trying to transmit anything, now let us see if we have been idle long enough
-        int busAccessTime = J1708_IDLE_TIME + 2 * msg->priority;
+        UINT32 busAccessTime = ConvertJ1708IdleCountToTimerTicks(J1708_IDLE_TIME + 2 * msg->priority);
 
         j1708CurCollisionCount = 0;
         memcpy(&j1708CurTxMessage, msg, sizeof(j1708CurTxMessage));
 
-        int idleTime = GetJ1708IdleTime();
+        UINT32 idleTime = GetJ1708IdleTime();
         if (busAccessTime > idleTime) {
             j1708WaitForBusyBusCount++;
             return; // bus has not been idle long enough
@@ -473,9 +473,9 @@ void J1708EnterCollisionState(enum J1708CollisionReason reason) {
     j1708CurCollisionCount++;
 
     if (j1708CurCollisionCount < 2) {
-        j1708RetransmitIdleTime =  (J1708_IDLE_TIME + 2 * j1708CurTxMessage.priority);
+        j1708RetransmitIdleTime =  ConvertJ1708IdleCountToTimerTicks(J1708_IDLE_TIME + 2 * j1708CurTxMessage.priority);
     } else {
-        j1708RetransmitIdleTime =  (J1708_IDLE_TIME + 2 * ((J1708RxInterruptTimer.timer->Counter & 0x0007) + 1));
+        j1708RetransmitIdleTime =  ConvertJ1708IdleCountToTimerTicks(J1708_IDLE_TIME + 2 * ((MainTimer.timer->Counter & 0x0007) + 1));
     }
 
     if (j1708State == JST_Transmitting) {
