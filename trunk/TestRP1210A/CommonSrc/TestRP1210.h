@@ -88,6 +88,24 @@ struct RecvMsgPacket {
 };
 
 
+class TxBuffer {
+public:
+	TxBuffer (int pgn, bool how, int priority, int srcAddr, int dstAddr, const char *inData, int dataLen);
+	TxBuffer (const TxBuffer & txb) : len(txb.len) { Copy(txb); }
+	~TxBuffer () { Free(); }
+	TxBuffer & operator = (const TxBuffer &txb) { if (&txb != this) { Free(); Copy(txb); } }
+
+	operator char *() { return data; }
+	operator int () { return len; }
+	operator short() { return len; }
+
+private:
+	int len;
+	char *data;
+	void Free() { delete[] data; data = NULL; len = 0; }
+	void Copy (const TxBuffer &txb) { data = new char[txb.len]; memcpy(data, txb.data, len); }
+};
+
 class TestRP1210
 {
 public:
@@ -140,14 +158,19 @@ private:
 	void Test1939BasicRead (INIMgr::Devices &dev);
 
 	enum BlockType { BLOCK_UNTIL_DONE = 0, POST_MESSAGE = 1, RETURN_BEFORE_COMPLETION = 2 };
-	bool VerifyProtectAddress (RP1210API *api, int clientID, int address, int vehicalSystem, int identityNum, BlockType block = BLOCK_UNTIL_DONE); 
-	bool VerifyProtectAddress (RP1210API *api, int clientID, int address, bool arbitraryAddress, int industryGroup, int vehSysInst, int vehSys, int function, int funcInst, int ecuInst, int mfgCode, int identityNum, BlockType block); 
-	int VerifyConnect(INIMgr::Devices &dev, char *protocol);
-	int VerifyDisconnect(int clientID);
-	int VerifiedRead (int clientID, char *rxBuf, int rxLen, bool block);
-	void VerifyValidSendCommand (int cmd, CString text, int clientID, char *cmdData, int len, bool logSuccess);
-	void VerifyInvalidSendCommand(int cmd, CString text, int clientID, char *cmdData, int len, int expectedResult);
-	void VerifyInvalidClientIDSendCommand(int cmd, CString text, char *cmdData, int len) { VerifyInvalidSendCommand (cmd, text + _T("<invalid client ID>"), 127, cmdData, len, ERR_INVALID_CLIENT_ID); }
+	static bool VerifyProtectAddress (RP1210API *api, int clientID, int address, int vehicalSystem, int identityNum, BlockType block = BLOCK_UNTIL_DONE, int expectedError = 0); 
+	static bool VerifyProtectAddress (RP1210API *api, int clientID, int address, bool arbitraryAddress, int industryGroup, int vehSysInst, int vehSys, int function, int funcInst, int ecuInst, int mfgCode, int identityNum, BlockType block, int expectedError); 
+	static int VerifyConnectAndPassFilters(RP1210API *api, INIMgr::Devices &dev, char *protocol);
+	static int VerifyConnect(RP1210API *api, INIMgr::Devices &dev, char *protocol);
+	static int VerifyDisconnect(RP1210API *api, int clientID);
+	static int VerifiedRead (RP1210API *api, int clientID, char *rxBuf, int rxLen, bool block);
+	static bool VerifiedSend (RP1210API *api, int clientID, char *txBuf, int txLen, bool block, int expectedResult = 0, TCHAR * desc = _T(""));
+	static void VerifyValidSendCommand (RP1210API *api, int cmd, CString text, int clientID, char *cmdData, int len, bool logSuccess);
+	static void VerifyInvalidSendCommand(RP1210API *api, int cmd, CString text, int clientID, char *cmdData, int len, int expectedResult);
+	static void VerifyInvalidClientIDSendCommand(RP1210API *api, int cmd, CString text, char *cmdData, int len) { VerifyInvalidSendCommand (api, cmd, text + _T("<invalid client ID>"), 127, cmdData, len, ERR_INVALID_CLIENT_ID); }
+	static void FlushReads(RP1210API *api, int clientID);
+
+	
 	void TestSendCommandReset(INIMgr::Devices &dev);
 	void TestFilterStatesOnOffMessagePassOnOff(INIMgr::Devices &dev, int primaryClient);
 	void TestFilters(INIMgr::Devices &dev, int primaryClient);
