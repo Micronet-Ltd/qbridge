@@ -213,7 +213,8 @@ namespace qbrdge_driver_classlib
         ERR_INVALID_COMMAND = 144,
         ERR_MULTIPLE_CLIENTS_CONNECTED = 156,
         ERR_CHANGE_MODE_FAILED = 150,
-        ERR_FW_UPGRADE = 193
+        ERR_FW_UPGRADE = 193,
+        ERR_INVALID_MSG_PACKET = 199
     }
 
     public enum RP1210SendCommandType : int

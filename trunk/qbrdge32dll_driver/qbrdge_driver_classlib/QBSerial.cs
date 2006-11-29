@@ -1543,6 +1543,17 @@ namespace qbrdge_driver_classlib
                 msgId = 0;
             }
 
+            //verify if PGN is valid
+            byte[] tmp = new byte[4];
+            tmp[0] = (byte)msg[0];
+            tmp[1] = (byte)msg[1];
+            tmp[2] = (byte)msg[2];
+            tmp[3] = 0;
+            if (BitConverter.ToUInt32(tmp, 0) > (UInt32)131071) //0x01FFFF
+            {   //invalid PGN
+                return -(int)RP1210ErrorCodes.ERR_INVALID_MSG_PACKET;
+            }
+
             SerialPortInfo sinfo = Support.ClientToSerialPortInfo(clientId);
             QBTransaction qbt = new QBTransaction();
             qbt.clientId = clientId;
