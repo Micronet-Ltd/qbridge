@@ -29,10 +29,15 @@ int findCANfilter( UINT32 mask, UINT32 value );
 int read_CAN_filter( int filter_position, UINT32 *mask, UINT32 *value );
 void EnableCANReceiveALL( void );
 void DisableCANReceiveALL( void );
+void DisableCANTxIP( void );
+void ClearCANTxQueue( void );
+void ClearCANRxQueue( void );
+void CANRestart( void );
 
 
 extern bool CANtransmitConfirm;
 extern bool CANBusOffNotify;
+extern bool CANAutoRestart;
 
 typedef struct {
     UINT32 CAN_Identifier;  //msbit is our indicator as to whether this is STANDARD=1 or EXTENDED=0

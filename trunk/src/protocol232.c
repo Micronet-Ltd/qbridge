@@ -175,6 +175,36 @@ bool VerifyCITTCRC(UINT16 *calculatedCRC, UINT8 *buf, int leng, UINT16 crc) {
     return  *calculatedCRC == crc;
 }
 
+//Ron wants one ID counter for both J1708 and CAN... here is where we
+//get the id... it will range from 1 to 0xffffffef
+//the values of 0 and 0xfffffff0 to 0xffffffff are reserved for error
+//reporting by the routines that return the id as a return value
+//(note, -1 and 0 have been used this way since before I started
+//maintaining this code base... I just expanded the range and tried to
+//make it more consistent.
+UINT32 pktIDcounter = 1;
+
+UINT32 getPktIDcounter( void ){
+    UINT32 mypktIDcounter = pktIDcounter++;
+    //reserve some space for error reporting (16 numbers and the 0 also)
+    if( pktIDcounter >= 0xfffffff0 ) pktIDcounter = 1;
+    return mypktIDcounter;
+}
+
+char *romfind( char *romstart, char *tofind, int romsize){
+    int x=strlen(tofind);
+    if( romsize < x ) return 0;
+    romsize -= x;
+    for( ; romsize >= 0; romsize-- ){
+        int sz;
+        for( sz = 0; sz < x; sz++ ){
+            if( romstart[sz] != tofind[sz] ) break;
+        }
+        if( sz == x ) return romstart;
+        romstart++;
+    }
+    return 0;
+}
 /*********************/
 /* Process232Packet */
 /*******************/
@@ -234,7 +264,8 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
         case GetInfo:
             {
                 extern const unsigned char BuildDateStr[];
-                char myver[100];
+                extern char _BootROMvars[];
+                char myver[140];
                 int mydl = 0;
 
                 if (dataLen != 1) {
@@ -243,7 +274,13 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
                 }
 
                 if (data[0] == 0) {
-                    mydl = snprintf(myver, 100,"QBridge firmware version %s. %s", VERSION, BuildDateStr);
+                    mydl = snprintf(myver, 140,"QBridge firmware version %s. %s", VERSION, BuildDateStr);
+                    char *sptr = romfind(_RomStartAddr, "Bootloader", 8*1024);
+                    if( sptr != 0 )
+                        mydl += snprintf(&myver[mydl], 140-mydl,"QBridge %s", sptr);
+                    sptr = romfind(_BootROMvars, "Built", 8*1024);
+                    if( sptr != 0 )
+                        mydl += snprintf(&myver[mydl], 140-mydl,"Bootloader %s", sptr);
                 } else {
                     DebugPrint ("Unknown GetInfo request (%d)", data[0]);
                 }
@@ -255,7 +292,8 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
                 extern int allocPoolIdx;
                 extern const int MaxAllocPool;
                 extern const unsigned char BuildDateStr[];
-                char myver[100];
+                extern char _BootROMvars[];
+                char myver[140];
                 int mydl = 0;
 
                 if (dataLen != 1) {
@@ -264,9 +302,16 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
                 }
 
                 if (data[0] == 0) {
-                    mydl = snprintf(myver, 100,"QBridge firmware version %s. %s", VERSION, BuildDateStr);
+                    mydl = snprintf(myver, 140,"QBridge firmware version %s. %s\n", VERSION, BuildDateStr);
+                    char *sptr = romfind(_RomStartAddr, "Bootloader", 8*1024);
+                    if( sptr != 0 )
+                        mydl += snprintf(&myver[mydl], 140-mydl,"QBridge %s", sptr);
+                    sptr = romfind(_BootROMvars, "Built", 8*1024);
+                    if( sptr != 0 )
+                        mydl += snprintf(&myver[mydl], 140-mydl,"Bootloader %s", sptr);
+
                     DebugPrint ("QBridge firmware version %s.  %s.  Heap in use %d / %d.", VERSION, BuildDateStr, allocPoolIdx, MaxAllocPool);
-                    DebugPrint ("  J1708 Idle time=%d, TxPacketID=%d, Rx count=%d.  BusBusy=%d, Collision=%d", GetJ1708IdleTime(), j1708IDCounter, j1708RecvPacketCount, j1708WaitForBusyBusCount, j1708CollisionCount);
+                    DebugPrint ("  J1708 Idle time=%d, TxPacketID=%d, Rx count=%d.  BusBusy=%d, Collision=%d", GetJ1708IdleTime(), pktIDcounter, j1708RecvPacketCount, j1708WaitForBusyBusCount, j1708CollisionCount);
 #ifdef _DEBUG
                 } else if (data[0] == 1) {
                     DebugPrint ("J1708 Event Log: ");
@@ -391,7 +436,9 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
                 }
                 int canPacketId =CANaddTxPacket (data[0], identifier, dptr, len);
                 char ackBuf[5];
-                ACKCodes code = (canPacketId == -1) ? ACK_UNABLE_TO_PROCESS : ACK_OK;
+                ACKCodes code = ACK_OK; //assume innocent until proven guilty
+                if( canPacketId == -1 ) code = ACK_UNABLE_TO_PROCESS;
+                if( canPacketId == -2 ) code = ACK_BUS_FAULT;
                 ackBuf[0] = GetFreeCANtxBuffers();
                 memcpy (ackBuf+1, &canPacketId, sizeof(int));
                 Send232Ack(code, id, ackBuf, 5);
@@ -522,7 +569,6 @@ void TransmitFinal232Packet(UINT8 command, UINT8 packetID, UINT8 *data, UINT32 d
     Transmit (hostPort, buf, buf[1]);
 }
 
-
 //#############################################################################
 //#############################################################################
 //#############################################################################
@@ -588,6 +634,18 @@ static void parseCANcontrol( UINT8 id, UINT8 *data, int dataLen ){
             }
             break;
         case 'r':   //restart CAN after bus fault
+            if( dataLen != 2 ) {
+                Send232Ack (ACK_INVALID_DATA, id, NULL, 0);
+                return;
+            }
+            if( data[1] & 0x01) CANRestart();
+            if( data[1] & 0x02) CANResetDefaultPrefs();
+            if( data[1] & 0x04) InitializeCAN();
+            if( data[1] & 0x08) ClearCANTxQueue();
+            if( data[1] & 0x10) DisableCANTxIP();
+            if( data[1] & 0x20) ClearCANRxQueue();
+            //if( data[1] & 0x40) CANAutoRestart = FALSE;
+            //if( data[1] & 0x80) CANAutoRestart = TRUE;
             break;
         case 'n':   //enable/disable 'bus-off' notification
             if( dataLen != 2 ){
@@ -595,6 +653,13 @@ static void parseCANcontrol( UINT8 id, UINT8 *data, int dataLen ){
                 return;
             }
             if( data[1] == 0 ) CANBusOffNotify = FALSE; else CANBusOffNotify = TRUE;
+            break;
+        case 'a':
+            if( dataLen != 2 ){
+                Send232Ack (ACK_INVALID_DATA, id, NULL, 0);
+                return;
+            }
+            if( data[1] == 0 ) CANAutoRestart = FALSE; else CANAutoRestart = TRUE;
             break;
         case 'f':   //set CAN filter
             set_CAN_filters( id, &data[1], dataLen-1 );  //what if filters are disabled?

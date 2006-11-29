@@ -9,6 +9,7 @@ typedef enum _ACKCodes {
     ACK_INVALID_COMMAND         = '3',
     ACK_INVALID_DATA            = '4',
     ACK_UNABLE_TO_PROCESS       = '5',
+    ACK_BUS_FAULT               = '6',
 } ACKCodes;
 
 typedef enum _Commands {
@@ -51,4 +52,6 @@ void QueueTxFinal232Packet (UINT8 command, UINT8 packetID, UINT8 *data, UINT32 d
 void TransmitFinal232Packet(UINT8 command, UINT8 packetID, UINT8 *data, UINT32 dataLen);
 void Transmit232IfReady();
 void RetryLast232();
+
+extern UINT32 getPktIDcounter( void );
 #endif // PROTOCOL232_H
