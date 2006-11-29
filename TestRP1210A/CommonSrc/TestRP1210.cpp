@@ -4,6 +4,7 @@
 #include "Log.h"
 #include "INIMgr.h"
 #include "DlgTestWinNotify.h"
+#include <memory>
 
 #pragma warning (disable:4996)
 
@@ -306,7 +307,7 @@ void TestRP1210::Test (const set<CString> &testList, vector<INIMgr::Devices> &de
 
 	// Setup thread for secondary J1708 communication
 // This block controls the second thread
-#if 0
+#if 1
 	secondaryClient = api2->pRP1210_ClientConnect(NULL, devs[idx2].deviceID, "J1708", 0, 0, 0);
 	if (!IsValid(secondaryClient)) {
 		log.LogText (_T("    Connecting to secondary device (1708) failed"), Log::Red);
@@ -332,6 +333,7 @@ void TestRP1210::Test (const set<CString> &testList, vector<INIMgr::Devices> &de
 		primaryClient = -1;
 		goto end;
 	}
+#endif
 
 	// Set filter states to pass
 	api1->pRP1210_SendCommand(SetAllFiltersToPass, primaryClient, NULL, 0);
@@ -348,8 +350,7 @@ void TestRP1210::Test (const set<CString> &testList, vector<INIMgr::Devices> &de
 	TEST("J1708 Window Notify", TestWinNotify(devs[idx1]));
 	TEST("J1708 Filter States/On Off message", TestFilterStatesOnOffMessagePassOnOff(devs[idx1], primaryClient));
 	TEST("J1708 Filters", TestFilters (devs[idx1], primaryClient));
-	VerifyDisconnect(primaryClient);
-#endif
+	VerifyDisconnect(api1, primaryClient);
 
 	// 1939 Tests
 	sendJ1708 = false;
@@ -587,7 +588,7 @@ TRACE (_T("  clientID=%d\n"), connections[i]);
 			passed = false;
 		}
 		char multiSendFilter = TestMultisend;
-		VerifyValidSendCommand(SetAllFilterStatesToDiscard, _T("Discard"), connections[i], NULL, 0, false);
+		VerifyValidSendCommand(api1, SetAllFilterStatesToDiscard, _T("Discard"), connections[i], NULL, 0, false);
 		int result = api1->pRP1210_SendCommand(SetMessageFilteringForJ1708, connections[i], &multiSendFilter, 1);
 		char rxBuf[1024];
 		while (api1->pRP1210_ReadMessage(connections[i], rxBuf, sizeof(rxBuf), false) > 0); // clear any pending data
@@ -847,14 +848,25 @@ void TestRP1210::TestWinNotify(INIMgr::Devices &dev) {
 	dlg.DoModal();
 }
 
+/********************************************/
+/* TestRP1210::VerifyConnectAndPassFilters */
+/******************************************/
+int TestRP1210::VerifyConnectAndPassFilters(RP1210API *api, INIMgr::Devices &dev, char *protocol) {
+	int result = VerifyConnect(api, dev, protocol);
+	if (IsValid(result)) {
+		VerifyValidSendCommand (api, PARM(SetAllFiltersToPass,""), result, NULL, 0, false);
+	}
+	return result;
+}
+
 /******************************/
 /* TestRP1210::VerifyConnect */
 /****************************/
-int TestRP1210::VerifyConnect(INIMgr::Devices &dev, char *protocol) {
-	int result = api1->pRP1210_ClientConnect (NULL, dev.deviceID, protocol, 0,0,0);
+int TestRP1210::VerifyConnect(RP1210API *api, INIMgr::Devices &dev, char *protocol) {
+	int result = api->pRP1210_ClientConnect (NULL, dev.deviceID, protocol, 0,0,0);
 	if (!IsValid(result)) {
 		log.LogText (_T("    Connection failure"), Log::Red);
-		LogError(*api1, result);
+		LogError(*api, result);
 	}
 	return result;
 }
@@ -862,14 +874,14 @@ int TestRP1210::VerifyConnect(INIMgr::Devices &dev, char *protocol) {
 /*********************************/
 /* TestRP1210::VerifyDisconnect */
 /*******************************/
-int TestRP1210::VerifyDisconnect(int clientID) {
+int TestRP1210::VerifyDisconnect(RP1210API *api, int clientID) {
 	if (!IsValid(clientID)) {
 		return -1;
 	}
-	int result = api1->pRP1210_ClientDisconnect (clientID);
+	int result = api->pRP1210_ClientDisconnect (clientID);
 	if (!IsValid(result)) {
 		log.LogText (_T("    Disconnect failure"), Log::Red);
-		LogError(*api1, result);
+		LogError(*api, result);
 	}
 	return result;
 }
@@ -878,47 +890,54 @@ int TestRP1210::VerifyDisconnect(int clientID) {
 /*****************************************/
 /* TestRP1210::VerifyInvalidSendCommand */
 /***************************************/
-void TestRP1210::VerifyInvalidSendCommand(int cmd, CString text, int clientID, char *cmdData, int len, int expectedResult) {
-	int result = api1->pRP1210_SendCommand(cmd, clientID, cmdData, len);
+void TestRP1210::VerifyInvalidSendCommand(RP1210API *api, int cmd, CString text, int clientID, char *cmdData, int len, int expectedResult) {
+	int result = api->pRP1210_SendCommand(cmd, clientID, cmdData, len);
 	if (result == expectedResult) {
 		log.LogText(_T("    SendCommand(") + text + _T(") passed"));
 	} else if (result == 0) {
 		log.LogText (_T("    SendCommand(") + text + _T(") failed.  Expected an error, but command returned success(0)"), Log::Red);
 	} else {
 		log.LogText(_T("    SendCommand(") + text + _T(") failed."), Log::Red);
-		LogError (*api1, result);
+		LogError (*api, result);
 	}
 }
 
 /***************************************/
 /* TestRP1210::VerifyValidSendCommand */
 /*************************************/
-void TestRP1210::VerifyValidSendCommand (int cmd, CString text, int clientID, char *cmdData, int len, bool logSuccess) {
-	int result = api1->pRP1210_SendCommand(cmd, clientID, cmdData, len);
+void TestRP1210::VerifyValidSendCommand (RP1210API *api, int cmd, CString text, int clientID, char *cmdData, int len, bool logSuccess) {
+	int result = api->pRP1210_SendCommand(cmd, clientID, cmdData, len);
 	if (result == 0) {
 		if (logSuccess) {
 			log.LogText(_T("    SendCommand(") + text + _T(") passed"));
 		}
 	} else {
 		log.LogText(_T("    SendCommand(") + text + _T(") failed."), Log::Red);
-		LogError (*api1, result);
+		LogError (*api, result);
 	}	
 }
 
 /*****************************/
 /* TestRP1210::VerifiedRead */
 /***************************/
-int TestRP1210::VerifiedRead (int clientID, char *rxBuf, int rxLen, bool block) {
-	int result = api1->pRP1210_ReadMessage (clientID, rxBuf, rxLen, block);
+int TestRP1210::VerifiedRead (RP1210API *api, int clientID, char *rxBuf, int rxLen, bool block) {
+	int result = api->pRP1210_ReadMessage (clientID, rxBuf, rxLen, block);
 	if (result < 0) {
 		log.LogText (_T("    Receive error"), Log::Red);
-		LogError (*api1, -result);
+		LogError (*api, -result);
 	} 
 //if (result >= 0) { rxBuf[result] = 0; }
 //TRACE (_T("Verified Read.  Result=%d.  Data=%s\n"), result, (result >= 0) ? CString(rxBuf) : CString(""));
 	return result;
 }
 
+/***************************/
+/* TestRP1210::FlushReads */
+/*************************/
+void TestRP1210::FlushReads(RP1210API *api, int clientID) {
+	char rxBuf[2048];
+	while (VerifiedRead(api, clientID, rxBuf, sizeof(rxBuf), false) > 0);
+}
 
 /*************************************/
 /* TestRP1210::TestSendCommandReset */
@@ -926,7 +945,7 @@ int TestRP1210::VerifiedRead (int clientID, char *rxBuf, int rxLen, bool block) 
 void TestRP1210::TestSendCommandReset(INIMgr::Devices &dev) {
 	log.LogText (_T("Testing: SendCommand(Reset)"), Log::Blue);
 
-	int primaryClient = VerifyConnect(dev, "J1708");
+	int primaryClient = VerifyConnect(api1, dev, "J1708");
 	int result = api1->pRP1210_SendCommand(ResetDevice, primaryClient, NULL, 0);
 	if (result != 0) {
 		log.LogText(_T("    Device did not reset!"), Log::Red);
@@ -967,13 +986,13 @@ void TestRP1210::TestSendCommandReset(INIMgr::Devices &dev) {
 	}
 
 	// Try with an invalid client
-	VerifyInvalidClientIDSendCommand (ResetDevice, _T("ResetDevice"), NULL, 0);
+	VerifyInvalidClientIDSendCommand (api1, ResetDevice, _T("ResetDevice"), NULL, 0);
 
 	// Try with invalid command
-	VerifyInvalidSendCommand (PARM(ResetDevice, "<Invalid command data>"), primaryClient, "\x01", 1, ERR_INVALID_COMMAND);
+	VerifyInvalidSendCommand (api1, PARM(ResetDevice, "<Invalid command data>"), primaryClient, "\x01", 1, ERR_INVALID_COMMAND);
 	
-	VerifyDisconnect(primaryClient);
-	VerifyDisconnect(client2);
+	VerifyDisconnect(api1, primaryClient);
+	VerifyDisconnect(api1, client2);
 }
 
 
@@ -985,22 +1004,22 @@ void TestRP1210::TestFilterStatesOnOffMessagePassOnOff(INIMgr::Devices &dev, int
 	char rxBuf[1000];
 	int result;
 	
-	VerifyInvalidClientIDSendCommand (PARM(SetAllFilterStatesToDiscard,""), NULL, 0);
-	VerifyInvalidClientIDSendCommand (PARM(SetAllFiltersToPass,""), NULL, 0);
-	VerifyInvalidClientIDSendCommand (PARM(SetMessageReceive,""), "\x01", 1);
-	VerifyInvalidSendCommand(PARM(SetMessageReceive, "<Invalid parm>"), primaryClient, "\x02", 1, ERR_INVALID_COMMAND);
-	VerifyInvalidSendCommand(PARM(SetMessageReceive, "<Invalid parm len (2)>"), primaryClient, "\x01\x00", 2, ERR_INVALID_COMMAND);
-	VerifyInvalidSendCommand(PARM(SetMessageReceive, "<Invalid parm len (0)>"), primaryClient, NULL, 0, ERR_INVALID_COMMAND);
+	VerifyInvalidClientIDSendCommand (api1, PARM(SetAllFilterStatesToDiscard,""), NULL, 0);
+	VerifyInvalidClientIDSendCommand (api1, PARM(SetAllFiltersToPass,""), NULL, 0);
+	VerifyInvalidClientIDSendCommand (api1, PARM(SetMessageReceive,""), "\x01", 1);
+	VerifyInvalidSendCommand(api1, PARM(SetMessageReceive, "<Invalid parm>"), primaryClient, "\x02", 1, ERR_INVALID_COMMAND);
+	VerifyInvalidSendCommand(api1, PARM(SetMessageReceive, "<Invalid parm len (2)>"), primaryClient, "\x01\x00", 2, ERR_INVALID_COMMAND);
+	VerifyInvalidSendCommand(api1, PARM(SetMessageReceive, "<Invalid parm len (0)>"), primaryClient, NULL, 0, ERR_INVALID_COMMAND);
 
-	VerifyInvalidSendCommand(PARM(SetAllFilterStatesToDiscard, "<Invalid parm len>"), primaryClient, "\x01", 1, ERR_INVALID_COMMAND);
-	VerifyInvalidSendCommand(PARM(SetAllFiltersToPass, "<Invalid parm len>"), primaryClient, "\x01", 1, ERR_INVALID_COMMAND);
+	VerifyInvalidSendCommand(api1, PARM(SetAllFilterStatesToDiscard, "<Invalid parm len>"), primaryClient, "\x01", 1, ERR_INVALID_COMMAND);
+	VerifyInvalidSendCommand(api1, PARM(SetAllFiltersToPass, "<Invalid parm len>"), primaryClient, "\x01", 1, ERR_INVALID_COMMAND);
 
 
 	// Read while filters discarding
-	int clientDiscardAll = VerifyConnect (dev, "J1708");
-	int clientAcceptAll = VerifyConnect(dev, "J1708");
-	VerifyValidSendCommand (PARM(SetAllFiltersToPass,""), clientAcceptAll, NULL, 0, false);
-	VerifyValidSendCommand (PARM(SetAllFilterStatesToDiscard,""), clientDiscardAll, NULL, 0, false);
+	int clientDiscardAll = VerifyConnect (api1, dev, "J1708");
+	int clientAcceptAll = VerifyConnect(api1, dev, "J1708");
+	VerifyValidSendCommand (api1, PARM(SetAllFiltersToPass,""), clientAcceptAll, NULL, 0, false);
+	VerifyValidSendCommand (api1, PARM(SetAllFilterStatesToDiscard,""), clientDiscardAll, NULL, 0, false);
 	struct {
 		int cmd;
 		LPCTSTR cmdAsString;
@@ -1016,31 +1035,31 @@ void TestRP1210::TestFilterStatesOnOffMessagePassOnOff(INIMgr::Devices &dev, int
 		{ PARM(SetMessageReceive,""), "\x01", 1, _T("Failed: (MsgRcv=true, nothing read)"), _T("Passed: (MsgRcv=true, something read)"), true }
 	};
 	for (int j = 0; j < 4; j++) {
-		VerifyValidSendCommand (commandInfo[j].cmd, commandInfo[j].cmdAsString, primaryClient, commandInfo[j].cmdData, commandInfo[j].cmdDataLen, false);
-		while (VerifiedRead(primaryClient, rxBuf, sizeof(rxBuf), false) > 0); 	// clear read buffer
-		while (VerifiedRead(clientDiscardAll, rxBuf, sizeof(rxBuf), false) > 0); 	// clear read buffer
-		while (VerifiedRead(clientAcceptAll, rxBuf, sizeof(rxBuf), false) > 0); 	// clear read buffer
+		VerifyValidSendCommand (api1, commandInfo[j].cmd, commandInfo[j].cmdAsString, primaryClient, commandInfo[j].cmdData, commandInfo[j].cmdDataLen, false);
+		while (VerifiedRead(api1, primaryClient, rxBuf, sizeof(rxBuf), false) > 0); 	// clear read buffer
+		while (VerifiedRead(api1, clientDiscardAll, rxBuf, sizeof(rxBuf), false) > 0); 	// clear read buffer
+		while (VerifiedRead(api1, clientAcceptAll, rxBuf, sizeof(rxBuf), false) > 0); 	// clear read buffer
 
 		Sleep (1500); // should have received something by now
-		result = VerifiedRead(primaryClient, rxBuf, sizeof(rxBuf), false);
+		result = VerifiedRead(api1, primaryClient, rxBuf, sizeof(rxBuf), false);
 		if (result == 0) {
 			log.LogText (CString(_T("    ")) + commandInfo[j].resultZeroText, commandInfo[j].resultShouldBeNonZero ? Log::Red : Log::Black);
 		} else {
 			log.LogText(CString(_T("    ")) + commandInfo[j].resultNonZeroText, commandInfo[j].resultShouldBeNonZero ? Log::Black : Log::Red);
 		}
 
-		result = VerifiedRead (clientDiscardAll, rxBuf, sizeof(rxBuf), false);
+		result = VerifiedRead (api1, clientDiscardAll, rxBuf, sizeof(rxBuf), false);
 		if (result != 0) {
 			log.LogText (_T("    Discarding client received message!  Filters are messed up!!!"), Log::Red);
 		}
-		result = VerifiedRead (clientAcceptAll, rxBuf, sizeof(rxBuf), false);
+		result = VerifiedRead (api1, clientAcceptAll, rxBuf, sizeof(rxBuf), false);
 		if (result <= 0) {
 			log.LogText (_T("    Accepting client failed to received message!"), Log::Red);
 		}
 	}
 
-	VerifyDisconnect (clientDiscardAll);
-	VerifyDisconnect (clientAcceptAll);
+	VerifyDisconnect (api1, clientDiscardAll);
+	VerifyDisconnect (api1, clientAcceptAll);
 }
 
 /****************************/
@@ -1062,7 +1081,7 @@ void TestRP1210::TestFilters(INIMgr::Devices &dev, int primaryClient) {
 
 		void Parse (TestRP1210 *test, int clientID, bool warnOutOfRange) {
 			char rxBuf[1024];
-			int result = test->VerifiedRead(clientID, rxBuf, sizeof(rxBuf), false);
+			int result = test->VerifiedRead(test->api1, clientID, rxBuf, sizeof(rxBuf), false);
 			while (result > 0) {
 				RecvMsgPacket pkt(rxBuf, result);
 				if (pkt.data.size() >= 1) {
@@ -1076,7 +1095,7 @@ TRACE (_T("Received message (woor=%d).  MID=%d, msg=%s\n"), warnOutOfRange, pkt.
 						log.LogText (msg, Log::Red);
 					}
 				}
-				result = test->VerifiedRead(clientID, rxBuf, sizeof(rxBuf), false);
+				result = test->VerifiedRead(test->api1, clientID, rxBuf, sizeof(rxBuf), false);
 			}
 		}
 
@@ -1099,35 +1118,35 @@ TRACE (_T("Received message (woor=%d).  MID=%d, msg=%s\n"), warnOutOfRange, pkt.
 
 	char rxBuf[1024];
 
-	int clTx = VerifyConnect(dev, "J1708");
-	int clRx = VerifyConnect(dev, "J1708");
+	int clTx = VerifyConnect(api1, dev, "J1708");
+	int clRx = VerifyConnect(api1, dev, "J1708");
 
 	if (!IsValid(clTx) || (!IsValid(clRx))) {
 		log.LogText(_T("    Unable to test filters."), Log::Red);
 
-		VerifyDisconnect (clTx);
-		VerifyDisconnect (clRx);
+		VerifyDisconnect (api1, clTx);
+		VerifyDisconnect (api1, clRx);
 		return;
 	}
 
 
 	// test invalid
-	VerifyInvalidClientIDSendCommand (PARM(SetMessageFilteringForJ1708,""), NULL, 0);
+	VerifyInvalidClientIDSendCommand (api1, PARM(SetMessageFilteringForJ1708,""), NULL, 0);
 
 	// test main
 	// -- shouldn't be necessary -- VerifyValidSendCommand (PARM(SetMessageReceive,""), primaryClient, "\x01", 1, false);
 	// -- shouldn't be necessary -- VerifyValidSendCommand (PARM(SetMessageReceive,""), clRx, "\x01", 1, false);
-	VerifyValidSendCommand (PARM(SetAllFilterStatesToDiscard, ""), primaryClient, NULL, 0, false);
-	VerifyValidSendCommand (PARM(SetAllFiltersToPass, ""), clRx, NULL, 0, false);
+	VerifyValidSendCommand (api1, PARM(SetAllFilterStatesToDiscard, ""), primaryClient, NULL, 0, false);
+	VerifyValidSendCommand (api1, PARM(SetAllFiltersToPass, ""), clRx, NULL, 0, false);
 
-	while (VerifiedRead(primaryClient, rxBuf, sizeof(rxBuf), false) > 0); 	// clear read buffer
+	while (VerifiedRead(api1, primaryClient, rxBuf, sizeof(rxBuf), false) > 0); 	// clear read buffer
 	sendSpectrum = true;
 
 	char filterArray[] = { SecondaryPeriodicTX+1, SecondaryPeriodicTX+2, SecondaryPeriodicTX+3, SecondaryPeriodicTX+4, SecondaryPeriodicTX+5, SecondaryPeriodicTX+6 };
 
 	// Filter on the first three
 	CollectMessageArray primary, alt;
-	VerifyValidSendCommand(PARM(SetMessageFilteringForJ1708,""), primaryClient, filterArray+0, 3, false);
+	VerifyValidSendCommand(api1, PARM(SetMessageFilteringForJ1708,""), primaryClient, filterArray+0, 3, false);
 	primary.Clear();
 	alt.Clear();
 	Sleep(delay);
@@ -1138,9 +1157,9 @@ TRACE (_T("Received message (woor=%d).  MID=%d, msg=%s\n"), warnOutOfRange, pkt.
 	}
 
 	// filter on the first four
-	VerifyValidSendCommand(PARM(SetMessageFilteringForJ1708,""), primaryClient, filterArray+2, 2, false);
-	while (VerifiedRead(primaryClient, rxBuf, sizeof(rxBuf), false) > 0); 	// clear read buffer
-	while (VerifiedRead(clRx, rxBuf, sizeof(rxBuf), false) > 0); 	// clear read buffer
+	VerifyValidSendCommand(api1, PARM(SetMessageFilteringForJ1708,""), primaryClient, filterArray+2, 2, false);
+	while (VerifiedRead(api1, primaryClient, rxBuf, sizeof(rxBuf), false) > 0); 	// clear read buffer
+	while (VerifiedRead(api1, clRx, rxBuf, sizeof(rxBuf), false) > 0); 	// clear read buffer
 	primary.Clear();
 	alt.Clear();
 	Sleep(delay);
@@ -1151,9 +1170,9 @@ TRACE (_T("Received message (woor=%d).  MID=%d, msg=%s\n"), warnOutOfRange, pkt.
 	}
 
 	// disable all filters
-	VerifyValidSendCommand(PARM(SetAllFilterStatesToDiscard,""), primaryClient, NULL, 0, false);
-	while (VerifiedRead(primaryClient, rxBuf, sizeof(rxBuf), false) > 0); 	// clear read buffer
-	while (VerifiedRead(clRx, rxBuf, sizeof(rxBuf), false) > 0); 	// clear read buffer
+	VerifyValidSendCommand(api1, PARM(SetAllFilterStatesToDiscard,""), primaryClient, NULL, 0, false);
+	while (VerifiedRead(api1, primaryClient, rxBuf, sizeof(rxBuf), false) > 0); 	// clear read buffer
+	while (VerifiedRead(api1, clRx, rxBuf, sizeof(rxBuf), false) > 0); 	// clear read buffer
 	primary.Clear();
 	alt.Clear();
 	Sleep(delay);
@@ -1166,11 +1185,11 @@ TRACE (_T("Received message (woor=%d).  MID=%d, msg=%s\n"), warnOutOfRange, pkt.
 	// now try from a shared port client
 	sendSpectrum = false;
 	Sleep(delay/3);
-	while (VerifiedRead(primaryClient, rxBuf, sizeof(rxBuf), false) > 0); 	// clear read buffer
-	while (VerifiedRead(clRx, rxBuf, sizeof(rxBuf), false) > 0); 	// clear read buffer
+	while (VerifiedRead(api1, primaryClient, rxBuf, sizeof(rxBuf), false) > 0); 	// clear read buffer
+	while (VerifiedRead(api1, clRx, rxBuf, sizeof(rxBuf), false) > 0); 	// clear read buffer
 
 	// Filter on the last three
-	VerifyValidSendCommand(PARM(SetMessageFilteringForJ1708,""), primaryClient, filterArray+3, 3, false);
+	VerifyValidSendCommand(api1, PARM(SetMessageFilteringForJ1708,""), primaryClient, filterArray+3, 3, false);
 	primary.Clear();
 	alt.Clear();
 	for (int i = 1; i <= 6; i++) {
@@ -1189,10 +1208,10 @@ TRACE (_T("Received message (woor=%d).  MID=%d, msg=%s\n"), warnOutOfRange, pkt.
 	}
 
 	// setup identical filters on both
-	VerifyValidSendCommand (PARM(SetAllFilterStatesToDiscard, ""), primaryClient, NULL, 0, false);
-	VerifyValidSendCommand (PARM(SetAllFilterStatesToDiscard, ""), clRx, NULL, 0, false);
-	VerifyValidSendCommand(PARM(SetMessageFilteringForJ1708,""), primaryClient, filterArray+0, 3, false);
-	VerifyValidSendCommand(PARM(SetMessageFilteringForJ1708,""), clRx, filterArray+0, 3, false);
+	VerifyValidSendCommand (api1, PARM(SetAllFilterStatesToDiscard, ""), primaryClient, NULL, 0, false);
+	VerifyValidSendCommand (api1, PARM(SetAllFilterStatesToDiscard, ""), clRx, NULL, 0, false);
+	VerifyValidSendCommand(api1, PARM(SetMessageFilteringForJ1708,""), primaryClient, filterArray+0, 3, false);
+	VerifyValidSendCommand(api1, PARM(SetMessageFilteringForJ1708,""), clRx, filterArray+0, 3, false);
 	primary.Clear();
 	alt.Clear();
 	for (int i = 1; i <= 6; i++) {
@@ -1210,21 +1229,21 @@ TRACE (_T("Received message (woor=%d).  MID=%d, msg=%s\n"), warnOutOfRange, pkt.
 	}
 
 
-	VerifyDisconnect (clTx);
-	VerifyDisconnect (clRx);
+	VerifyDisconnect (api1, clTx);
+	VerifyDisconnect (api1, clRx);
 }
 
 /*************************************/
 /* TestRP1210::VerifyProtectAddress */
 /***********************************/
-bool TestRP1210::VerifyProtectAddress (RP1210API *api, int clientID, int address, int vehicalSystem, int identityNum, BlockType block) {
-	return VerifyProtectAddress(api, clientID, address, 1, 0, 0, vehicalSystem, 0, 0, 0, 0, identityNum, block);
+bool TestRP1210::VerifyProtectAddress (RP1210API *api, int clientID, int address, int vehicalSystem, int identityNum, BlockType block, int expectedError) {
+	return VerifyProtectAddress(api, clientID, address, 1, 0, 0, vehicalSystem, 0, 0, 0, 0, identityNum, block, expectedError);
 }
 
 /*************************************/
 /* TestRP1210::VerifyProtectAddress */
 /***********************************/
-bool TestRP1210::VerifyProtectAddress (RP1210API *api, int clientID, int address, bool arbitraryAddress, int industryGroup, int vehSysInst, int vehSys, int function, int funcInst, int ecuInst, int mfgCode, int identityNum, BlockType block) {
+bool TestRP1210::VerifyProtectAddress (RP1210API *api, int clientID, int address, bool arbitraryAddress, int industryGroup, int vehSysInst, int vehSys, int function, int funcInst, int ecuInst, int mfgCode, int identityNum, BlockType block, int expectError) {
 	union {
 		struct {
 			unsigned __int64 aac:1;
@@ -1258,16 +1277,96 @@ bool TestRP1210::VerifyProtectAddress (RP1210API *api, int clientID, int address
 
 	int result = api->pRP1210_SendCommand(ProtectJ1939Address, clientID, txBuf, 10);
 	if (result == 0) {
-		return true;
+		if (expectError == 0) {
+			return true;
+		} else {
+			CString msg;
+			msg.Format(_T("    ProtectJ1939Address returned no error, but error %d was expected"), expectError);
+			log.LogText(msg, Log::Red);
+			return false;
+		}
 	} else {
 		CString msg;
-		msg.Format (_T("    Error claiming address %d on client %d.  VehSys=%d, identityNum=%d"), address, clientID, vehSys, identityNum);
-		log.LogText(msg, Log::Red);
-		LogError(*api, result);
-		return false;
+		if (expectError == result) {
+			msg.Format (_T("    ProjectJ1939Address succeeded.  Error %d was returned (this was expected)"), result)			;
+			log.LogText(msg);
+			return true;
+		} else {
+			msg.Format (_T("    Error claiming address %d on client %d.  VehSys=%d, identityNum=%d"), address, clientID, vehSys, identityNum);
+			if (expectError != 0) {
+				CString msg2;
+				msg2.Format (_T("  (error %d expected, error %d produced)"), expectError, result);
+				msg += msg2;
+			}
+			log.LogText(msg, Log::Red);
+			LogError(*api, result);
+			return false;
+		}
 	}
 }
 
+/***********************/
+/* TxBuffer::TxBuffer */
+/*********************/
+TxBuffer::TxBuffer(int pgn, bool how, int priority, int srcAddr, int dstAddr, const char *inData, int dataLen) {
+	len = 6+dataLen;
+	data = new char[len];
+	memcpy(data, &pgn, 3);
+	data[3] = (how ? 0x80 : 0x00) | (priority & 0x07);
+	data[4] = srcAddr;
+	data[5] = dstAddr;
+	memcpy(data+6, inData, dataLen);
+}
+
+/***************/
+/* ArrayAsHex */
+/*************/
+CString ArrayAsHex(const char *buf, int len) {
+	CString retVal = _T("[");
+	for (int i = 0; i < len; i++) {
+		CString tmp;
+		tmp.Format(_T("%02X "), ((unsigned char *)buf) [i]);
+		retVal += tmp;
+	}
+	retVal.TrimRight();
+	retVal += "]";
+	return retVal;
+}
+
+/*****************************/
+/* TestRP1210::VerifiedSend */
+/***************************/
+bool TestRP1210::VerifiedSend (RP1210API *api, int clientID, char *txBuf, int txLen, bool block, int expectedResult, TCHAR * desc) {
+	int result = api->pRP1210_SendMessage(clientID, txBuf, txLen, 0, block);
+	TRACE (_T("Sending %d byte message %s. (%s).  Result=%d\n"), txLen, ArrayAsHex(txBuf, txLen), desc, result);
+	if (result == 0) {
+		if (expectedResult == 0) {
+			return true;
+		} else {
+			CString msg;
+			msg.Format (_T("    SendMessage (%s) returned success, but an error was expected"), desc);
+			log.LogText(msg, Log::Red);
+			return false;
+		} 
+	} else {
+		CString msg;
+		if (expectedResult == result) {
+			msg.Format (_T("    pRP1210_SendMessage succeeded (%s).  Error %d was returned (this was expected)"), desc, result)			;
+			log.LogText(msg);
+			return true;
+		} else {
+			msg.Format (_T("    Error with pRP1210_SendMessage (%s)."), desc);
+			if (expectedResult != 0) {
+				CString msg2;
+				msg2.Format (_T("  (error %d expected, error %d produced)"), expectedResult, result);
+				msg += msg2;
+			}
+			log.LogText(msg, Log::Red);
+			LogError(*api, result);
+			return false;
+		}
+	}
+}
 
 /*************************************/
 /* TestRP1210::Test1939AddressClaim */
@@ -1275,29 +1374,104 @@ bool TestRP1210::VerifyProtectAddress (RP1210API *api, int clientID, int address
 void TestRP1210::Test1939AddressClaim (INIMgr::Devices &dev1, INIMgr::Devices &dev2) {
 	log.LogText (_T("Testing: SendCommand(Protect J1939 Address)"), Log::Blue);
 
-	int cl1a = VerifyConnect(dev1, "J1939");
-	//int cl1b = VerifyConnect(dev1, "J1939");
-	//int cl2a = VerifyConnect(dev2, "J1939");
+	int cl1a = VerifyConnect(api1, dev1, "J1939");
+	int cl1b = VerifyConnect(api1, dev1, "J1939");
+	int cl2a = VerifyConnect(api2, dev2, "J1939");
 
-	//VerifyInvalidSendCommand (ProtectJ1939Address, _T("Invalid address claim address"), cl1a, " ", 1, ERR_INVALID_COMMAND);
-	VerifyInvalidClientIDSendCommand (ProtectJ1939Address, _T("Address Claim"), "\xFF********\x02", 10);
+	// Verify that I can send small messages with no address claimed
+	{ 
+		TxBuffer txBuf(0xABCDEF, false, 4, 100, 102, "1234567890", 8);
+		VerifiedSend (api1, cl1a, txBuf, txBuf, true, 0, _T("Send small msg, no claimed address"));
+	}
+
+	// Verify that I cannot send large messages with no address claimed
+	{ 
+		TxBuffer txBuf(0xABCDEF, false, 4, 100, 102, "Hello World", 11);
+		VerifiedSend (api1, cl1a, txBuf, txBuf, true, ERR_ADDRESS_NEVER_CLAIMED, _T("Send large msg, no claimed address"));
+	}
+
+
+	VerifyInvalidSendCommand (api1, ProtectJ1939Address, _T("Invalid address claim address"), cl1a, " ", 1, ERR_INVALID_COMMAND);
+	VerifyInvalidClientIDSendCommand (api1, ProtectJ1939Address, _T("Address Claim"), "\xFF********\x02", 10);
 
 	// Claim an address
-	if (VerifyProtectAddress(api1, cl1a, 100, 1, 1)) {// && VerifyProtectAddress(api1, cl1a, 101, 1, 2) && VerifyProtectAddress(api2, cl2a, 102, 1, 3)) {
+	if (VerifyProtectAddress(api1, cl1a, 100, 1, 1) && VerifyProtectAddress(api1, cl1a, 101, 1, 2) && VerifyProtectAddress(api2, cl2a, 102, 1, 3)) {
 		log.LogText(_T("    Was able to claim three addresses"));
 	}
-	
 
-	VerifyDisconnect(cl1a);
-//	VerifyDisconnect(cl1b);
-//	VerifyDisconnect(cl2a);
+	// Verify address was claimed by sending a message
+	TxBuffer txBuf (0xABCDEF, false, 4, 100, 102, "Hello World", 11);
+	VerifiedSend (api1, cl1a, txBuf, txBuf, true, 0, _T("Sending valid message"));
+
+	// Release the address
+	VerifyProtectAddress (api1, cl1a, 255, 1, 1);
+
+	// Verify that we can no longer send the message
+	VerifiedSend (api1, cl1a, txBuf, txBuf, true, ERR_ADDRESS_NEVER_CLAIMED, _T("Sending message after releasing address"));
+
+	
+	VerifyDisconnect(api1, cl1a);
+	VerifyDisconnect(api1, cl1b);
+	VerifyDisconnect(api2, cl2a);
 }
 
 /**********************************/
 /* TestRP1210::Test1939BasicRead */
 /********************************/
 void TestRP1210::Test1939BasicRead (INIMgr::Devices &dev) {
-	log.LogText (_T("Testing: ReadMessage(J1939) -- Not yet implemented"), Log::Blue);
+	log.LogText (_T("Testing: ReadMessage(J1939)"), Log::Blue);
+
+	int cl1a = VerifyConnectAndPassFilters(api1, dev, "J1939");
+	
+	char buf[256];
+	int i;
+	int j;
+	for (j = 0; j < 2; j++) {
+		CString state = (j == 0) ? _T("Blocking") : _T("Non-Blocking");
+		bool blocking = j == 0;
+	
+		FlushReads(api1, cl1a);
+		DWORD tick = GetTickCount();
+		DWORD tickTimeStamps[3];
+		for (i = 0; (i < 3) && (GetTickCount() < tick+3500); ) {
+			int result = VerifiedRead(api1, cl1a, buf, sizeof(buf), blocking);
+			if (result == 0) { // Nothing received
+				continue;
+			}
+			char *msg = buf+4;
+			if (msg[0] == SecondaryPeriodicTX) {
+				RecvMsgPacket p((unsigned char *)buf, result);
+				tickTimeStamps[i] = (DWORD)(((__int64)p.timeStamp * (__int64)dev.timeStampWeight) / 1000); // Normalize to milliseconds
+				// got what we are looking for.
+				i++;
+			}
+		}
+		if (i == 3) {
+			log.LogText (_T("    Pass Basic Read (") + state + _T(")"));
+
+			// Check timestamps to see if they look reasonable
+			int d1 = tickTimeStamps[1] - tickTimeStamps[0];
+			int d2 = tickTimeStamps[2] - tickTimeStamps[1];
+			bool tsConcern = false;
+			if ((d1 < 350) || (d1 > 650)) {
+				CString msg;
+				msg.Format(_T("    Possible timestamp problem.  Interval1 was: %d ms (%d, %d)"), d1, tickTimeStamps[0], tickTimeStamps[1]);
+				log.LogText(msg, 0x0080FF);
+				tsConcern = true;
+			}
+			if ((d2 < 450) || (d2 > 550)) {
+				CString msg;
+				msg.Format(_T("    Possible timestamp problem.  Interval2 was: %d ms (%d, %d)"), d2, tickTimeStamps[1], tickTimeStamps[2]);
+				log.LogText(msg, 0x0080FF);
+				tsConcern = true;
+			}
+			if (!tsConcern) {
+				log.LogText(_T("    Time stamps (") + state + _T(") seem good"));
+			}
+		} else {
+			log.LogText (_T("    Timeout (" + state + _T(")")), Log::Red);
+		}
+	}
 }
 
 /*************************/
@@ -1368,6 +1542,9 @@ void TestRP1210::DestroyThread(CWinThread *&thread) {
 UINT __cdecl TestRP1210::SecondaryDeviceTXThread( LPVOID pParam ) {
 	TestRP1210 *thisObj = (TestRP1210*)pParam;
 	int count = 0;
+
+	TxBuffer tx1939(0xabcdef, true, 4, 254, 255, "Hello ----", 10);
+
 	while (!thisObj->threadsMustDie) {
 		DWORD time = GetTickCount();
 		if (thisObj->sendJ1708) {
@@ -1393,7 +1570,11 @@ UINT __cdecl TestRP1210::SecondaryDeviceTXThread( LPVOID pParam ) {
 			}
 		}
 		if (thisObj->sendJ1939) {
-			
+			char *txBufChar = tx1939;
+			char strBuf[24];
+			sprintf (strBuf, "%05d", count++);
+			memcpy(txBufChar + 6, strBuf+strlen(strBuf)-4, 4);
+			VerifiedSend(thisObj->api2, thisObj->secondary1939Client, tx1939, tx1939, true, 0, _T("Secondary Tx Thread"));
 		}
 
 		while (GetTickCount() < time+500) { Sleep(10); }
