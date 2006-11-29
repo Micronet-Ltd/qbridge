@@ -322,8 +322,10 @@ void TestRP1210::Test (const set<CString> &testList, vector<INIMgr::Devices> &de
 		secondary1939Client = -1;
 		goto end;
 	}
+	VerifyProtectAddress(api2, secondary1939Client, 222, 20, 20);
 	SetupWorkerThread (helperTxThread, SecondaryDeviceTXThread, false, _T("Secondary_TX"));
 	SetupWorkerThread (helperRxThread, SecondaryDeviceRXThread, false, _T("Secondary_RX"));
+
 
 	// Setup Primary Client
 	int primaryClient = api1->pRP1210_ClientConnect(NULL, devs[idx1].deviceID, "J1708", 0, 0, 0);
@@ -357,7 +359,7 @@ void TestRP1210::Test (const set<CString> &testList, vector<INIMgr::Devices> &de
 	sendJ1939 = true;
 	TEST("J1939 Address Claim", Test1939AddressClaim(devs[idx1], devs[idx2]));
 	TEST("J1939 Basic Read", Test1939BasicRead(devs[idx1]));
-	
+	VerifyDisconnect(api1, secondary1939Client);
 
 
 end:
@@ -1395,13 +1397,15 @@ void TestRP1210::Test1939AddressClaim (INIMgr::Devices &dev1, INIMgr::Devices &d
 	VerifyInvalidClientIDSendCommand (api1, ProtectJ1939Address, _T("Address Claim"), "\xFF********\x02", 10);
 
 	// Claim an address
-	if (VerifyProtectAddress(api1, cl1a, 100, 1, 1) && VerifyProtectAddress(api1, cl1a, 101, 1, 2) && VerifyProtectAddress(api2, cl2a, 102, 1, 3)) {
+	if (VerifyProtectAddress(api1, cl1a, 100, 1, 1) && VerifyProtectAddress(api1, cl1b, 101, 1, 2) && VerifyProtectAddress(api2, cl2a, 102, 1, 3)) {
 		log.LogText(_T("    Was able to claim three addresses"));
 	}
 
 	// Verify address was claimed by sending a message
 	TxBuffer txBuf (0x013333, false, 4, 100, 102, "Hello World", 11);
-	VerifiedSend (api1, cl1a, txBuf, txBuf, true, 0, _T("Sending valid message"));
+	if (VerifiedSend (api1, cl1a, txBuf, txBuf, true, 0, _T("Sending valid message"))) {
+		log.LogText (_T("    Was able to send from a claimed address"));
+	}
 
 	// Release the address
 	VerifyProtectAddress (api1, cl1a, 255, 1, 1);
@@ -1438,12 +1442,24 @@ void TestRP1210::Test1939BasicRead (INIMgr::Devices &dev) {
 			if (result == 0) { // Nothing received
 				continue;
 			}
-			char *msg = buf+4;
-			if (msg[0] == SecondaryPeriodicTX) {
-				RecvMsgPacket p((unsigned char *)buf, result);
+			RecvMsgPacket p((unsigned char *)buf, result);
+			if (p.GetPGN() == 0x1aaaa) {
 				tickTimeStamps[i] = (DWORD)(((__int64)p.timeStamp * (__int64)dev.timeStampWeight) / 1000); // Normalize to milliseconds
 				// got what we are looking for.
 				i++;
+
+				// Ron says I need to check the rest of the data in this packet!
+				TxBuffer tx1939(0x1aaaa, true, 4, 254, 255, "Hello ----", 10);
+				if ((p.GetSource() != 222) || (p.GetDest() != 255)) {
+					log.LogText(_T("    Bad source or destination address"), Log::Red);
+				}
+
+				char buf[256];
+				int leng = sizeof(buf);
+				p.Get1939Data(buf, leng);
+				if (memcmp(buf, "Hello", 5) != 0) {
+					log.LogText(_T("    Bad data"), Log::Red);
+				}
 			}
 		}
 		if (i == 3) {
@@ -1459,7 +1475,7 @@ void TestRP1210::Test1939BasicRead (INIMgr::Devices &dev) {
 				log.LogText(msg, 0x0080FF);
 				tsConcern = true;
 			}
-			if ((d2 < 450) || (d2 > 550)) {
+			if ((d2 < 350) || (d2 > 650)) {
 				CString msg;
 				msg.Format(_T("    Possible timestamp problem.  Interval2 was: %d ms (%d, %d)"), d2, tickTimeStamps[1], tickTimeStamps[2]);
 				log.LogText(msg, 0x0080FF);
@@ -1472,6 +1488,8 @@ void TestRP1210::Test1939BasicRead (INIMgr::Devices &dev) {
 			log.LogText (_T("    Timeout (" + state + _T(")")), Log::Red);
 		}
 	}
+
+	VerifyDisconnect(api1, cl1a);
 }
 
 /*************************/
@@ -1543,7 +1561,8 @@ UINT __cdecl TestRP1210::SecondaryDeviceTXThread( LPVOID pParam ) {
 	TestRP1210 *thisObj = (TestRP1210*)pParam;
 	int count = 0;
 
-	TxBuffer tx1939(0x1aaaa, true, 4, 254, 255, "Hello ----", 10);
+	//TxBuffer tx1939(0x1aaaa, true, 4, 222, 255, "Hello ----", 10);
+	TxBuffer tx1939(0x1aaaa, true, 4, 222, 255, "Hello", 5);
 
 	while (!thisObj->threadsMustDie) {
 		DWORD time = GetTickCount();
@@ -1570,10 +1589,11 @@ UINT __cdecl TestRP1210::SecondaryDeviceTXThread( LPVOID pParam ) {
 			}
 		}
 		if (thisObj->sendJ1939) {
-			char *txBufChar = tx1939;
+			/*char *txBufChar = tx1939;
 			char strBuf[24];
 			sprintf (strBuf, "%05d", count++);
-			memcpy(txBufChar + 6, strBuf+strlen(strBuf)-4, 4);
+			memcpy(txBufChar + 12, strBuf+strlen(strBuf)-4, 4);
+			*/
 			VerifiedSend(thisObj->api2, thisObj->secondary1939Client, tx1939, tx1939, true, 0, _T("Secondary Tx Thread"));
 		}
 

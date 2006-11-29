@@ -1,7 +1,9 @@
 #pragma once
+#pragma warning(disable:4996)
 
 #include "INIMgr.h"
 #include <algorithm>
+#pragma warning(disable:4996)
 
 class RP1210API;
 
@@ -85,6 +87,19 @@ struct RecvMsgPacket {
 	}
 	UINT32 timeStamp;
 	vector<unsigned char> data;
+	int GetPGN() { if (data.size() < 3) { return -1; } int retVal=0; copy(data.begin(), data.begin()+3, (unsigned char *)(&retVal)); return retVal; }
+	int GetSource() { if (data.size() < 5) { return 0; } return data[4]; }
+	int GetDest() { if (data.size() < 6) { return 0; } return data[5]; }
+	int Get1939Data(char *buf, int &leng) { 
+		if (data.size() < 6) {
+			leng = 0;
+		}
+		if (leng > int(data.size()-6)) { 
+			leng = int(data.size()-6);
+		}
+		copy (data.begin()+6, data.begin()+leng+6, buf);
+		return int(data.size());
+	}
 };
 
 
