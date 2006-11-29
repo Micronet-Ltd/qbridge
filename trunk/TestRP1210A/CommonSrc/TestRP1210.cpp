@@ -1380,13 +1380,13 @@ void TestRP1210::Test1939AddressClaim (INIMgr::Devices &dev1, INIMgr::Devices &d
 
 	// Verify that I can send small messages with no address claimed
 	{ 
-		TxBuffer txBuf(0xABCDEF, false, 4, 100, 102, "1234567890", 8);
+		TxBuffer txBuf(0x014444, false, 4, 100, 102, "1234567890", 8);
 		VerifiedSend (api1, cl1a, txBuf, txBuf, true, 0, _T("Send small msg, no claimed address"));
 	}
 
 	// Verify that I cannot send large messages with no address claimed
 	{ 
-		TxBuffer txBuf(0xABCDEF, false, 4, 100, 102, "Hello World", 11);
+		TxBuffer txBuf(0x015555, false, 4, 100, 102, "Hello World", 11);
 		VerifiedSend (api1, cl1a, txBuf, txBuf, true, ERR_ADDRESS_NEVER_CLAIMED, _T("Send large msg, no claimed address"));
 	}
 
@@ -1400,7 +1400,7 @@ void TestRP1210::Test1939AddressClaim (INIMgr::Devices &dev1, INIMgr::Devices &d
 	}
 
 	// Verify address was claimed by sending a message
-	TxBuffer txBuf (0xABCDEF, false, 4, 100, 102, "Hello World", 11);
+	TxBuffer txBuf (0x013333, false, 4, 100, 102, "Hello World", 11);
 	VerifiedSend (api1, cl1a, txBuf, txBuf, true, 0, _T("Sending valid message"));
 
 	// Release the address
@@ -1543,7 +1543,7 @@ UINT __cdecl TestRP1210::SecondaryDeviceTXThread( LPVOID pParam ) {
 	TestRP1210 *thisObj = (TestRP1210*)pParam;
 	int count = 0;
 
-	TxBuffer tx1939(0xabcdef, true, 4, 254, 255, "Hello ----", 10);
+	TxBuffer tx1939(0x1aaaa, true, 4, 254, 255, "Hello ----", 10);
 
 	while (!thisObj->threadsMustDie) {
 		DWORD time = GetTickCount();
