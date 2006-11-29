@@ -37,25 +37,57 @@ namespace qbrdge_driver_classlib
             public int claimAddress = -1; // -1 for not address claimed
             public byte[] claimAddressName = new byte[8];
             public bool claimAddrAvailable = true;
+            public QBTransaction claimQBT = null;
             //needed for multi-frame RTS/CTS recieve or send messages
 
             //delay availability of claimAddress to allow
             //responses from other devices
-            public void claimAddrDelayTimer()
+            public void claimAddrDelayTimer(QBTransaction qt)
             {
+                //claim addr. in progress
+                if (claimQBT != null)
+                {
+                    claimAddress = -1;
+                    AbortTimer(UDPReplyType.sendJ1939addresslost);
+                }
                 claimAddrAvailable = false;
+                claimQBT = qt;
                 if (myTimer != null)
                 {
+                    //send address claim fail msg.
+
                     myTimer.Dispose();
                 }
                 TimerCallback timerDelegate = new TimerCallback(TimeOut);
-                myTimer = new Timer(timerDelegate, this, 1000, Timeout.Infinite);
+                myTimer = new Timer(timerDelegate, UDPReplyType.sendJ1939addresslost, 1000, Timeout.Infinite);
             }
             private Timer myTimer;
             //this function is called by the timer class
-            private void TimeOut(Object state)
+            private void TimeOut(Object errorStr)
             {
+                myTimer.Dispose();
+                myTimer = null;
                 claimAddrAvailable = true;
+
+                if (claimAddress != -1)
+                {
+                    //send addr claim ok msg.
+                    Support.SendClientDataPacket(UDPReplyType.sendJ1939success, claimQBT);                                       
+                }
+                else
+                {
+                    //send addr claim fail
+                    Support.SendClientDataPacket((string)errorStr, claimQBT);
+                }
+                claimQBT.numRetries = 0;
+                claimQBT.StopTimer();
+                claimQBT = null;
+            }
+
+            public void AbortTimer(string errorStr)
+            {
+                claimAddress = -1;
+                TimeOut(errorStr);
             }
 
         }

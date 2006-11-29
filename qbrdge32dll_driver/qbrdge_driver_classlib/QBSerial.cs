@@ -622,22 +622,41 @@ namespace qbrdge_driver_classlib
                         if (qt.isJ1939)
                         {
                             if (pktData[0] == 0x00)
-                            { //CAN transmit confirm failed, unable to be transmitted, fail
-                                Support.SendClientDataPacket(UDPReplyType.sendJ1939confirmfail, qt);
+                            { 
+                                //CAN transmit confirm failed, unable to be transmitted, fail
+                                if (qt.j1939transaction.isAddressClaim == false)
+                                {
+                                    Support.SendClientDataPacket(UDPReplyType.sendJ1939confirmfail, qt);
+                                }
+                                else 
+                                {
+                                    ClientIDManager.clientIds[qt.clientId].AbortTimer(UDPReplyType.sendJ1939confirmfail);
+                                }
                                 portInfo.QBTransactionSent.RemoveAt(i);
                                 break;
                             }
                             else if (pktData[0] == 0x01)
-                            { //CAN transmit confirm, success
+                            { 
+                                //CAN transmit confirm, success
                                 qt.j1939transaction.TransmitConfirm();
                                 if (qt.j1939transaction.IsDone() && qt.j1939transaction.IsComplete())
                                 {
-                                    Support.SendClientDataPacket(UDPReplyType.sendJ1939success, qt);
+                                    if (qt.j1939transaction.isAddressClaim == false)
+                                    {
+                                        Support.SendClientDataPacket(UDPReplyType.sendJ1939success, qt);
+                                    }
                                     portInfo.QBTransactionSent.RemoveAt(i);
                                 }
                                 else if (qt.j1939transaction.IsDone() && !qt.j1939transaction.IsComplete())
                                 {
-                                    Support.SendClientDataPacket(UDPReplyType.sendJ1939replytimeout, qt);
+                                    if (qt.j1939transaction.isAddressClaim == false)
+                                    {
+                                        Support.SendClientDataPacket(UDPReplyType.sendJ1939replytimeout, qt);
+                                    }
+                                    else
+                                    {
+                                        ClientIDManager.clientIds[qt.clientId].AbortTimer(UDPReplyType.sendJ1939replytimeout);
+                                    }
                                     portInfo.QBTransactionSent.RemoveAt(i);                               
                                 }
                                 else

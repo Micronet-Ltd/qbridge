@@ -17,6 +17,7 @@ namespace qbrdge_driver_classlib
         private bool useBAM = false;
         private bool isDone = false;
         private bool isComplete = false;
+        public bool isAddressClaim = false;
 
         public byte SA = 0x00;
         private byte DA = 0x00;

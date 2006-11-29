@@ -642,7 +642,6 @@ namespace qbrdge_driver_classlib
                         addrName[i] = cmdDataBytes[i + 1];
                     }
                     client.claimAddressName = addrName;
-                    client.claimAddrDelayTimer();
 
                     //send address claim cmd to qbridge, send return code when confirmed
                     int msgId;
@@ -668,6 +667,7 @@ namespace qbrdge_driver_classlib
                     //create address claim message
                     QBTransaction qbt = null;
                     AddAddressClaimMsg(cmdDataBytes[0], addrName, clientId, isNotify, msgId, ref qbt);
+                    client.claimAddrDelayTimer(qbt);
 
                     //send message to all clients on com, except sender
                     ClientIDManager.ClientIDInfo sendClientInfo = ClientIDManager.clientIds[clientId];
@@ -734,6 +734,7 @@ namespace qbrdge_driver_classlib
             qbt.msgId = msgId;
             qbt.isJ1939 = true;
             qbt.j1939transaction = new J1939Transaction();
+            qbt.j1939transaction.isAddressClaim = true;
             qbt.cmdType = PacketCmdCodes.PKT_CMD_SEND_CAN;
 
             qbt.j1939transaction.UpdateJ1939Data(Support.ByteArrayToString(msg)); //add message, process

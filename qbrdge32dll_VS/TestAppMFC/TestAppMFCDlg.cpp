@@ -105,6 +105,7 @@ BEGIN_MESSAGE_MAP(CTestAppMFCDlg, CDialog)
 	ON_BN_CLICKED(IDC_sendj1939msgbtn9, &CTestAppMFCDlg::OnBnClickedsendj1939msgbtn9)
 	ON_BN_CLICKED(IDC_sendj1939msgbtn10, &CTestAppMFCDlg::OnBnClickedsendj1939msgbtn10)
 	ON_BN_CLICKED(IDC_READCOM4_BTN4, &CTestAppMFCDlg::OnBnClickedReadcom4Btn4)
+	ON_BN_CLICKED(IDC_AddrClaimCom5, &CTestAppMFCDlg::OnBnClickedAddrclaimcom5)
 END_MESSAGE_MAP()
 
 
@@ -1006,7 +1007,7 @@ void CTestAppMFCDlg::OnBnClickedAddrclaimcom4()
 
 void CTestAppMFCDlg::OnBnClickedsendj1939msgbtn8()
 {
-	char far* msg = "\x03" "\xF0" "\x00" "\x03" "\x06" "\x08" "\xFF" "\xFE" "\x26"
+	char far* msg = "\x03" "\xF0" "\x00" "\x03" "\x08" "\x06" "\xFF" "\xFE" "\x26"
 		"\x01" "A" "Aafdsdafds" "Adfdsf" "Afsd" "ABDADVB";
 	short msgLen = 24;
 	rp1210SendCustomMsg(lastCom4Client, msg, msgLen, 0, 1);
@@ -1074,4 +1075,17 @@ void CTestAppMFCDlg::OnBnClickedsendj1939msgbtn10()
 void CTestAppMFCDlg::OnBnClickedReadcom4Btn4()
 {
 	rp1210ReadMessage(lastCom3Client, 0, true);
+}
+
+void CTestAppMFCDlg::OnBnClickedAddrclaimcom5()
+{
+	char far msg[10];
+	short msgLen = 10;
+	for (int i = 0; i < msgLen; i++)
+	{
+		msg[i] = 0x01;
+	}
+	msg[0] = 8;
+	msg[9] = 0; //block until done
+	rp1210SendCustomCommand(19, lastCom4Client, msg, msgLen);
 }
