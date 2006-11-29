@@ -183,6 +183,12 @@ init_bss_done:
 
 
    @ Enable Interrupts
+   //however, since this might be a 'warm' boot, clear the interrupt sources until fw has a chance to set them up
+   ldr   R0,=APB2_REG_BASE+0x14 //APB2_SWRES at offset 0x14
+   MOV   R1,#(1<<14)            //EIC controller is bit 14
+   STR   R1,[R0]                //do a software reset on the EIC
+   MOV   R1,#0
+   STR   R1,[R0]                //take him out of reset
    MSR   CPSR_c, #(ARM_MODE_SYS)
 
    @ Now jump to main (use link in case main returns)
