@@ -9,7 +9,6 @@
 #include "protocol232.h"
 
 J1708Queue j1708Queue;
-int j1708IDCounter = 1;
 
 J1708Message j1708CurTxMessage;
 bool j1708PacketReady;
@@ -41,7 +40,6 @@ void InitializeJ1708() {
     SetPortSettings(j1708Port, 9600, 8, 'N', 1);
     j1708Port->port->timeout = 10; // the idle time for a J1708 bus
 
-    j1708IDCounter = 1;
     j1708Queue.head = 0;
     j1708Queue.tail = 0;
     j1708PacketReady = false;
@@ -252,7 +250,7 @@ int J1708AddFormattedTxPacket (UINT8 priority, UINT8 *data, UINT8 len) {
     j1708Queue.msgs[curHead].priority = priority;
     j1708Queue.msgs[curHead].len = len;
     memcpy(j1708Queue.msgs[curHead].data, data, len);
-    j1708Queue.msgs[curHead].id = j1708IDCounter++;
+    j1708Queue.msgs[curHead].id = getPktIDcounter();
     j1708Queue.head = nextHead;
     return j1708Queue.msgs[curHead].id;
 }

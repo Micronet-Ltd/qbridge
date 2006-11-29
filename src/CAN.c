@@ -36,6 +36,7 @@
 
 bool CANtransmitConfirm = FALSE;
 bool CANBusOffNotify = FALSE;
+bool CANAutoRestart = TRUE;
 
 //Private methods
 static void CAN_IRQ_Handler( void ) __attribute__ ((interrupt("IRQ")));
@@ -325,6 +326,26 @@ void DisableCANReceiveALL( void ) {
     }
 }
 
+/********************************************************************/
+/* Stop any transfer in progress from our CAN BUS                   */
+/********************************************************************/
+void DisableCANTxIP( void ) {
+    while( CAN->IF1_Regs.IFn_CRR & CAN_MIF_CRR_BUSY )
+        ;
+    CAN->IF1_Regs.IFn_A2R = 0; //this will clear the message valid bit
+    CAN->IF1_Regs.IFn_MCR = 0; //this will clear the tx request bit
+    CAN->IF1_Regs.IFn_CMR = (CAN_IFN_CMRBits)(WR+Arb+Control);
+    CAN->IF1_Regs.IFn_CRR = SNDMSG;
+    while( CAN->IF1_Regs.IFn_CRR & CAN_MIF_CRR_BUSY )
+        ;
+    CAN->ControlReg |= (CANControlRegisterBits)Init;
+    CAN->ControlReg &= ~(CANControlRegisterBits)Init;
+}
+
+void CANRestart( void ){
+    CAN->ControlReg |= (CANControlRegisterBits)Init;
+    CAN->ControlReg &= ~(CANControlRegisterBits)Init;
+}
 
 
 /********************************************************************/
@@ -654,7 +675,6 @@ static void CAN_IRQ_Handler( void ) {
 //#############################################################################
 
 CAN_queue CAN_tosend_queue;
-int CANPktIDcounter = 1;
 
 /********************************************************************/
 /* Initialize CAN structures... software structs to handle our stuff*/
@@ -677,8 +697,12 @@ void InitializeCAN( void ){
 void CANResetDefaultPrefs( void ){
     CANtransmitConfirm = FALSE;
     CANBusOffNotify = FALSE;
+    CANAutoRestart = TRUE;
     DisableAllCANFilters();
     DisableCANReceiveALL();
+    ClearCANTxQueue();
+    DisableCANTxIP();   //kill any CAN transmit that may be in progress
+    ClearCANRxQueue();
 }
 
 
@@ -797,15 +821,17 @@ int CANaddTxPacket( UINT8 type, UINT32 CAN_id, UINT8 *data, UINT8 len  ){
         return( -1 );   //this means that the queue was full
     }
     if( CAN->ControlReg & (CANControlRegisterBits)Init ) {//the bus has a fault that has caused us to not be able to transmit
-        return( -1 );
+        if( CANAutoRestart == TRUE ){
+            CAN->ControlReg &= ~((CANControlRegisterBits)Init );
+        }
+        return( -2 );   //this means that the BUS has a fault condition
     }
     int curHead = CAN_tosend_queue.head;
     CAN_tosend_queue.CAN_messages[curHead].len = len;
-    CAN_tosend_queue.CAN_messages[curHead].id  = CANPktIDcounter++;
-    if( CANPktIDcounter == -1 ) CANPktIDcounter = 1; //don't let next packet return -1 as the id since that is our error indicator
+    CAN_tosend_queue.CAN_messages[curHead].id  = getPktIDcounter();
     CAN_tosend_queue.CAN_messages[curHead].CAN_Identifier = CAN_id | ((type == 0) ? STANDARD_CAN_FLAG : 0);
     CAN_tosend_queue.CAN_messages[curHead].src = SRC_232;
-    //CAN_tosend_queue.CAN_messages[curHead].an_rp1210_CAN_message.data = data;
+    //CAN_tosend_queue.CAN_messages[curHead].data = data;
     memcpy(CAN_tosend_queue.CAN_messages[curHead].data, data, len);
     CAN_tosend_queue.head = nextHead;
     return( CAN_tosend_queue.CAN_messages[curHead].id );
@@ -822,4 +848,22 @@ int GetFreeCANtxBuffers( void ) {
         numInUse = (CAN_tosend_queue.head + CAN_QUEUE_SIZE) - CAN_tosend_queue.tail;
     }
     return (CAN_QUEUE_SIZE - 1) - numInUse;
+}
+
+
+/********************************************************************/
+/* Initialize CAN structures... software structs to handle our stuff*/
+/********************************************************************/
+void ClearCANTxQueue( void ){
+    IRQSTATE saveState = 0;
+    DISABLE_IRQ(saveState);
+    CAN_tosend_queue.tail = CAN_tosend_queue.head;
+    RESTORE_IRQ(saveState);
+}
+
+void ClearCANRxQueue( void ){
+    IRQSTATE saveState = 0;
+    DISABLE_IRQ(saveState);
+    CAN_received_queue.tail = CAN_received_queue.head;
+    RESTORE_IRQ(saveState);
 }
