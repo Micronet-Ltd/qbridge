@@ -75,6 +75,8 @@
   -->
   <PropertyGroup>
     <PostBuildEvent>copy $(TargetFileName) ..\..\..\..\TestRP1210A\TestRP1210_PC\Debug\
-copy $(TargetFileName) ..\..\..\..\TestRP1210A\TestRP1210_PC\Release\</PostBuildEvent>
+copy $(TargetFileName) ..\..\..\..\TestRP1210A\TestRP1210_PC\Release\
+copy $(TargetFileName) ..\..\..\..\qbrdge32dll_VS\TestAppMFC\
+copy $(TargetFileName) ..\..\..\..\qbrdge32dll_VS\debug\</PostBuildEvent>
   </PropertyGroup>
 </Project>
