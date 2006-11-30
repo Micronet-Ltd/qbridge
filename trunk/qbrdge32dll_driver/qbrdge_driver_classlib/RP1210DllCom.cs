@@ -9,6 +9,16 @@ using System.Collections.Generic;
 
 namespace qbrdge_driver_classlib
 {
+    public class IconMgrBase
+    {
+        public IconMgrBase() { i = 5; }
+        public virtual void HideIcon()
+        {
+            i = i + i;
+        }
+        int i;
+    }
+
     struct dllPortInfo
     {
         public int dllInPort; //port that dll will initiate communication from
@@ -41,8 +51,10 @@ namespace qbrdge_driver_classlib
 
         private static RP1210DllCom mainRP1210Com;
 
-        public static void MainStart()
+        static IconMgrBase icoMgr;
+        public static void MainStart(IconMgrBase mgr)
         {
+            icoMgr = mgr;
             mainRP1210Com = new RP1210DllCom();
         }
 
@@ -121,6 +133,8 @@ namespace qbrdge_driver_classlib
             {
                 Debug.WriteLine(exp.ToString());
             }
+
+            icoMgr.HideIcon();
         }
  
         public static void UdpListen()

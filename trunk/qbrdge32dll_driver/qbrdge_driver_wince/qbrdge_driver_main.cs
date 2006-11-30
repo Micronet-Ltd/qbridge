@@ -8,7 +8,7 @@ namespace qbridge_driver
     {
         static void Main()
         {
-            qbrdge_driver_classlib.RP1210DllCom.MainStart();
+            qbrdge_driver_classlib.RP1210DllCom.MainStart(new qbrdge_driver_classlib.IconMgrBase());
         }
     }
 }

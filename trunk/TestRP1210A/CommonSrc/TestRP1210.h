@@ -190,9 +190,7 @@ private:
 	void TestFilterStatesOnOffMessagePassOnOff(INIMgr::Devices &dev, int primaryClient);
 	void TestFilters(INIMgr::Devices &dev, int primaryClient);
 
-	void TestCustomMultiread(INIMgr::Devices &dev, INIMgr::Devices &dev2);
-	void TestCustomAdvSend(INIMgr::Devices &dev);
-	void TestCustomReset (INIMgr::Devices &dev,  INIMgr::Devices &dev2);
+	void TestCustom (INIMgr::Devices &dev1, INIMgr::Devices &dev2);
 
 
 	list <RecvMsgPacket> secondaryRxMsgs;
