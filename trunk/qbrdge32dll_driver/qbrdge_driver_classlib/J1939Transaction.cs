@@ -126,9 +126,9 @@ namespace qbrdge_driver_classlib
             //Max num of packets that can be sent in response to CTS
             can_pkt[9] = 0xFF;
             //parameter group number of the packeted msg
-            can_pkt[10] = (byte)data[2];
+            can_pkt[10] = (byte)data[0];
             can_pkt[11] = (byte)data[1];
-            can_pkt[12] = (byte)data[0];
+            can_pkt[12] = (byte)data[2];
             PendingCAN.Add(can_pkt);
         }
 
@@ -351,9 +351,9 @@ namespace qbrdge_driver_classlib
             can_pkt[5+2] = (byte)nextSeq;
             can_pkt[5+3] = 0x00; //reserved
             can_pkt[5+4] = 0x00; //reserved
-            can_pkt[5+5] = param_group_num[2]; //parameter group number
+            can_pkt[5+5] = param_group_num[0]; //parameter group number
             can_pkt[5 + 6] = param_group_num[1];
-            can_pkt[5 + 7] = param_group_num[0];
+            can_pkt[5 + 7] = param_group_num[2];
             //send CTS don't wait for ack
             byte pktId = 0;
             byte[] outData = QBSerial.MakeQBridgePacket(PacketCmdCodes.PKT_CMD_SEND_CAN, 
@@ -402,9 +402,9 @@ namespace qbrdge_driver_classlib
             //reserve
             can_pkt[5 + 4] = 0;
             //pgn
-            can_pkt[5 + 5] = param_group_num[2]; //parameter group number
+            can_pkt[5 + 5] = param_group_num[0]; //parameter group number
             can_pkt[5 + 6] = param_group_num[1];
-            can_pkt[5 + 7] = param_group_num[0];
+            can_pkt[5 + 7] = param_group_num[2];
             //send End of Msg Ack don't wait for ack
             byte pktId = 0;
             byte[] outData = QBSerial.MakeQBridgePacket(PacketCmdCodes.PKT_CMD_SEND_CAN,

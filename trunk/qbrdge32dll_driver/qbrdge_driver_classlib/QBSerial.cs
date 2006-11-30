@@ -1077,9 +1077,9 @@ namespace qbrdge_driver_classlib
                     //TP.CAM_BAM packet
                     Debug.WriteLine("BAM PKT "+portInfo.com.PortName);
                     byte[] data_pgn = new byte[3];
-                    data_pgn[0] = pktData[5+7];
+                    data_pgn[0] = pktData[5+5];
                     data_pgn[1] = pktData[5+6];
-                    data_pgn[2] = pktData[5+5];
+                    data_pgn[2] = pktData[5+7];
                     byte[] msg_size = new byte[2];
                     msg_size[0] = pktData[5 + 1];
                     msg_size[1] = pktData[5 + 2];
@@ -1120,9 +1120,9 @@ namespace qbrdge_driver_classlib
                     }
 
                     byte[] data_pgn = new byte[3];
-                    data_pgn[0] = pktData[5+7];
+                    data_pgn[0] = pktData[5+5];
                     data_pgn[1] = pktData[5+6];
-                    data_pgn[2] = pktData[5+5];
+                    data_pgn[2] = pktData[5+7]; //data_pgn in little endien format
                     byte[] msg_size = new byte[2];
                     msg_size[0] = pktData[5 + 1];
                     msg_size[1] = pktData[5 + 2];
