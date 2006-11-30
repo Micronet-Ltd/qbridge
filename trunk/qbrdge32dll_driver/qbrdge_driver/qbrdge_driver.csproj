@@ -91,6 +91,8 @@
   -->
   <PropertyGroup>
     <PostBuildEvent>copy $(TargetFileName) ..\..\..\..\TestRP1210A\TestRP1210_PC\Debug\QBridgeWinCEDriver.exe
-copy $(TargetFileName) ..\..\..\..\TestRP1210A\TestRP1210_PC\Release\QBridgeWinCEDriver.exe</PostBuildEvent>
+copy $(TargetFileName) ..\..\..\..\TestRP1210A\TestRP1210_PC\Release\QBridgeWinCEDriver.exe
+copy $(TargetFileName) ..\..\..\..\qbrdge32dll_VS\TestAppMFC\QBridgeWinCEDriver.exe
+copy $(TargetFileName) ..\..\..\..\qbrdge32dll_VS\debug\QBridgeWinCEDriver.exe</PostBuildEvent>
   </PropertyGroup>
 </Project>
