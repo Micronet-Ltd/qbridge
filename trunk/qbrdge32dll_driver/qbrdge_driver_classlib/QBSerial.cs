@@ -706,6 +706,17 @@ namespace qbrdge_driver_classlib
                 //received CAN data
                 if (pktId != lastRecvPktId)
                 {
+                    if (pktData[3] != 0xEE)
+                    {
+                        Debug.WriteLine("");
+                        Debug.Write("RECV CAN " + portInfo.com.PortName + ": ");
+                        for (int i = 0; i < pktData.Length; i++)
+                        {
+                            Debug.Write(pktData[i].ToString("X2") + ",");
+                        }
+                        Debug.WriteLine("");
+                    }
+
                     J1939PktRecv(portInfo, pktData, -1);
                     SendACKPacket(PacketAckCodes.PKT_ACK_OK, pktId, portInfo.com);
                 }
@@ -992,6 +1003,7 @@ namespace qbrdge_driver_classlib
                 if (clientInfo.available == false &&
                     clientInfo.serialInfo.com.PortName == portName &&
                     clientInfo.allowReceive &&
+                    clientInfo.isJ1939Client == false &&
                     i != ignoreClientId)
                 {
                     byte mid = pktData[4];
@@ -1063,6 +1075,7 @@ namespace qbrdge_driver_classlib
                 if (pgn[1] == 0xEC && pgn[2] == 0x00 && pktData[5] == 32)
                 {
                     //TP.CAM_BAM packet
+                    Debug.WriteLine("BAM PKT "+portInfo.com.PortName);
                     byte[] data_pgn = new byte[3];
                     data_pgn[0] = pktData[5+7];
                     data_pgn[1] = pktData[5+6];
@@ -1081,6 +1094,7 @@ namespace qbrdge_driver_classlib
                 else if (pgn[1] == 0xEC && pktData[5] == 16)
                 {
                     //TP.CM_RTS
+                    Debug.WriteLine("TP.CM_RTS PKT "+portInfo.com.PortName);
 
                     //verify claimed address of a client matches destination address (DA)
                     int clientIdx = -1;
@@ -1123,6 +1137,7 @@ namespace qbrdge_driver_classlib
                 else if (pgn[1] == 0xEB && pgn[2] == 0x00)
                 {
                     //TP.DT packet
+                    Debug.WriteLine("TP.DT PKT " + portInfo.com.PortName);
                     //check each BAM receiver
                     for (int i = 0; i < BAMRecvList.Count; i++)
                     {
@@ -1177,6 +1192,7 @@ namespace qbrdge_driver_classlib
                 else if (pgn[1] == 0xEC && pgn[2] == 0x00 && (pktData[5] == 17 || pktData[5] == 19))
                 {
                     //TP.CM_CTS or TP.CM_EndOfMsgACK packet
+                    Debug.WriteLine("TP.CM_CTS or EndOfMsgAck PKT "+portInfo.com.PortName);
                     byte[] temp = new byte[7];
                     for (int j = 0; j < 7; j++)
                     {
@@ -1290,6 +1306,7 @@ namespace qbrdge_driver_classlib
 
         private static void NewClientsJ1939ReadMessage(byte[] readMsg, string portName, int ignoreClientId)
         {
+            Debug.WriteLine("J1939 SingPkt " + portName);
             for (int i = 0; i < ClientIDManager.clientIds.Length; i++)
             {
                 if (i != ignoreClientId)
@@ -1303,11 +1320,13 @@ namespace qbrdge_driver_classlib
             ClientIDManager.ClientIDInfo clientInfo = ClientIDManager.clientIds[client];
             if (clientInfo.available == false &&
                 clientInfo.serialInfo.com.PortName == portName &&
-                clientInfo.allowReceive) 
+                clientInfo.allowReceive &&
+                clientInfo.isJ1939Client) 
             {
                 if (clientInfo.J1939Filter == false)
                 {
                     //if client is registered to recieving port then send message
+                    Debug.WriteLine("J1939 Client " + client.ToString() + " readmsg sent " + portName);
                     Support.SendClientDataPacket(UDPReplyType.readmessage,
                         client, readMsg);
                 }
@@ -1349,6 +1368,7 @@ namespace qbrdge_driver_classlib
                             &&
                             ((use_dest && jf.destAddr == msg_dest) || (use_dest == false)) )
                         {
+                            Debug.WriteLine("J1939 Client " + client.ToString() + " readmsg sent " + portName);
                             Support.SendClientDataPacket(UDPReplyType.readmessage,
                                 client, readMsg);
                             return;
@@ -1433,13 +1453,19 @@ namespace qbrdge_driver_classlib
 
                     try
                     {
-                        Debug.Write("OUT " + serialInfo.com.PortName + ": ");
-                        for (int j = 0; j < qbt.lastSentPkt.Length; j++)
+                        if (qbt.isJ1939)
                         {
-                            byte b = (byte)qbt.lastSentPkt[j];
-                            Debug.Write(b.ToString("X2") + ",");
+                            if (qbt.j1939transaction.isAddressClaim == false)
+                            {
+                                Debug.Write("OUT " + serialInfo.com.PortName + ": ");
+                                for (int j = 0; j < qbt.lastSentPkt.Length; j++)
+                                {
+                                    byte b = (byte)qbt.lastSentPkt[j];
+                                    Debug.Write(b.ToString("X2") + ",");
+                                }
+                                Debug.WriteLine("");
+                            }
                         }
-                        Debug.WriteLine("");
 
                         serialInfo.com.Write(qbt.lastSentPkt, 0, qbt.lastSentPkt.Length);
                         qbt.RestartTimer();
@@ -1562,6 +1588,17 @@ namespace qbrdge_driver_classlib
             qbt.isJ1939 = true;
             qbt.j1939transaction = new J1939Transaction();
             qbt.cmdType = PacketCmdCodes.PKT_CMD_SEND_CAN;
+
+            if (msg[3] != 0xEE)
+            {
+                Debug.WriteLine("");
+                Debug.Write("J1939 UPDTE" + sinfo.com.PortName + ": ");
+                for (int i = 0; i < msg.Length; i++)
+                {
+                    Debug.Write(Support.StringToByteArray(msg)[i].ToString() + ",");
+                }
+                Debug.WriteLine("");
+            }
 
             qbt.j1939transaction.UpdateJ1939Data(msg); //add message, process
             qbt.pktData = qbt.j1939transaction.GetCANPacket(); //get packet for current state.
