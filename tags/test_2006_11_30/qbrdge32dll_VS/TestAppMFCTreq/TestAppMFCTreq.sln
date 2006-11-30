@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 9.00
+# Visual Studio 2005
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestAppMFCTreq", "TestAppMFCTreq\TestAppMFCTreq.vcproj", "{5FA5336B-ADED-4B1D-9062-98AEACB3C959}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|TREQ (x86) = Debug|TREQ (x86)
+		Release|TREQ (x86) = Release|TREQ (x86)
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.Debug|TREQ (x86).ActiveCfg = Debug|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.Debug|TREQ (x86).Build.0 = Debug|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.Debug|TREQ (x86).Deploy.0 = Debug|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.Release|TREQ (x86).ActiveCfg = Release|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.Release|TREQ (x86).Build.0 = Release|TREQ (x86)
+		{5FA5336B-ADED-4B1D-9062-98AEACB3C959}.Release|TREQ (x86).Deploy.0 = Release|TREQ (x86)
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
