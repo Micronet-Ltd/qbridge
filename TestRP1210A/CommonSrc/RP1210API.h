@@ -25,6 +25,8 @@ public:
 	fxRP1210_GetErrorMsg pRP1210_GetErrorMsg;
 	fxRP1210_GetHardwareStatus pRP1210_GetHardwareStatus;
 	HMODULE hRP1210DLL;
+
+	CString userAPIName;
 private:
 #ifndef WINCE
 	FARPROC GetProcAddress(HMODULE hModule, LPCTSTR lpProcName);

@@ -142,129 +142,31 @@ bool TestRP1210::DoEvents() {
 	return true;
 }
 
-/************************************/
-/* TestRP1210::TestCustomMultiread */
-/**********************************/
-void TestRP1210::TestCustomMultiread(INIMgr::Devices &dev, INIMgr::Devices &dev2) {
-	int cl1 = api1->pRP1210_ClientConnect (NULL, dev.deviceID, "J1708", 0,0,0);
-	int cl2 = api1->pRP1210_ClientConnect (NULL, dev.deviceID, "J1708", 0,0,0);
-	int dev2Cl = api2->pRP1210_ClientConnect(NULL, dev2.deviceID, "J1708", 0,0,0);
+/*************************/
+/* TestRP1210::TestCustom*/
+/*************************/
+void TestRP1210::TestCustom(INIMgr::Devices &dev1, INIMgr::Devices &dev2) {
+	int cl1a = VerifyConnect(api1, dev1, "J1939");
+	int cl2a = VerifyConnect(api2, dev2, "J1939");
+	VerifyValidSendCommand (api1, SetAllFiltersToPass, _T("SetAllFiltersToPass"), cl1a, NULL, 0, true);
+	VerifyProtectAddress(api2, cl2a, 222, 20, 20); // 222 is the address.  20, 20 are the vehical system and the identiy number (parts of the name)
 
-	char multiSendFilter = TestMultisend;
-	int result = api1->pRP1210_SendCommand(SetMessageFilteringForJ1708, cl1, &multiSendFilter, 1);
-	int result2 = api1->pRP1210_SendCommand(SetMessageFilteringForJ1708, cl2, &multiSendFilter, 1);
-	//int result = api1->pRP1210_SendCommand(SetAllFiltersToPass, cl1, NULL, 0);
+	FlushReads(api1, cl1a);
+	TxBuffer tx1939(0x1aaaa, true, 4, 222, 255, "Hello ----", 10);
+	VerifiedSend(api2, cl2a, tx1939, tx1939, true);
 
-	char msg[] = { 4, TestMultisend, '*' };
-	int sendResult = api1->pRP1210_SendMessage (cl2, msg, sizeof(msg), false, true);
-	int sendResult2 = api2->pRP1210_SendMessage(dev2Cl, "\x04pHello World", 13, false, true);
-
-	char rxBuf[1024];
-	int rcvResult = api1->pRP1210_ReadMessage (cl1, rxBuf, sizeof(rxBuf), true);
-
-	if (rcvResult < 0) {
-		LogError (*api1, -rcvResult);
+	char rxBuf[500];
+	int result = VerifiedRead(api1, cl1a, rxBuf, sizeof(rxBuf), true);
+	if (result >= 0) {
+		RecvMsgPacket p(rxBuf, result);
+		char msgData[500] = {0};
+		int size = 490;
+		p.Get1939Data(msgData, size);
+		TRACE ("Received data %d bytes.  Data=%s\n", result, msgData);
 	} else {
-		rxBuf[rcvResult] = 0;
-		TRACE ("Msg 1 (%d bytes) = %s\n", rcvResult-4, rxBuf+4);
-	}
-
-	int rcvResult2= api1->pRP1210_ReadMessage (cl1, rxBuf, sizeof(rxBuf), true);
-	if (rcvResult2 >= 0) {
-		rxBuf[rcvResult2] = 0;
-		TRACE ("Msg 2 (%d bytes) = %s\n", rcvResult2-4, rxBuf+4);
-		log.LogText (_T("Got message, but shouldn't have"), Log::Red);
-	}
-
-	return;
-}
-
-/**********************************/
-/* TestRP1210::TestCustomAdvSend */
-/********************************/
-void TestRP1210::TestCustomAdvSend(INIMgr::Devices &dev) {
-	CString testName("Zero Length message");
-	char *data = NULL;
-	int len = 0;
-
-	int errClient = api1->pRP1210_ClientConnect(NULL, dev.deviceID, "J1708", 0,0,0);
-	bool failed = false;
-	if (!IsValid(errClient)) {
-		log.LogText (_T("    Error opening connection (") + testName + _T(")"), Log::Red);
-		LogError(*api1, errClient);
-		failed = true;
-	} else {
-		int result;
-		result = api1->pRP1210_SendMessage (errClient, data, len, false, true);
-		if (result != ERR_MESSAGE_NOT_SENT) {
-			log.LogText (_T("    Wrong error returned (") + testName + _T(")"), Log::Red);
-			LogError(*api1, result);
-			failed = true;
-		} else {
-			log.LogText(_T("    Passed: ") + testName);
-		}
-		
-		result = api1->pRP1210_ClientDisconnect(errClient);
-		if (!IsValid(result)) {
-			log.LogText (_T("    Error closing connection (") + testName + _T(")"), Log::Red);
-			LogError(*api1, result);
-			failed = true;
-		}
+		TRACE ("Receive error\n");
 	}
 }
-
-struct CustomResetInfo {
-	RP1210API *api2;
-	int secondaryClient;
-};
-/****************************/
-/* CustomResetSecondThread */
-/**************************/
-UINT __cdecl CustomResetSecondThread ( LPVOID pParam ) {
-	int count = 0;
-	CustomResetInfo *cri = (CustomResetInfo *)pParam;
-	RP1210API *api2 = cri->api2;
-	while (true) {
-		DWORD time = GetTickCount();
-		char basicJ1708TxBuf [] = { 4, 112, 'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', ' ', '-', '-', '-', '-' };
-
-		int result = api2->pRP1210_SendMessage(cri->secondaryClient, basicJ1708TxBuf, sizeof(basicJ1708TxBuf), false, true);
-		while (GetTickCount() < time+500) { Sleep(10); }
-	}
-	return 0;
-}
-
-
-/********************************/
-/* TestRP1210::TestCustomReset */
-/******************************/
-void TestRP1210::TestCustomReset (INIMgr::Devices &dev, INIMgr::Devices &dev2) {
-	static CustomResetInfo cri;
-	cri.secondaryClient = api2->pRP1210_ClientConnect(NULL, dev2.deviceID, "J1708", 0, 0, 0);
-	cri.api2 = api2;
-	AfxBeginThread(CustomResetSecondThread, (LPVOID)&cri, 0, 0);
-
-
-	int primaryClient = api1->pRP1210_ClientConnect (NULL, dev.deviceID, "J1708", 0,0,0);
-
-	int result = api1->pRP1210_SendCommand(ResetDevice, primaryClient, NULL, 0);
-	if (result != 0) {
-		log.LogText(_T("    Device did not reset!"), Log::Red);
-		LogError(*api1, result);
-		return;
-	}
-
-	result = api1->pRP1210_ClientConnect(NULL, dev.deviceID, "J1708", 0,0,0);
-	if (!IsValid(result)) {
-		log.LogText(_T("    MAJOR ERROR.  Did not reconnect.  Everthing else will probably fail!!!!"), Log::Red);
-		LogError (*api1, result);
-	} else {
-		api1->pRP1210_ClientDisconnect(result);
-	}
-
-	log.LogText (_T("Done"));
-}
-
 
 
 /*********************/
@@ -293,11 +195,12 @@ void TestRP1210::Test (const set<CString> &testList, vector<INIMgr::Devices> &de
 		return;
 	}
 
+	api1->userAPIName = _T("API 1");
+	api2->userAPIName = _T("API 2");
+
 // specialized tests to hone in on errors
-//TestCustomMultiread(devs[idx1], devs[idx2]);
-//TestCustomAdvSend(devs[idx1]);
-//TestCustomAdvSend(devs[idx1]);
-//TestCustomReset(devs[idx1], devs[idx2]);
+//log.LogText(_T("Custom test selected.  Checked tests will not be performed.  View Debugger output for results, they may not be logged."), Log::Blue);
+//TestCustom (devs[idx1], devs[idx2]);
 //return;
 
 	TEST("Read Version", TestReadVersion());
@@ -308,24 +211,19 @@ void TestRP1210::Test (const set<CString> &testList, vector<INIMgr::Devices> &de
 	// Setup thread for secondary J1708 communication
 // This block controls the second thread
 #if 1
-	secondaryClient = api2->pRP1210_ClientConnect(NULL, devs[idx2].deviceID, "J1708", 0, 0, 0);
+	secondaryClient = VerifyConnect(api2, devs[idx2], "J1708"); //api2->pRP1210_ClientConnect(NULL, devs[idx2].deviceID, "J1708", 0, 0, 0);
 	if (!IsValid(secondaryClient)) {
-		log.LogText (_T("    Connecting to secondary device (1708) failed"), Log::Red);
-		LogError (*api2, secondaryClient);
 		secondaryClient = -1;
 		goto end;
 	}
-	secondary1939Client = api2->pRP1210_ClientConnect(NULL, devs[idx2].deviceID, "J1939", 0, 0, 0);
+	secondary1939Client = VerifyConnect (api2, devs[idx2], "J1939");
 	if (!IsValid(secondary1939Client)) {
-		log.LogText (_T("    Connecting to secondary device (1939) failed"), Log::Red);
-		LogError (*api2, secondary1939Client);
 		secondary1939Client = -1;
 		goto end;
 	}
 	VerifyProtectAddress(api2, secondary1939Client, 222, 20, 20);
 	SetupWorkerThread (helperTxThread, SecondaryDeviceTXThread, false, _T("Secondary_TX"));
 	SetupWorkerThread (helperRxThread, SecondaryDeviceRXThread, false, _T("Secondary_RX"));
-
 
 	// Setup Primary Client
 	int primaryClient = api1->pRP1210_ClientConnect(NULL, devs[idx1].deviceID, "J1708", 0, 0, 0);
@@ -359,8 +257,10 @@ void TestRP1210::Test (const set<CString> &testList, vector<INIMgr::Devices> &de
 	sendJ1939 = true;
 	TEST("J1939 Address Claim", Test1939AddressClaim(devs[idx1], devs[idx2]));
 	TEST("J1939 Basic Read", Test1939BasicRead(devs[idx1]));
-	VerifyDisconnect(api1, secondary1939Client);
 
+	KillThreads();
+	VerifyDisconnect(api2, secondaryClient);
+	VerifyDisconnect(api2, secondary1939Client);
 
 end:
 	log.LogText(_T("Done testing"), Log::Green);
@@ -869,6 +769,8 @@ int TestRP1210::VerifyConnect(RP1210API *api, INIMgr::Devices &dev, char *protoc
 	if (!IsValid(result)) {
 		log.LogText (_T("    Connection failure"), Log::Red);
 		LogError(*api, result);
+	} else {
+		TRACE (_T("    %s connection made.  ClientID=%d, api=%s\n"), CString(protocol), result, api->userAPIName);
 	}
 	return result;
 }
@@ -877,6 +779,8 @@ int TestRP1210::VerifyConnect(RP1210API *api, INIMgr::Devices &dev, char *protoc
 /* TestRP1210::VerifyDisconnect */
 /*******************************/
 int TestRP1210::VerifyDisconnect(RP1210API *api, int clientID) {
+	TRACE (_T("    Disconnecting client %d.  api=%s\n"), clientID, api->userAPIName);
+		
 	if (!IsValid(clientID)) {
 		return -1;
 	}
@@ -1533,6 +1437,7 @@ void TestRP1210::KillThreads() {
 	DestroyThread(helperTxThread);
 	DestroyThread(helperRxThread);
 
+
 	threadsMustDie = false;
 }
 
@@ -1561,8 +1466,8 @@ UINT __cdecl TestRP1210::SecondaryDeviceTXThread( LPVOID pParam ) {
 	TestRP1210 *thisObj = (TestRP1210*)pParam;
 	int count = 0;
 
-	//TxBuffer tx1939(0x1aaaa, true, 4, 222, 255, "Hello ----", 10);
-	TxBuffer tx1939(0x1aaaa, true, 4, 222, 255, "Hello", 5);
+	TxBuffer tx1939(0x1aaaa, true, 4, 222, 255, "Hello ----", 10);
+	//TxBuffer tx1939(0x1aaaa, true, 4, 222, 255, "Hello", 5);
 
 	while (!thisObj->threadsMustDie) {
 		DWORD time = GetTickCount();
@@ -1589,11 +1494,11 @@ UINT __cdecl TestRP1210::SecondaryDeviceTXThread( LPVOID pParam ) {
 			}
 		}
 		if (thisObj->sendJ1939) {
-			/*char *txBufChar = tx1939;
+			char *txBufChar = tx1939;
 			char strBuf[24];
 			sprintf (strBuf, "%05d", count++);
 			memcpy(txBufChar + 12, strBuf+strlen(strBuf)-4, 4);
-			*/
+			
 			VerifiedSend(thisObj->api2, thisObj->secondary1939Client, tx1939, tx1939, true, 0, _T("Secondary Tx Thread"));
 		}
 
@@ -1622,8 +1527,13 @@ UINT __cdecl TestRP1210::SecondaryDeviceRXThread( LPVOID pParam ) {
 			thisObj->LogError (*(thisObj->api2), -result);
 		} else {
 			CritSection sec;
-TRACE (_T("Received %d byte message %s\n"), result, CString(buf+4));
 			thisObj->secondaryRxMsgs.push_back(RecvMsgPacket((unsigned char *)buf, result));
+int i;
+for (i = 4; i < result; i++) {
+	if (buf[i] < 32) { buf[i] = '*'; }
+	//if (buf[i] > 127) { buf[i] = '!'; }
+}
+TRACE (_T("Received %d byte message %s\n"), result, CString(buf+4));
 		}
 		Sleep(10);
 	}
