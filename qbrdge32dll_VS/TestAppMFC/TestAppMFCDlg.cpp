@@ -691,10 +691,12 @@ void CTestAppMFCDlg::OnBnClickedButton9()
 
 void CTestAppMFCDlg::OnBnClickedsendj1939msgbtn()
 {
+	for (int i = 0; i < 1; i++) {
 	char  msg[] = "\x03\xD0\x00\x83\x06\xFF\xFF\xFE\x26\x01\xFF\xFF\xFF\xFF";
 
 	short msgLen = 11;
-	rp1210SendCustomMsg(lastCom3Client, msg, msgLen, 0, 1);
+	rp1210SendCustomMsg(lastCom3Client, msg, msgLen, 1, 0);
+	}
 }
 
 void CTestAppMFCDlg::OnBnClickedSetj1708filterbtn()
@@ -939,7 +941,7 @@ void CTestAppMFCDlg::OnBnClickedsendj1939msgbtn7()
 		msg[i] = 'A';
 	}
 	msg[0] = 0x03;
-	msg[1] = (byte)0xF0;
+	msg[1] = (byte)0xEA;
 	msg[2] = 0x00;
 	msg[3] = (byte)0x03;
 	msg[4] = 0x06;
