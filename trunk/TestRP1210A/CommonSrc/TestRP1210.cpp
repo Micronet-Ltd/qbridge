@@ -769,6 +769,7 @@ int TestRP1210::VerifyConnect(RP1210API *api, INIMgr::Devices &dev, char *protoc
 	if (!IsValid(result)) {
 		log.LogText (_T("    Connection failure"), Log::Red);
 		LogError(*api, result);
+		TRACE (_T("    Connect failed.  api=%s\n"), api->userAPIName);
 	} else {
 		TRACE (_T("    %s connection made.  ClientID=%d, api=%s\n"), CString(protocol), result, api->userAPIName);
 	}
@@ -788,6 +789,7 @@ int TestRP1210::VerifyDisconnect(RP1210API *api, int clientID) {
 	if (!IsValid(result)) {
 		log.LogText (_T("    Disconnect failure"), Log::Red);
 		LogError(*api, result);
+		TRACE (_T("      ...the disconnect failed\n"));
 	}
 	return result;
 }
@@ -831,6 +833,7 @@ int TestRP1210::VerifiedRead (RP1210API *api, int clientID, char *rxBuf, int rxL
 	if (result < 0) {
 		log.LogText (_T("    Receive error"), Log::Red);
 		LogError (*api, -result);
+		TRACE (_T("    Verified read failed. Err=%d.  API=%s\n"), -result, api->userAPIName);
 	} 
 //if (result >= 0) { rxBuf[result] = 0; }
 //TRACE (_T("Verified Read.  Result=%d.  Data=%s\n"), result, (result >= 0) ? CString(rxBuf) : CString(""));
@@ -1269,6 +1272,7 @@ bool TestRP1210::VerifiedSend (RP1210API *api, int clientID, char *txBuf, int tx
 			}
 			log.LogText(msg, Log::Red);
 			LogError(*api, result);
+			TRACE ("    Verified Send failed.  API=%s\n", api->userAPIName);
 			return false;
 		}
 	}
