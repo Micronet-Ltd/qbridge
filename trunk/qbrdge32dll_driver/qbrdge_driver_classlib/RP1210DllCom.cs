@@ -51,8 +51,10 @@ namespace qbrdge_driver_classlib
 
         private static RP1210DllCom mainRP1210Com;
 
-        public static void MainStart()
+        static IconMgrBase icoMgr;
+        public static void MainStart(IconMgrBase mgr)
         {
+            icoMgr = mgr;
             mainRP1210Com = new RP1210DllCom();
         }
 
@@ -110,28 +112,30 @@ namespace qbrdge_driver_classlib
             }
         }
 
-        public static void EndProgram()
-        {
-            _DbgTrace("end program");
-            Debug.WriteLine("end program");
-            udpListener.Close();
-            try
-            {
-                aliveThread.Abort();
-            }
-            catch (Exception exp)
-            {
-                Debug.WriteLine(exp.ToString());
-            }
-            try
-            {
-                udpListenThread.Abort();
-            }
-            catch (Exception exp)
-            {
-                Debug.WriteLine(exp.ToString());
-            }
-        }
+       public static void EndProgram()
+       {
+           _DbgTrace("end program");
+           Debug.WriteLine("end program");
+           udpListener.Close();
+           try
+           {
+               aliveThread.Abort();
+           }
+           catch (Exception exp)
+           {
+               Debug.WriteLine(exp.ToString());
+           }
+           try
+           {
+               udpListenThread.Abort();
+           }
+           catch (Exception exp)
+           {
+               Debug.WriteLine(exp.ToString());
+           }
+
+           icoMgr.HideIcon();
+       } 
  
         public static void UdpListen()
         {
