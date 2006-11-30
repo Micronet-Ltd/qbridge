@@ -51,10 +51,8 @@ namespace qbrdge_driver_classlib
 
         private static RP1210DllCom mainRP1210Com;
 
-        static IconMgrBase icoMgr;
-        public static void MainStart(IconMgrBase mgr)
+        public static void MainStart()
         {
-            icoMgr = mgr;
             mainRP1210Com = new RP1210DllCom();
         }
 
@@ -133,8 +131,6 @@ namespace qbrdge_driver_classlib
             {
                 Debug.WriteLine(exp.ToString());
             }
-
-            icoMgr.HideIcon();
         }
  
         public static void UdpListen()

@@ -280,8 +280,10 @@ public:
 	}
 
 	void AddReadMsg(char *msg, int msgLen) {
+		TRACE(_T("ADDREADMSG to recvQ\r\n"));
 		recvMsgQueue.push_back(RecvMsg(msg, msgLen));
 		if (recvMsgEvents.size() != 0) {
+			TRACE(_T("SETREADEVENT\r\n"));
 			HANDLE &blocked = recvMsgEvents.front();
 			::SetEvent(blocked);
 			recvMsgEvents.pop_front();
@@ -289,6 +291,7 @@ public:
 		else if (hwnd != 0) {
 			// send notification
 			//_DbgTrace(_T("POST notify\n"));	
+			TRACE(_T("POSTREAD Notify\r\n"));
 			::PostMessage(GetHwnd(), WM_RP1210_MESSAGE_MESSAGE, 0, 0);
 		}
 	}

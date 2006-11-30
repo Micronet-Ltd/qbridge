@@ -40,7 +40,14 @@ if (lTxBufferSize <= 0) { lTxBufferSize = 8192; }
 
 	//get new clientid from wince driver, if fail then return err_hardware...
 	int cid = comPort; // send comport value, & get back client id value
-	if (QueryDriverApp(QUERY_NEW_CLIENTID_PKT, GetAssignPort(), cid, NULL, 0, 0) == false) {
+	PACKET_TYPE queryid;
+	if (connType == 1) {
+		queryid = QUERY_NEW_J1708_CLIENTID_PKT;
+	}
+	else {
+		queryid = QUERY_NEW_J1939_CLIENTID_PKT;
+	}
+	if (QueryDriverApp(queryid, GetAssignPort(), cid, NULL, 0, 0) == false) {
 		return ERR_HARDWARE_NOT_RESPONDING;
 	}
 	else {
@@ -162,7 +169,7 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 		}
 		if (ctype == Conn_J1939 && nMessageSize < 6) {
 			return ERR_INVALID_MSG_PACKET;
-		}
+		}	
 		if (ctype == Conn_J1708 && fpchClientMessage[0] > 0x07) {
 			return ERR_INVALID_MSG_PACKET;
 		}
@@ -253,11 +260,12 @@ RP1210AReturnType ReadRP1210Message (short nClientID, char far* fpchAPIMessage, 
 			//listen for event
 			HANDLE hEvent = GetReadEvent();
 			connections[nClientID].recvMsgEvents.push_back(hEvent);
+			TRACE(_T("PUSH EVENT & READ WAIT\r\n"));
 			::WaitForSingleObject(hEvent, 10000); //SetEvent for release?
 			cs.Unpause();
 			::CloseHandle(hEvent);
 			if (connections[nClientID].GetConnectionType() == Conn_Invalid) {
-				return ERR_CLIENT_DISCONNECTED;
+				return -ERR_CLIENT_DISCONNECTED;
 			}
 		}
 		else {
@@ -268,8 +276,10 @@ RP1210AReturnType ReadRP1210Message (short nClientID, char far* fpchAPIMessage, 
 	int errId = connections[nClientID].GetReadMsg(fpchAPIMessage, nBufferSize, msgLen);
 	
 	if (errId != 0) {
+		TRACE(_T("READ ERROR no MSG FOUND\r\n"));
 		return -errId;
 	}
+		TRACE(_T("READ SUCCESS\r\n"));
 	return msgLen;
 }
 
@@ -473,8 +483,11 @@ int GetSendQueryPacket(PACKET_TYPE queryId, char* sendBuf, int bufLen,
 		strncpy(sendBuf, "procid", bufLen);
 		return int(strlen(sendBuf));
 	}
-	else if (queryId == QUERY_NEW_CLIENTID_PKT) {
-		return _snprintf(sendBuf, bufLen, "%d,newclientid;", numData);
+	else if (queryId == QUERY_NEW_J1708_CLIENTID_PKT) {
+		return _snprintf(sendBuf, bufLen, "%d,newJ1708clientid;", numData);
+	}
+	else if (queryId == QUERY_NEW_J1939_CLIENTID_PKT) {
+		return _snprintf(sendBuf, bufLen, "%d,newJ1939clientid;", numData);
 	}
 	else if (queryId == QUERY_NEWPORT_PKT) {
 		strncpy(sendBuf, "init", bufLen);
@@ -563,7 +576,7 @@ bool QueryDriverApp(PACKET_TYPE queryId, int localPort,
 		//timeoutTime = 180000;
 		timeout.tv_sec = 180;
 	}
-	if (queryId == QUERY_NEW_CLIENTID_PKT) {
+	if (queryId == QUERY_NEW_J1708_CLIENTID_PKT || queryId == QUERY_NEW_J1939_CLIENTID_PKT) {
 		//timeoutTime = 60000;
 		timeout.tv_sec = 60;
 	}
@@ -686,7 +699,7 @@ bool QueryDriverApp(PACKET_TYPE queryId, int localPort,
 		}
 		//_DbgTrace(_T("Process recieved and active!\n"));
 	}
-	else if (queryId == QUERY_NEW_CLIENTID_PKT) {
+	else if (queryId == QUERY_NEW_J1708_CLIENTID_PKT || queryId == QUERY_NEW_J1939_CLIENTID_PKT) {
 		intRetVal = atoi(RecvBuf);
 		if (intRetVal < 0 || intRetVal > 127) {
 			return false;

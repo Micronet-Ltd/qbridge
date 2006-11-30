@@ -691,9 +691,9 @@ void CTestAppMFCDlg::OnBnClickedButton9()
 
 void CTestAppMFCDlg::OnBnClickedsendj1939msgbtn()
 {
-	char far* msg = "\x03" "\xF0" "\x00" "\x03" "\x06" "\x00" "\xFF" "\xFE" "\x26"
-		"\x01" "\xFF" "\xFF" "\xFF" "\xFF";
-	short msgLen = 14;
+	char  msg[] = "\x03\xD0\x00\x83\x06\xFF\xFF\xFE\x26\x01\xFF\xFF\xFF\xFF";
+
+	short msgLen = 11;
 	rp1210SendCustomMsg(lastCom3Client, msg, msgLen, 0, 1);
 }
 
