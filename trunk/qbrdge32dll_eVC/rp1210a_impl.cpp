@@ -711,7 +711,7 @@ bool QueryDriverApp(PACKET_TYPE queryId, int localPort,
 		}
 	}
 	else if (queryId == QUERY_J1708MSG_NOTIFY_PKT || queryId == QUERY_J1708MSG_BLOCK_PKT ||
-		queryId == QUERY_J1939MSG_PKT || queryId == QUERY_J1939MSG_BLOCK_PKT) {
+		queryId == QUERY_J1939MSG_NOTIFY_PKT || queryId == QUERY_J1939MSG_BLOCK_PKT) {
 		intRetVal = atoi(RecvBuf);
 	}
 	else if (queryId == QUERY_SEND_COMMAND) {
