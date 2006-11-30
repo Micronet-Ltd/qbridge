@@ -88,11 +88,11 @@ $(CDEPENDS): dpn/%.d: src/%.c
 $(SDEPENDS): dpn/%.d: src/%.S
 	@$(CC) -MM $(IFLAGS) $(defs) $< | sed 's,$*\.o,obj/& $@,g' > $@
 
-$(COBJS): obj/%.o : src/%.c dpn/%.d
+$(COBJS): obj/%.o : src/%.c dpn/%.d Makefile
 	@echo -e '\E[32m'"\033[1m$<\033[0m"
 	$(CC) $(DEBUG_FLAGS) $(OPTIMIZE) $(CFLAGS) $(IFLAGS) $(defs) -Wa,-ahld=lst/$*.lst -c -o $@ $< 
 
-$(SOBJS): obj/%.o : src/%.S dpn/%.d
+$(SOBJS): obj/%.o : src/%.S dpn/%.d Makefile
 	@echo -e '\E[32m'"\033[1m$<\033[0m"
 	$(CC) $(DEBUG_FLAGS) $(OPTIMIZE) $(CFLAGS) $(IFLAGS) $(defs) -Wa,-ahld=lst/$*.lst -c -o $@ $< 
 
