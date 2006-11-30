@@ -199,9 +199,9 @@ void TestRP1210::Test (const set<CString> &testList, vector<INIMgr::Devices> &de
 	api2->userAPIName = _T("API 2");
 
 // specialized tests to hone in on errors
-//log.LogText(_T("Custom test selected.  Checked tests will not be performed.  View Debugger output for results, they may not be logged."), Log::Blue);
-//TestCustom (devs[idx1], devs[idx2]);
-//return;
+log.LogText(_T("Custom test selected.  Checked tests will not be performed.  View Debugger output for results, they may not be logged."), Log::Blue);
+TestCustom (devs[idx1], devs[idx2]);
+return;
 
 	TEST("Read Version", TestReadVersion());
 	TEST("Connect", TestConnect(devs, idx1));
@@ -261,6 +261,8 @@ void TestRP1210::Test (const set<CString> &testList, vector<INIMgr::Devices> &de
 	KillThreads();
 	VerifyDisconnect(api2, secondaryClient);
 	VerifyDisconnect(api2, secondary1939Client);
+	secondaryClient = -1;
+	secondary1939Client = -1;
 
 end:
 	log.LogText(_T("Done testing"), Log::Green);
@@ -765,7 +767,9 @@ int TestRP1210::VerifyConnectAndPassFilters(RP1210API *api, INIMgr::Devices &dev
 /* TestRP1210::VerifyConnect */
 /****************************/
 int TestRP1210::VerifyConnect(RP1210API *api, INIMgr::Devices &dev, char *protocol) {
+TRACE ("Start connect\n");
 	int result = api->pRP1210_ClientConnect (NULL, dev.deviceID, protocol, 0,0,0);
+TRACE ("Complete connect %d\n", result);
 	if (!IsValid(result)) {
 		log.LogText (_T("    Connection failure"), Log::Red);
 		LogError(*api, result);
@@ -1412,10 +1416,12 @@ void TestRP1210::LogError (RP1210API &api, int code, COLORREF clr) {
 	}
 
 	if (api.pRP1210_GetErrorMsg(code, buf) == 0) {
+		TRACE (_T("      Error %d from api %s.  Err=%s\n"), code, api.userAPIName, CString(buf));
 		log.LogText(_T("        API returned error=") + CString(buf) + threadName, clr);
 	} else {
 		CString fmt;
 		fmt.Format(_T("        No error code for error %d") + threadName, code);
+		TRACE (_T("      Error %d from api %s.  No error string\n"), code, api.userAPIName);
 		log.LogText(fmt, clr);
 	}
 }
