@@ -143,12 +143,12 @@ namespace qbrdge_driver_classlib
                 {
                     //_DbgTrace("Udp Listen Receive");
                     data = udpListener.Receive(ref iep);
-                    //                    Debug.WriteLine("Lock udplisten parseudpp");
+                    //Debug.WriteLine("Lock udplisten parseudpp");
                     lock (Support.lockThis)
                     {
-                        //                        Debug.WriteLine("Lock2 udplisten parseudpp");
+                        //Debug.WriteLine("Lock2 udplisten parseudpp");
                         ParseUdpPacket(data, iep);
-                        //                        Debug.WriteLine("UnLock udplisten parseudpp");
+                        //Debug.WriteLine("UnLock udplisten parseudpp");
 
                     }
 
@@ -268,6 +268,7 @@ namespace qbrdge_driver_classlib
 
             if (cmd == "disconnect")
             {
+                Debug.WriteLine("DISCONNECT CLIENT: " + intNum1.ToString());
                 ClientIDManager.RemoveClientID(intNum1, iep.Port);
                 SerialPortInfo sinfo = Support.ClientToSerialPortInfo(intNum1);
                 if (sinfo != null)
@@ -318,9 +319,10 @@ namespace qbrdge_driver_classlib
                 QBSerial.AddSendJ1939Msg(intNum1, msg, false, false);
                 UdpSend("0", iep);
             }
-            else if (cmd == "newclientid")
+            else if (cmd == "newJ1708clientid" || cmd == "newJ1939clientid")
             {
                 // Assign Client ID: port, comNum
+                Debug.WriteLine("NEWCLIENT: "+cmd + " com" + intNum1.ToString());
                 SerialPortInfo sinfo = QBSerial.ComNumToSerialPortInfo(intNum1);
                 if (sinfo != null)
                 {
@@ -329,8 +331,8 @@ namespace qbrdge_driver_classlib
                         UdpSend("-1", iep);
                         return;
                     }
-                }
-                ClientIDManager.AddNewClientID(iep, intNum1);
+                }                    
+                ClientIDManager.AddNewClientID(iep, intNum1, (cmd == "newJ1939clientid"));
             }
             else if (cmd == "queryj1708clients")
             {

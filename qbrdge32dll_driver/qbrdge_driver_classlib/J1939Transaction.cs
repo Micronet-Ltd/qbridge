@@ -26,13 +26,6 @@ namespace qbrdge_driver_classlib
         public void UpdateJ1939Data(string data) {
             isComplete = false;
             isDone = false;
-            Debug.WriteLine("");
-            Debug.Write("SEND PKT: ");
-            for (int i = 0; i < data.Length; i++)
-            {
-                Debug.Write(Support.StringToByteArray(data)[i].ToString()+",");
-            }
-            Debug.WriteLine("");
 
             PendingCAN.Clear();
             PendingIDX = 0;

@@ -24,6 +24,8 @@ namespace qbrdge_driver_classlib
             public bool available = true;
             public SerialPortInfo serialInfo = null; // serial port assigned to client id
 
+            public bool isJ1939Client = false;
+
             //MID filter enable/disable
             public bool J1708MIDFilter = true;
             public byte[] J1708MIDList = new byte[0];         
@@ -104,46 +106,9 @@ namespace qbrdge_driver_classlib
         }
 
         //add new client id, return new client id or error code < 0
-        public static void AddNewClientID(IPEndPoint iep, int comNum)
+        public static void AddNewClientID(IPEndPoint iep, int comNum, bool isJ1939Client)
         {
-            string comNumStr = "COM";
-            comNumStr = comNumStr.Insert(comNumStr.Length, comNum.ToString());
-
-            SerialPortInfo sinfo = new SerialPortInfo();
-            if (QBSerial.GetSerialPortInfo(comNumStr, ref sinfo))
-            {
-
-                for (int i = 0; i < clientIds.Length; i++)
-                {
-                    if (clientIds[i].available)
-                    {                 
-                        //serial port and client id assigned immed. send reply
-                        Debug.WriteLine("Reg Serial TRUE");
-                        clientIds[i].available = false;
-                        Debug.WriteLine("cid: iepport: " + iep.Port.ToString());
-                        clientIds[i].dllInPort = iep.Port;
-                        clientIds[i].serialInfo = sinfo;
-                        clientIds[i].claimAddress = -1;
-                        clientIds[i].claimAddressName = new byte[8];
-                        clientIds[i].J1708MIDFilter = true;
-                        clientIds[i].J1708MIDList = new byte[0];
-                        clientIds[i].J1939Filter = true;
-                        clientIds[i].J1939FilterList.Clear();
-                        clientIds[i].allowReceive = true;
-                        if (sinfo.qbInitNeeded)
-                        {
-                            QBSerial.ReInitSerialPort(ref clientIds[i].serialInfo, i);
-                        }
-                        else
-                        {
-                            RP1210DllCom.UdpSend(i.ToString(), iep);
-                        }
-                        return;
-                    }
-                }
-                //no clients available
-                RP1210DllCom.UdpSend("-1", iep);
-            }
+            Debug.WriteLine("AddNewClientID isj1939: "+isJ1939Client.ToString());
 
             int clientId = -1;
             for (int i = 0; i < clientIds.Length; i++)
@@ -151,19 +116,54 @@ namespace qbrdge_driver_classlib
                 if (clientIds[i].available)
                 {
                     clientIds[i].available = false;
+                    clientIds[i].dllInPort = iep.Port;
+                    clientIds[i].claimAddress = -1;
+                    clientIds[i].claimAddressName = new byte[8];
+                    clientIds[i].J1708MIDFilter = true;
+                    clientIds[i].J1708MIDList = new byte[0];
+                    clientIds[i].J1939Filter = true;
+                    clientIds[i].J1939FilterList.Clear();
+                    clientIds[i].allowReceive = true;
+                    clientIds[i].isJ1939Client = isJ1939Client;
                     clientId = i;
                     break;
                 }
             }
             if (clientId == -1)
             {
+                Debug.WriteLine("No Clients Avail");
                 RP1210DllCom.UdpSend("-1", iep);
+                return;
             }
 
-            clientIds[clientId].dllInPort = iep.Port;
-            Debug.WriteLine("cid: iepport2: " + iep.Port.ToString());
-            // attempt to open serial port, start sequence of msgs to qbridge
-            QBSerial.RegisterSerialPort(comNumStr, clientId, iep);
+            Debug.WriteLine("New Client: " + clientId.ToString());
+
+            string comNumStr = "COM";
+            comNumStr = comNumStr.Insert(comNumStr.Length, comNum.ToString());
+
+            SerialPortInfo sinfo = new SerialPortInfo();
+            if (QBSerial.GetSerialPortInfo(comNumStr, ref sinfo))
+            {
+                Debug.WriteLine("GetSerialPortInfo OK");
+                clientIds[clientId].serialInfo = sinfo;
+
+                if (sinfo.qbInitNeeded)
+                {
+                    QBSerial.ReInitSerialPort(ref clientIds[clientId].serialInfo, clientId);
+                }
+                else
+                {
+                    RP1210DllCom.UdpSend(clientId.ToString(), iep);
+                }
+                return;
+            }
+            else
+            {
+                clientIds[clientId].dllInPort = iep.Port;
+                Debug.WriteLine("RegSerialPort cid: iepport2: " + iep.Port.ToString());
+                // attempt to open serial port, start sequence of msgs to qbridge
+                QBSerial.RegisterSerialPort(comNumStr, clientId, iep);
+            }
         }
 
         //make available slots from removed port
