@@ -234,6 +234,8 @@ namespace qbrdge_driver_classlib
             {
                 PendingIDX = data[1];
                 IDXMax = PendingIDX + data[0];
+                if (isDone == false)
+                    StartTimer();
             }
             else if (controlByte == 19 && sourceAddr == DA && destAddr == SA)
             {
@@ -258,10 +260,14 @@ namespace qbrdge_driver_classlib
         //the bampacket recieve has timed out
         public void TimeOut(Object state)
         {
-            isDone = true;
-            isComplete = false;
-            if (useRTSCTS == false)
-                isComplete = true;
+            if (isDone == false)
+            {
+                isDone = true;
+                isComplete = false;
+                if (useRTSCTS == false)
+                    isComplete = true;
+                return;
+            }
             QBSerial.CheckForCompleteJ1939();
         }
 
