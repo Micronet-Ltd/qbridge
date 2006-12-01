@@ -207,7 +207,7 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 					return ERR_CLIENT_DISCONNECTED;
 				}
 				cs.Pause();
-				::WaitForSingleObject(hEvent, 70000); //SetEvent for release?
+				::WaitForSingleObject(hEvent, 300000); //SetEvent for release?
 				cs.Unpause();
 				::CloseHandle(hEvent);
 
