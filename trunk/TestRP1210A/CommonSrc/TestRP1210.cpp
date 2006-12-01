@@ -146,26 +146,35 @@ bool TestRP1210::DoEvents() {
 /* TestRP1210::TestCustom*/
 /*************************/
 void TestRP1210::TestCustom(INIMgr::Devices &dev1, INIMgr::Devices &dev2) {
-	int cl1a = VerifyConnect(api1, dev1, "J1939");
-	int cl2a = VerifyConnect(api2, dev2, "J1939");
-	VerifyValidSendCommand (api1, SetAllFiltersToPass, _T("SetAllFiltersToPass"), cl1a, NULL, 0, true);
-	VerifyProtectAddress(api2, cl2a, 222, 20, 20); // 222 is the address.  20, 20 are the vehical system and the identiy number (parts of the name)
+	int secondaryClient = VerifyConnect(api2, dev2, "J1708"); //api2->pRP1210_ClientConnect(NULL, devs[idx2].deviceID, "J1708", 0, 0, 0);
+	int secondary1939Client = VerifyConnect (api2, dev2, "J1939");
 
-	FlushReads(api1, cl1a);
-	TxBuffer tx1939(0x1aaaa, true, 4, 222, 255, "Hello ----", 10);
-	VerifiedSend(api2, cl2a, tx1939, tx1939, true);
+	VerifyProtectAddress(api2, secondary1939Client, 222, 20, 20);
 
-	char rxBuf[500];
-	int result = VerifiedRead(api1, cl1a, rxBuf, sizeof(rxBuf), true);
+	int cl1a = VerifyConnectAndPassFilters(api1, dev1, "J1939");
+	int cl2a = VerifyConnectAndPassFilters(api2, dev2, "J1939");
+	VerifyProtectAddress(api1, cl1a, 100, 1, 1);
+	VerifyProtectAddress(api2, cl2a, 101, 1, 1);
+	TxBuffer rts1LoPGN(0x07711, false, 2, 100, 101, "This is a RTS/CTS packet 1", 26);
+
+	char rxBuf[2000];
+	FlushReads(api2, cl2a);
+	VerifiedSend(api1, cl1a, rts1LoPGN, rts1LoPGN, true);
+
+	int result = VerifiedRead(api2, cl2a, rxBuf, sizeof(rxBuf), true);
 	if (result >= 0) {
 		RecvMsgPacket p(rxBuf, result);
 		char msgData[500] = {0};
 		int size = 490;
 		p.Get1939Data(msgData, size);
-		TRACE ("Received data %d bytes.  Data=%s\n", result, msgData);
+		TRACE ("PASS Received data %d bytes.  Data=%s\n", result, msgData);
 	} else {
 		TRACE ("Receive error\n");
 	}
+
+	VerifyDisconnect(api1, cl1a);
+	VerifyDisconnect(api2, cl2a);
+
 }
 
 
@@ -221,7 +230,9 @@ return;
 		secondary1939Client = -1;
 		goto end;
 	}
+
 	VerifyProtectAddress(api2, secondary1939Client, 222, 20, 20);
+
 	SetupWorkerThread (helperTxThread, SecondaryDeviceTXThread, false, _T("Secondary_TX"));
 	SetupWorkerThread (helperRxThread, SecondaryDeviceRXThread, false, _T("Secondary_RX"));
 
@@ -254,9 +265,9 @@ return;
 
 	// 1939 Tests
 	sendJ1708 = false;
-	sendJ1939 = true;
 	TEST("J1939 Address Claim", Test1939AddressClaim(devs[idx1], devs[idx2]));
 	TEST("J1939 Basic Read", Test1939BasicRead(devs[idx1]));
+	TEST("J1939 Advanced Read", Test1939AdvancedRead(devs[idx1], devs[idx2]));
 
 	KillThreads();
 	VerifyDisconnect(api2, secondaryClient);
@@ -767,9 +778,7 @@ int TestRP1210::VerifyConnectAndPassFilters(RP1210API *api, INIMgr::Devices &dev
 /* TestRP1210::VerifyConnect */
 /****************************/
 int TestRP1210::VerifyConnect(RP1210API *api, INIMgr::Devices &dev, char *protocol) {
-TRACE ("Start connect\n");
 	int result = api->pRP1210_ClientConnect (NULL, dev.deviceID, protocol, 0,0,0);
-TRACE ("Complete connect %d\n", result);
 	if (!IsValid(result)) {
 		log.LogText (_T("    Connection failure"), Log::Red);
 		LogError(*api, result);
@@ -1276,7 +1285,7 @@ bool TestRP1210::VerifiedSend (RP1210API *api, int clientID, char *txBuf, int tx
 			}
 			log.LogText(msg, Log::Red);
 			LogError(*api, result);
-			TRACE ("    Verified Send failed.  API=%s\n", api->userAPIName);
+			TRACE (_T("    Verified Send failed.  API=%s\n"), api->userAPIName);
 			return false;
 		}
 	}
@@ -1336,12 +1345,14 @@ void TestRP1210::Test1939AddressClaim (INIMgr::Devices &dev1, INIMgr::Devices &d
 /********************************/
 void TestRP1210::Test1939BasicRead (INIMgr::Devices &dev) {
 	log.LogText (_T("Testing: ReadMessage(J1939)"), Log::Blue);
-
-	int cl1a = VerifyConnectAndPassFilters(api1, dev, "J1939");
-	
-	char buf[256];
+	int cl1a = -1;
 	int i;
 	int j;
+	sendJ1939 = true;
+
+	cl1a = VerifyConnectAndPassFilters(api1, dev, "J1939");
+	
+	char buf[500];
 	for (j = 0; j < 2; j++) {
 		CString state = (j == 0) ? _T("Blocking") : _T("Non-Blocking");
 		bool blocking = j == 0;
@@ -1355,7 +1366,7 @@ void TestRP1210::Test1939BasicRead (INIMgr::Devices &dev) {
 				continue;
 			}
 			RecvMsgPacket p((unsigned char *)buf, result);
-			if (p.GetPGN() == 0x1aaaa) {
+			if (p.GetPGN() == 0x1aabb) {
 				tickTimeStamps[i] = (DWORD)(((__int64)p.timeStamp * (__int64)dev.timeStampWeight) / 1000); // Normalize to milliseconds
 				// got what we are looking for.
 				i++;
@@ -1364,14 +1375,18 @@ void TestRP1210::Test1939BasicRead (INIMgr::Devices &dev) {
 				TxBuffer tx1939(0x1aaaa, true, 4, 254, 255, "Hello ----", 10);
 				if ((p.GetSource() != 222) || (p.GetDest() != 255)) {
 					log.LogText(_T("    Bad source or destination address"), Log::Red);
+					TRACE (_T("    Dissect=%s\n"), p.Dissect1939());
 				}
 
-				char buf[256];
-				int leng = sizeof(buf);
-				p.Get1939Data(buf, leng);
-				if (memcmp(buf, "Hello", 5) != 0) {
+				char dataBuf[256];
+				int leng = sizeof(dataBuf);
+				p.Get1939Data(dataBuf, leng);
+				if (memcmp(dataBuf, "Hello", 5) != 0) {
 					log.LogText(_T("    Bad data"), Log::Red);
 				}
+			} else {
+				TRACE ("Received bad PGN.  PGN=%06x\n", p.GetPGN());
+				TRACE (_T("    Dissect=%s\n"), p.Dissect1939());
 			}
 		}
 		if (i == 3) {
@@ -1402,6 +1417,136 @@ void TestRP1210::Test1939BasicRead (INIMgr::Devices &dev) {
 	}
 
 	VerifyDisconnect(api1, cl1a);
+}
+
+/*************************************/
+/* TestRP1210::Test1939AdvancedRead */
+/***********************************/
+void TestRP1210::Test1939AdvancedRead(INIMgr::Devices &dev1, INIMgr::Devices &dev2) {
+	log.LogText (_T("Testing: Advanced Read(J1939)"), Log::Blue);
+	sendJ1939 = false;
+
+	int cl1a = VerifyConnectAndPassFilters(api1, dev1, "J1939");
+	int cl2a = VerifyConnectAndPassFilters(api2, dev2, "J1939");
+
+	VerifyProtectAddress(api1, cl1a, 100, 1, 1);
+	VerifyProtectAddress(api2, cl2a, 101, 1, 1);
+
+// BAM hi/lo pgn
+// broad (short) hi/low PGN
+// RTS lo pgn only
+// normal hi/low pgn
+
+	TxBuffer bam1LoPGN(0x09911, true, 4, 100, 255, "This is a BAM packet 1 lo pgn", 29);
+	TxBuffer bam2LoPGN(0x09922, true, 4, 101, 255, "This is a BAM packet 2 lo pgn", 29);
+	TxBuffer bam1HiPGN(0x0F911, true, 4, 100, 255, "This is a BAM packet 1 hi pgn", 29);
+	TxBuffer bam2HiPGN(0x0F922, true, 4, 101, 255, "This is a BAM packet 2 hi pgn", 29);
+	TxBuffer broad1LoPGN(0x08811, true, 3, 100, 255, "brd 1l", 6); 
+	TxBuffer broad2LoPGN(0x08822, true, 3, 100, 255, "brd 2l", 6);
+	TxBuffer broad1HiPGN(0x0F811, true, 3, 100, 255, "brd 1h", 6); 
+	TxBuffer broad2HiPGN(0x0F822, true, 3, 100, 255, "brd 2h", 6);
+	TxBuffer rts1LoPGN(0x07711, false, 2, 100, 101, "This is a RTS/CTS packet 1", 26);
+	TxBuffer rts2LoPGN(0x07722, false, 2, 101, 100, "This is a RTS/CTS packet 2", 26);
+	TxBuffer norm1LoPGN(0x06611, false, 1, 100, 101, "norm 1l", 7);
+	TxBuffer norm2LoPGN(0x06622, false, 1, 101, 100, "norm 2l", 7);
+	TxBuffer norm1HiPGN(0x0F611, false, 1, 100, 101, "norm 1h", 7);
+	TxBuffer norm2HiPGN(0x0F622, false, 1, 101, 100, "norm 2h", 7);
+	char longBuf[1785];
+	for (int i = 0; i < sizeof(longBuf); i++) { longBuf[i] = 64 + i % 32; }
+	TxBuffer long1(0x05511, false, 5, 100, 101, longBuf, sizeof(longBuf));
+	TxBuffer long2(0x05511, false, 5, 100, 101, longBuf, sizeof(longBuf));
+
+	// the BAM must be the first and second tests!!!!!
+	TxBuffer * buf1[] = { &bam1LoPGN, &bam1LoPGN, &broad1LoPGN, &broad1HiPGN, &rts1LoPGN, &norm1LoPGN, &norm1HiPGN, &long1 };
+	TxBuffer * buf2[] = { &bam2LoPGN, &bam2LoPGN, &broad2LoPGN, &broad2HiPGN, &rts2LoPGN, &norm2LoPGN, &norm2HiPGN, &long2 };
+	
+	bool passedLoop = true;
+	for (int j = 0; j < 2; j++) {
+		RP1210API * rxAPI;
+		RP1210API * txAPI;
+		int rxClient;
+		int txClient;
+		TxBuffer **theBuf = (j == 0) ? buf1 : buf2;
+		int count = (j == 0) ? sizeof(buf1)/sizeof(buf1[0]) : sizeof(buf2)/sizeof(buf2[0]);
+		if (j == 0) {
+			rxAPI = api2;
+			txAPI = api1;
+			rxClient = cl2a;
+			txClient = cl1a;
+		} else {
+			rxAPI = api1;
+			txAPI = api2;
+			rxClient = cl1a;
+			txClient = cl2a;
+		}
+		for (int i = 0; i < count; i++) {
+			char rxBuf[2000];
+			FlushReads(rxAPI, rxClient);
+			if (!VerifiedSend(txAPI, txClient, *(theBuf[i]), *(theBuf[i]), true)) {
+				TRACE ("!!!!!!!!!!!!!!!!!!!!!!!!!Error %d, %d\n", j, i);
+			}
+			int size = VerifiedRead(rxAPI, rxClient, rxBuf, sizeof(rxBuf), true);
+			if (size >= 0) {
+				int messageSize = size-4;
+				char *messageBuf = rxBuf+4;
+				// OK, one bit is not preserved in broadcasts.  I account for this by not comparing that byte
+				bool equal = (messageSize == int(*(theBuf[i])));
+				if (equal) {
+					// this is a pretty complex series of stuff
+					if (i < 2) { // BAM
+						equal = equal && (memcmp(*(theBuf[i]), messageBuf, 3) == 0);
+						equal = equal && (memcmp((char *)(*(theBuf[i]))+4, messageBuf+4, messageSize-4) == 0);
+						equal = equal && ((*theBuf[i])[3] & 0x7F) == (messageBuf[3] & 0x7F);
+					} else {
+						RecvMsgPacket p(rxBuf, size);
+						if (((p.GetPGN() & 0x00FF00) >> 8) >= 240) {
+							// Hi PGN case.  PGNs should match, but destinations will not
+							equal = equal && (memcmp((char *)(*(theBuf[i]))+0, messageBuf+0, 3) == 0);
+							equal = equal && (memcmp((char *)(*(theBuf[i]))+6, messageBuf+6, messageSize-6) == 0);
+							equal = equal && ((*theBuf[i])[3] & 0x7F) == (messageBuf[3] & 0x7F);
+							equal = equal && (*theBuf[i])[4] == messageBuf[4];
+						} else {
+							// Lo PGN case.  Only 2 most significant bytes of PGN will match.  Destination will match
+							equal = equal && (memcmp((char *)(*(theBuf[i]))+1, messageBuf+1, 2) == 0);
+							equal = equal && (memcmp((char *)(*(theBuf[i]))+4, messageBuf+4, messageSize-4) == 0);
+							equal = equal && ((*theBuf[i])[3] & 0x7F) == (messageBuf[3] & 0x7F);
+						}
+					}
+				}
+
+				if (!equal) {
+					CString msg;
+					msg.Format (_T("    Transmit/Receive mismatch.  TxSize=%d, RxSize=%d.  Index=%d, %d"), int(*(theBuf[i])), messageSize, j, i);
+					log.LogText (msg, Log::Red);
+					passedLoop = false;
+				}
+			} else {
+				CString msg;
+				msg.Format(_T("   Unspecified failure at index %d,%d"), j, i);
+				log.LogText (msg, Log::Red);
+				passedLoop = false;
+			}
+		}
+	}
+
+	if (passedLoop) {
+		log.LogText(_T("    Passed series of misc transfers"));
+	} else {
+		log.LogText(_T("    Failed series of misc transfers"));
+	}
+	// still to test -- cancel during receive
+	// Hi PGN RTS/CTS (not allowed)
+
+	// insufficient buffer
+
+	// roll up multiread here?  Probably do a special function that each multiread calls
+
+	// filter tests are going to be nasty.
+
+
+	VerifyDisconnect(api1, cl1a);
+	VerifyDisconnect(api2, cl2a);
+
 }
 
 /*************************/
@@ -1466,6 +1611,8 @@ void TestRP1210::DestroyThread(CWinThread *&thread) {
 		delete thread;
 		thread = NULL;
 	}
+
+
 }
 
 
@@ -1476,7 +1623,7 @@ UINT __cdecl TestRP1210::SecondaryDeviceTXThread( LPVOID pParam ) {
 	TestRP1210 *thisObj = (TestRP1210*)pParam;
 	int count = 0;
 
-	TxBuffer tx1939(0x1aaaa, true, 4, 222, 255, "Hello ----", 10);
+	TxBuffer tx1939(0x1aabb, true, 4, 222, 255, "Hello ----", 10);
 	//TxBuffer tx1939(0x1aaaa, true, 4, 222, 255, "Hello", 5);
 
 	while (!thisObj->threadsMustDie) {
@@ -1567,3 +1714,15 @@ UINT __cdecl TestRP1210::KillSpecifiedConnection( LPVOID pParam ) {
 	return 0;
 }
 
+
+/*******************************/
+/* RecvMsgPacket::Dissect1939 */
+/*****************************/
+CString RecvMsgPacket::Dissect1939() {
+	CString retVal;
+	char msgData[256] = {0};
+	int size = 250;
+	Get1939Data(msgData, size);
+	retVal.Format (_T("PGN=%06X  Source=%02x(%d)  Dest=%02X(%d)  Data=%s  Raw=%s"), GetPGN(), GetSource(), GetSource(), GetDest(), GetDest(), CString(msgData), ArrayAsHex((char *)(&(*data.begin())) , (int)data.size()));
+	return retVal;
+}
