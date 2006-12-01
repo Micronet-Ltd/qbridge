@@ -3,6 +3,8 @@ Microsoft Visual Studio Solution File, Format Version 9.00
 # Visual Studio 2005
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "QBridgeDLL", "qbrdge32dll\QBridgeDLL.vcproj", "{ECE61C37-D242-423C-A83B-20513376C6FF}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestAppMFC", "TestAppMFC\TestAppMFC.vcproj", "{EB73C9F7-0C8A-439A-B70C-A39474761146}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -47,6 +49,24 @@ Global
 		{ECE61C37-D242-423C-A83B-20513376C6FF}.TreqDebug|TREQ (x86).Deploy.0 = TreqDebug|TREQ (x86)
 		{ECE61C37-D242-423C-A83B-20513376C6FF}.TreqDebug|Win32.ActiveCfg = TreqDebug|Win32
 		{ECE61C37-D242-423C-A83B-20513376C6FF}.TreqDebug|Win32.Build.0 = TreqDebug|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.Debug|Any CPU.ActiveCfg = Debug|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.Debug|Mixed Platforms.ActiveCfg = Debug|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.Debug|Mixed Platforms.Build.0 = Debug|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.Debug|TREQ (x86).ActiveCfg = Debug|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.Debug|Win32.ActiveCfg = Debug|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.Debug|Win32.Build.0 = Debug|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.Release|Any CPU.ActiveCfg = Release|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.Release|Mixed Platforms.ActiveCfg = Release|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.Release|Mixed Platforms.Build.0 = Release|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.Release|TREQ (x86).ActiveCfg = Release|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.Release|Win32.ActiveCfg = Release|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.Release|Win32.Build.0 = Release|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.TreqDebug|Any CPU.ActiveCfg = Debug|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.TreqDebug|Mixed Platforms.ActiveCfg = Debug|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.TreqDebug|Mixed Platforms.Build.0 = Debug|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.TreqDebug|TREQ (x86).ActiveCfg = Debug|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.TreqDebug|Win32.ActiveCfg = Debug|Win32
+		{EB73C9F7-0C8A-439A-B70C-A39474761146}.TreqDebug|Win32.Build.0 = Debug|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
