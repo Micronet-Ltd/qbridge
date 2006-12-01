@@ -100,6 +100,7 @@ struct RecvMsgPacket {
 		copy (data.begin()+6, data.begin()+leng+6, buf);
 		return int(data.size());
 	}
+	CString Dissect1939();
 };
 
 
@@ -171,6 +172,7 @@ private:
 
 	void Test1939AddressClaim (INIMgr::Devices &dev1, INIMgr::Devices &dev2);
 	void Test1939BasicRead (INIMgr::Devices &dev);
+	void Test1939AdvancedRead(INIMgr::Devices &dev1, INIMgr::Devices &dev2);
 
 	enum BlockType { BLOCK_UNTIL_DONE = 0, POST_MESSAGE = 1, RETURN_BEFORE_COMPLETION = 2 };
 	static bool VerifyProtectAddress (RP1210API *api, int clientID, int address, int vehicalSystem, int identityNum, BlockType block = BLOCK_UNTIL_DONE, int expectedError = 0); 
