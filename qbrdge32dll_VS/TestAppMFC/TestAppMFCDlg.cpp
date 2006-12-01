@@ -898,7 +898,7 @@ void CTestAppMFCDlg::OnBnClickedsendj1939msgbtn6()
 	char far* msg = "\x03" "\xF0" "\x00" "\x03" "\x06" "\x08" "\xFF" "\xFE" "\x26"
 		"\x01" "A" "Aafdsdafds" "Adfdsf" "Afsd" "ABDADVB";
 	short msgLen = 24;
-	rp1210SendCustomMsg(lastCom3Client, msg, msgLen, 0, 1);
+	rp1210SendCustomMsg(lastCom3Client, msg, msgLen, 1, 0);
 
 	CString dbg;
 	char buffer[65];

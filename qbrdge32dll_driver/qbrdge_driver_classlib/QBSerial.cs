@@ -906,7 +906,7 @@ namespace qbrdge_driver_classlib
                         }
                         else
                         {
-                            portInfo.QBTransactionSent.RemoveAt(i);
+                            portInfo.QBTransactionSent.RemoveAt(i - portInfo.QBTransactionNew.Count);
                         }
                         i--;
                     }
@@ -1192,7 +1192,14 @@ namespace qbrdge_driver_classlib
                 else if (pgn[1] == 0xEC && pgn[2] == 0x00 && (pktData[5] == 17 || pktData[5] == 19))
                 {
                     //TP.CM_CTS or TP.CM_EndOfMsgACK packet
-                    Debug.WriteLine("TP.CM_CTS or EndOfMsgAck PKT "+portInfo.com.PortName);
+                    if (pktData[5] == 17)
+                    {
+                        Debug.WriteLine("TP.CM_CTS " + portInfo.com.PortName);
+                    }
+                    else
+                    {
+                        Debug.WriteLine("EndOfMsgAck PKT " + portInfo.com.PortName);
+                    }
                     byte[] temp = new byte[7];
                     for (int j = 0; j < 7; j++)
                     {
@@ -1212,8 +1219,11 @@ namespace qbrdge_driver_classlib
                         }
                         if (qt.isJ1939)
                         {
-                            qt.j1939transaction.ProcessCAN(
-                                SA, DA, pktData[5], temp);
+                            if (qt.j1939transaction.IsDone() == false)
+                            {
+                                qt.j1939transaction.ProcessCAN(
+                                    SA, DA, pktData[5], temp);
+                            }
                         }
                         if (qt.j1939transaction.IsDone())
                         {
@@ -1230,6 +1240,11 @@ namespace qbrdge_driver_classlib
                                 portInfo.QBTransactionSent.RemoveAt(i);
                             }
                             i--;
+                            if (pktData[5] == 19)
+                            {
+                                //EndOfMsgAck... only process one
+                                return;
+                            }
                         }
                         else
                         {
@@ -1455,7 +1470,7 @@ namespace qbrdge_driver_classlib
                     {
                         if (qbt.isJ1939)
                         {
-                            if (qbt.j1939transaction.isAddressClaim == false)
+                            if (qbt.j1939transaction.isAddressClaim == false && qbt.j1939transaction.IsDone() == false)
                             {
                                 Debug.Write("OUT " + serialInfo.com.PortName + ": ");
                                 for (int j = 0; j < qbt.lastSentPkt.Length; j++)
@@ -1466,9 +1481,18 @@ namespace qbrdge_driver_classlib
                                 Debug.WriteLine("");
                             }
                         }
-
-                        serialInfo.com.Write(qbt.lastSentPkt, 0, qbt.lastSentPkt.Length);
-                        qbt.RestartTimer();
+                        if (qbt.isJ1939) {
+                            if (qbt.j1939transaction.IsDone() == false)
+                            {
+                                serialInfo.com.Write(qbt.lastSentPkt, 0, qbt.lastSentPkt.Length);
+                                qbt.RestartTimer();
+                            }
+                        }
+                        else
+                        {
+                            serialInfo.com.Write(qbt.lastSentPkt, 0, qbt.lastSentPkt.Length);
+                            qbt.RestartTimer();
+                        }
                         serialInfo.QBTransactionSent.Add(qbt);
                     }
                     catch (Exception exp)
@@ -1647,6 +1671,14 @@ namespace qbrdge_driver_classlib
                 if (qbt.numRetries > 0 && 
                     ClientIDManager.clientIds[qbt.clientId].available == false)
                 {
+                    if (qbt.isJ1939)
+                    {
+                        if (qbt.j1939transaction.IsDone())
+                        {
+                            qbt.StopTimer();
+                            return;
+                        }
+                    }
                     SerialPort com = Support.ClientToSerialPort(qbt.clientId);
 
                     Debug.Write("OUT " + com.PortName + ": ");
