@@ -176,6 +176,10 @@ namespace qbrdge_driver_classlib
         int IDXMax = 0; //used for RTS/CTS only
 
         public byte[] GetCANPacket() {
+            if (isDone)
+            {
+                return new byte[0];
+            }
             if (useRTSCTS == false)
             {
                 if (PendingIDX >= PendingCAN.Count)
@@ -235,6 +239,7 @@ namespace qbrdge_driver_classlib
             {
                 isDone = true;
                 isComplete = true;
+                StopTimer();
             }
             return;       
         }
@@ -307,7 +312,7 @@ namespace qbrdge_driver_classlib
 
         public int client_idx; //client number that has claimed DA
 
-        private const int PktTimeout = 8000; //milliseconds
+        private const int PktTimeout = 1500; //milliseconds
 
         private int nextSeq = 1; //next expected Seq number in DP packet.
         private bool isvalid = true;
@@ -459,7 +464,9 @@ namespace qbrdge_driver_classlib
                 if (seqNum > nextSeq)
                 {
                     //resend CTS
-                    SendCTSPacket();
+                    //Debug.WriteLine("RESEND CTS!!");
+                    //SendCTSPacket();
+                    StartTimer();
                 }
                 return iscomplete;
             }
@@ -507,7 +514,9 @@ namespace qbrdge_driver_classlib
             if (num_retries > 0)
             {
                 num_retries--;
+                Debug.WriteLine("TIMEOUT RESEND CTS "+port_info.com.PortName);
                 SendCTSPacket();
+                StartTimer();
             }
             else
             {
