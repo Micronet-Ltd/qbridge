@@ -9,7 +9,7 @@ namespace qbrdge_driver_classlib
     {
         //keep track of reply from comports, if no reply recieved handle appropriately
         public const int ackReplyLimit = 10000; // milliseconds
-        public const int j1708ConfirmLimit = 20000; // 1 minute
+        public const int j1708ConfirmLimit = 40000; // 1 minute
 
         public static System.Object lockThis = new Object();
 

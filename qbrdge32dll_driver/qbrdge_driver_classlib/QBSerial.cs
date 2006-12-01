@@ -22,7 +22,7 @@ namespace qbrdge_driver_classlib
 
         public int lastRecvPktId = 0;
 
-        public byte[] inBuff = new byte[1000];
+        public byte[] inBuff = new byte[10000];
         public int inBuffLen = 0;
 
         public List<QBTransaction> QBTransactionNew = new List<QBTransaction>();
@@ -117,6 +117,7 @@ namespace qbrdge_driver_classlib
             if (com == null)
             {
                 com = new SerialPort(comNum, 115200, Parity.None, 8, StopBits.One);
+                com.ReadBufferSize = 4096;
                 try
                 {
                     com.Open();
@@ -473,9 +474,10 @@ namespace qbrdge_driver_classlib
             SerialPortInfo portInfo = null;
             try
             {
-                byte[] inData = new byte[300];
+                int rxSize = com.BytesToRead * 2;
+                byte[] inData = new byte[rxSize];
                 com.ReadTimeout = 200;
-                int inDataLen = com.Read(inData, 0, 300);
+                int inDataLen = com.Read(inData, 0, rxSize);
                 
                 // Show all the incoming data in the port's buffer
                 Debug.Write(com.PortName + " Data: ");
@@ -590,7 +592,7 @@ namespace qbrdge_driver_classlib
                 else
                 {
                     qbt.timePeriod = Support.j1708ConfirmLimit;
-                    qbt.numRetries = 1;
+                    qbt.numRetries = 0;
                     qbt.RestartTimer();
                     qbt.pktId = 0;
                     qbt.confirmId = j1708pktId;

@@ -310,15 +310,15 @@ namespace qbrdge_driver_classlib
             tot_num_pkts = numPkts;
             max_pkt_send = maxPktSend;
             port_info = portInfo;
-            num_retries = 3;
+            num_retries = 20;
             nextSeq = 1;
             client_idx = clientidx;
-            SendCTSPacket();
+            SendCTSPacket(false);
         }
 
         public int client_idx; //client number that has claimed DA
 
-        private const int PktTimeout = 1500; //milliseconds
+        private int PktTimeout = 60000; //milliseconds
 
         private int nextSeq = 1; //next expected Seq number in DP packet.
         private bool isvalid = true;
@@ -338,7 +338,7 @@ namespace qbrdge_driver_classlib
         private byte[] main_data = new byte[0];
         private byte num_retries;
 
-        private void SendCTSPacket()
+        private void SendCTSPacket(bool isResend)
         {
             byte[] can_pkt = new byte[5 + 8];
             byte R_DP = 0x00;
@@ -356,8 +356,15 @@ namespace qbrdge_driver_classlib
             //control byte
             can_pkt[5+0] = 17;
             //max number of packets that can be sent
-            can_pkt[5 + 1] = max_pkt_send;
-            nextCTS = nextSeq + max_pkt_send;
+            if (isResend)
+            {
+                can_pkt[5 + 1] = 1;
+            }
+            else
+            {
+                can_pkt[5 + 1] = max_pkt_send;
+                nextCTS = nextSeq + max_pkt_send;
+            }
             //next packet
             can_pkt[5+2] = (byte)nextSeq;
             can_pkt[5+3] = 0x00; //reserved
@@ -500,7 +507,7 @@ namespace qbrdge_driver_classlib
             nextSeq++;
             if (nextSeq == nextCTS && iscomplete == false)
             {
-                SendCTSPacket();
+                SendCTSPacket(false);
             }
             if (iscomplete == false)
             {
@@ -520,8 +527,9 @@ namespace qbrdge_driver_classlib
             if (num_retries > 0)
             {
                 num_retries--;
+                PktTimeout = PktTimeout + 2000;
                 Debug.WriteLine("TIMEOUT RESEND CTS "+port_info.com.PortName);
-                SendCTSPacket();
+                SendCTSPacket(true);
                 StartTimer();
             }
             else
