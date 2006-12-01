@@ -98,7 +98,7 @@ struct RecvMsgPacket {
 			leng = int(data.size()-6);
 		}
 		copy (data.begin()+6, data.begin()+leng+6, buf);
-		return int(data.size());
+		return int(data.size()) - 6;
 	}
 	CString Dissect1939();
 };
@@ -192,6 +192,7 @@ private:
 	void TestFilterStatesOnOffMessagePassOnOff(INIMgr::Devices &dev, int primaryClient);
 	void TestFilters(INIMgr::Devices &dev, int primaryClient);
 
+	void TestGenericMultiread(INIMgr::Devices &dev, bool isJ1708);
 	void TestCustom (INIMgr::Devices &dev1, INIMgr::Devices &dev2);
 
 
