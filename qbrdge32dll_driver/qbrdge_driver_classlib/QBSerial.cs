@@ -567,7 +567,7 @@ namespace qbrdge_driver_classlib
                 idx++;
             }
 
-            Debug.WriteLine("pkt valid recv");
+            //Debug.WriteLine("pkt valid recv");
 
             if (cmdType == PacketCmdCodes.PKT_CMD_ACK &&
                 ackCode == PacketAckCodes.PKT_ACK_OK &&
