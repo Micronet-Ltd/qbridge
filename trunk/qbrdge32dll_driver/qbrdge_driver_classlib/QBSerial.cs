@@ -20,6 +20,8 @@ namespace qbrdge_driver_classlib
         }
         public SerialPort com;
 
+        public int lastRecvPktId = 0;
+
         public byte[] inBuff = new byte[1000];
         public int inBuffLen = 0;
 
@@ -465,7 +467,6 @@ namespace qbrdge_driver_classlib
             }
         }
 
-        private static int lastRecvPktId = 0;
         private static void DataReceived(object sender)
         {
             SerialPort com = (SerialPort)sender;
@@ -566,7 +567,7 @@ namespace qbrdge_driver_classlib
                 idx++;
             }
 
-            //Debug.WriteLine("pkt valid recv");
+            Debug.WriteLine("pkt valid recv");
 
             if (cmdType == PacketCmdCodes.PKT_CMD_ACK &&
                 ackCode == PacketAckCodes.PKT_ACK_OK &&
@@ -690,7 +691,7 @@ namespace qbrdge_driver_classlib
             else if (cmdType == PacketCmdCodes.PKT_CMD_RECV_J1708)
             {
                 //received j1708 data
-                if (pktId != lastRecvPktId)
+                if (pktId != portInfo.lastRecvPktId)
                 {
                     J1708PktRecv(portInfo.com.PortName, pktData, -1);
                     SendACKPacket(PacketAckCodes.PKT_ACK_OK, pktId, portInfo.com);
@@ -699,12 +700,12 @@ namespace qbrdge_driver_classlib
                 {
                     SendACKPacket(PacketAckCodes.PKT_ACK_DUPLICATE_PACKET, pktId, portInfo.com);
                 }
-                lastRecvPktId = pktId;
+                portInfo.lastRecvPktId = pktId;
             }
             else if (cmdType == PacketCmdCodes.PKT_CMD_RECV_CAN)
             {
                 //received CAN data
-                if (pktId != lastRecvPktId)
+                if (pktId != portInfo.lastRecvPktId)
                 {
                     if (pktData[3] != 0xEE)
                     {
@@ -724,7 +725,7 @@ namespace qbrdge_driver_classlib
                 {
                     SendACKPacket(PacketAckCodes.PKT_ACK_DUPLICATE_PACKET, pktId, portInfo.com);
                 }
-                lastRecvPktId = pktId;
+                portInfo.lastRecvPktId = pktId;
             }
             else if (cmdType == PacketCmdCodes.PKT_CMD_ACK &&
                 ackCode == PacketAckCodes.PKT_ACK_OK &&
@@ -1069,8 +1070,8 @@ namespace qbrdge_driver_classlib
             }
             pgn[2] = (byte)(P_R_DP & 0x03);
             how_priority = (byte)(((byte)P_R_DP / 2 / 2) & 0x07);
-
-            //Check if it is a new BAM transfer
+            
+            //Check if it is a new BAM or RTS/CTStransfer
             if ((pktData.Length - 5) == 8) {
                 if (pgn[1] == 0xEC && pgn[2] == 0x00 && pktData[5] == 32)
                 {
@@ -1616,7 +1617,7 @@ namespace qbrdge_driver_classlib
             if (msg[3] != 0xEE)
             {
                 Debug.WriteLine("");
-                Debug.Write("J1939 UPDTE" + sinfo.com.PortName + ": ");
+                Debug.Write("J1939 UPDTE " + sinfo.com.PortName + ": ");
                 for (int i = 0; i < msg.Length; i++)
                 {
                     Debug.Write(Support.StringToByteArray(msg)[i].ToString() + ",");
@@ -1633,6 +1634,11 @@ namespace qbrdge_driver_classlib
             {
                 //need claimed address for RTS/CTS
                 return -(int)RP1210ErrorCodes.ERR_ADDRESS_NEVER_CLAIMED;
+            }
+
+            if (qbt.j1939transaction.useRTSCTS && msg[1] >= 240)
+            {
+                return -(int)RP1210ErrorCodes.ERR_INVALID_MSG_PACKET;
             }
 
             qbt.numRetries = 2;
