@@ -155,11 +155,15 @@ void TestRP1210::TestCustom(INIMgr::Devices &dev1, INIMgr::Devices &dev2) {
 	int cl2a = VerifyConnectAndPassFilters(api2, dev2, "J1939");
 	VerifyProtectAddress(api1, cl1a, 100, 1, 1);
 	VerifyProtectAddress(api2, cl2a, 101, 1, 1);
-	TxBuffer rts1LoPGN(0x07711, false, 2, 100, 101, "This is a RTS/CTS packet 1", 26);
+
+//	TxBuffer rts1LoPGN(0x07711, false, 2, 100, 101, "This is a RTS/CTS packet 1", 26);
+	char longBuf[1785];
+	for (int i = 0; i < sizeof(longBuf); i++) { longBuf[i] = 64 + i % 32; }
+	TxBuffer long1(0x05511, false, 5, 100, 101, longBuf, sizeof(longBuf));
 
 	char rxBuf[2000];
 	FlushReads(api2, cl2a);
-	VerifiedSend(api1, cl1a, rts1LoPGN, rts1LoPGN, true);
+	VerifiedSend(api1, cl1a, long1, long1, true);
 
 	int result = VerifiedRead(api2, cl2a, rxBuf, sizeof(rxBuf), true);
 	if (result >= 0) {
@@ -211,7 +215,7 @@ void TestRP1210::Test (const set<CString> &testList, vector<INIMgr::Devices> &de
 log.LogText(_T("Custom test selected.  Checked tests will not be performed.  View Debugger output for results, they may not be logged."), Log::Blue);
 TestCustom (devs[idx1], devs[idx2]);
 return;
-
+////
 	TEST("Read Version", TestReadVersion());
 	TEST("Connect", TestConnect(devs, idx1));
 	TEST("Multiconnect", TestMulticonnect(devs, idx1));
@@ -451,7 +455,7 @@ void TestRP1210::TestAdvancedRead(INIMgr::Devices &dev, int primaryClient) {
 			}
 			result = api1->pRP1210_ReadMessage(toKillClient, largeBuf, sizeof(largeBuf), true);
 		
-			if (result == ERR_CLIENT_DISCONNECTED) {
+			if (result == -ERR_CLIENT_DISCONNECTED) {
 				log.LogText(_T("    Passed (disconnect while blocking on read)"));
 			} else if (result >= 0) {
 				CString msg;
@@ -489,41 +493,45 @@ void TestRP1210::TestAdvancedRead(INIMgr::Devices &dev, int primaryClient) {
 /****************************/
 void TestRP1210::TestMultiRead(INIMgr::Devices &dev, int primaryClient) {
 	log.LogText (_T("Testing: ReadMessage (multiread)"), Log::Blue);
+
+	TestGenericMultiread (dev, true);
+}
+
+/*************************************/
+/* TestRP1210::TestGenericMultiread */
+/***********************************/
+void TestRP1210::TestGenericMultiread(INIMgr::Devices &dev, bool isJ1708) {
 //#pragma message ("Once filters are working, retest with proper filtering.  Remove the comment from 'Unexpected read data'")
 	int i;
 	int connections[4];
 	bool passed = true;
 	sendSpectrum = false;
+	char *protocolString = isJ1708 ? "J1708" : "J1939";
 	for (i = 0; i < 4; i++) {
-TRACE (_T("Opening connection %d"), i);
-		connections[i] = api1->pRP1210_ClientConnect(NULL, dev.deviceID, "J1708", 0,0,0);
-TRACE (_T("  clientID=%d\n"), connections[i]);
-		if (!IsValid(connections[i])) {
-			LogError(*api1, connections[i]);
-			passed = false;
+		connections[i] = VerifyConnect(api1, dev, protocolString);
+
+		if (isJ1708) {
+			char multiSendFilter = TestMultisend;
+			VerifyValidSendCommand(api1, SetAllFilterStatesToDiscard, _T("Discard"), connections[i], NULL, 0, false);
+			int result = api1->pRP1210_SendCommand(SetMessageFilteringForJ1708, connections[i], &multiSendFilter, 1);
+		} else {
+			VerifyValidSendCommand (api1, PARM(SetAllFiltersToPass, ""), connections[i], NULL, 0, false);
 		}
-		char multiSendFilter = TestMultisend;
-		VerifyValidSendCommand(api1, SetAllFilterStatesToDiscard, _T("Discard"), connections[i], NULL, 0, false);
-		int result = api1->pRP1210_SendCommand(SetMessageFilteringForJ1708, connections[i], &multiSendFilter, 1);
-		char rxBuf[1024];
-		while (api1->pRP1210_ReadMessage(connections[i], rxBuf, sizeof(rxBuf), false) > 0); // clear any pending data
-		//int result = api1->pRP1210_SendCommand(SetAllFiltersToPass, connections[i], &multiSendFilter, 0);
-		if (!IsValid(result)) {
-			LogError(*api1, result);
-			passed = false;
-		}
+
+		FlushReads(api1, connections[i]);
 	}
 
 	// send a message out on each conneciton
 	for (i = 0; i < 4; i++) {
 TRACE (_T("Transmitting on %d (%d)\n"), i, connections[i]);
-		char msg[] = { 4, TestMultisend, i };
-		int result = api1->pRP1210_SendMessage(connections[i], msg, sizeof(msg), false, true);
-		//int result = api2->pRP1210_SendMessage(secondaryClient, msg, sizeof(msg), false, true);
-		if (!IsValid(result)) {
-			LogError(*api1, result);
-			passed = false;
-		}
+		char J1708Msg[] = { 4, TestMultisend, i };
+		char ichar = i;
+		TxBuffer J1939Msg (0x003300, 1, 4, 100, 255, &ichar, 1);
+
+		char *msg = isJ1708 ? J1708Msg : J1939Msg;
+		int msgSize = isJ1708 ? (int)sizeof(J1708Msg) : J1939Msg;
+
+		VerifiedSend(api1, connections[i], msg, msgSize, true);
 	}
 
 	// read all the messages out of each buffer
@@ -534,13 +542,28 @@ TRACE (_T("Reading on %d (%d)\n"), i, connections[i]);
 		int result = api1->pRP1210_ReadMessage(connections[i], rxBuf, sizeof(rxBuf), false);
 		while (result > 0) {
 			RecvMsgPacket pkt(rxBuf, result);
-			if ((pkt.data.size() == 2) && (pkt.data[0] == TestMultisend) && (pkt.data[1] < 4)) {
-				foundMessage[pkt.data[1]] = true;
+			if (isJ1708) {
+				if ((pkt.data.size() == 2) && (pkt.data[0] == TestMultisend) && (pkt.data[1] < 4)) {
+					foundMessage[pkt.data[1]] = true;
+				} else {
+					rxBuf[result] = '\0';
+					TRACE (("Odd Read %d bytes %s\n"), pkt.data.size(), rxBuf+4);
+					log.LogText (_T("    Unexpected read data"), Log::Red);
+					passed = false;
+				}
 			} else {
-rxBuf[result] = '\0';
-TRACE (("Odd Read %d bytes %s\n"), pkt.data.size(), rxBuf+4);
-				log.LogText (_T("    Unexpected read data"), Log::Red);
-				passed = false;
+				if (pkt.GetPGN() == 0x003300) {
+					char msg[256];
+					int size = 256;
+					pkt.Get1939Data(msg, size);
+					if (size != 1) {
+						TRACE ("Odd Read\n");
+					} else {
+						if ((msg[0] >= 0) && (msg[0] < 4)) {
+							foundMessage[msg[0]] = true;
+						}
+					}
+				}
 			}
 			result = api1->pRP1210_ReadMessage(connections[i], rxBuf, sizeof(rxBuf), false);
 		}
@@ -1460,6 +1483,7 @@ void TestRP1210::Test1939AdvancedRead(INIMgr::Devices &dev1, INIMgr::Devices &de
 	TxBuffer * buf1[] = { &bam1LoPGN, &bam1LoPGN, &broad1LoPGN, &broad1HiPGN, &rts1LoPGN, &norm1LoPGN, &norm1HiPGN, &long1 };
 	TxBuffer * buf2[] = { &bam2LoPGN, &bam2LoPGN, &broad2LoPGN, &broad2HiPGN, &rts2LoPGN, &norm2LoPGN, &norm2HiPGN, &long2 };
 	
+#if 1
 	bool passedLoop = true;
 	for (int j = 0; j < 2; j++) {
 		RP1210API * rxAPI;
@@ -1485,7 +1509,16 @@ void TestRP1210::Test1939AdvancedRead(INIMgr::Devices &dev1, INIMgr::Devices &de
 			if (!VerifiedSend(txAPI, txClient, *(theBuf[i]), *(theBuf[i]), true)) {
 				TRACE ("!!!!!!!!!!!!!!!!!!!!!!!!!Error %d, %d\n", j, i);
 			}
-			int size = VerifiedRead(rxAPI, rxClient, rxBuf, sizeof(rxBuf), true);
+			int size;
+//retry:
+			size = VerifiedRead(rxAPI, rxClient, rxBuf, sizeof(rxBuf), true);
+//			{
+//				RecvMsgPacket p(rxBuf, size);
+//				if (p.GetPGN == 0x00eb00) { // 
+//					goto retry;
+//				}
+//			}
+//		
 			if (size >= 0) {
 				int messageSize = size-4;
 				char *messageBuf = rxBuf+4;
@@ -1534,18 +1567,56 @@ void TestRP1210::Test1939AdvancedRead(INIMgr::Devices &dev1, INIMgr::Devices &de
 	} else {
 		log.LogText(_T("    Failed series of misc transfers"));
 	}
-	// still to test -- cancel during receive
+#endif
+	// Cancel during receive
+	{
+		toKillClient = VerifyConnect(api1, dev1, "J1939");
+		CWinThread *worker;
+		{
+			CritSection crit; // need to get rid of this variable as soon as we are ready to read so that the other thread can progress
+			SetupWorkerThread(worker, KillSpecifiedConnection, true, _T("Adv_read_kill_connection"));
+		}
+		char rxBuf[500];
+		int result = api1->pRP1210_ReadMessage(toKillClient, rxBuf, sizeof(rxBuf), true);
+		
+		if (result == -ERR_CLIENT_DISCONNECTED) {
+			log.LogText(_T("    Passed (disconnect while blocking on read)"));
+		} else if (result >= 0) {
+			CString msg;
+			msg.Format(_T("    Failed (disconnect while blocking on read) %d bytes read"), result);
+			log.LogText(msg, Log::Red);
+		} else {
+			log.LogText(_T("    Failed (disconnect while blocking on read,   Wrong error returned)"), Log::Red);
+			LogError(*api1, -result);
+		}
+	}
+
 	// Hi PGN RTS/CTS (not allowed)
+	{
+		TxBuffer rts2HiPGN(0x0F711, false, 2, 100, 101, "This is a RTS/CTS packet 1", 26);
+		VerifiedSend(api1, cl1a, rts2HiPGN, rts2HiPGN, true, 254, _T("RTS/CTS packet with illegal PGN"));
+	}
 
 	// insufficient buffer
-
-	// roll up multiread here?  Probably do a special function that each multiread calls
-
-	// filter tests are going to be nasty.
-
+	{
+		char rxBuf[10];
+		FlushReads(api1, cl1a);
+		VerifiedSend (api2, cl2a, bam1LoPGN, bam1LoPGN, true);
+		int result = api1->pRP1210_ReadMessage(cl1a, rxBuf, sizeof(rxBuf), true);
+		if (result == -ERR_MESSAGE_TOO_LONG) {
+			log.LogText(_T("    Passed (read, insufficient buffer)"));
+		} else {
+			log.LogText(_T("    Failed (read, insufficient buffer)"), Log::Red);
+			if (result < 0) { LogError (*api1, -result); }
+		}
+	}
 
 	VerifyDisconnect(api1, cl1a);
 	VerifyDisconnect(api2, cl2a);
+
+	// roll up multiread here?  Probably do a special function that each multiread calls
+	log.LogText (_T("Testing: Multiread Read(J1939)"), Log::Blue);
+	TestGenericMultiread (dev1, false);
 
 }
 
