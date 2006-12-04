@@ -118,6 +118,8 @@ typedef struct
 #define UART2_REG_BASE      (APB1_REG_BASE + 0x6000)
 #define UART3_REG_BASE      (APB1_REG_BASE + 0x7000)
 
+#define TXBUFFER_OFFSET 0x04
+
 #ifndef _ASM_
 enum UartInterrupts {
     RxHalfFullIE        = 0x0100,
@@ -487,6 +489,9 @@ enum irq_sense { IRQ_FALLING, IRQ_RISING };
 #define IOPORT1_REG_BASE (APB2_REG_BASE + 0x4000)
 #define IOPORT2_REG_BASE (APB2_REG_BASE + 0x5000)
 
+#define GPIO_PORT_DATA_OFFSET 0x0c
+#define P1_4_MASK 0x10
+
 #ifndef _ASM_
 typedef struct _IOPortRegisterMap {
     volatile UINT16 PC0;
@@ -527,6 +532,10 @@ typedef enum _Gpio_PinModes {
 #define TIMER1_REG_BASE (APB2_REG_BASE + 0xA000)
 #define TIMER2_REG_BASE (APB2_REG_BASE + 0xB000)
 #define TIMER3_REG_BASE (APB2_REG_BASE + 0xC000)
+
+#define COUNTER_OFFSET 0x10
+#define STATUS_OFFSET  0x1c
+#define INPUT_CAPTURE_A_OR_B 0x9000
 
 #ifndef _ASM_
 typedef struct _TimerRegisterMap {
