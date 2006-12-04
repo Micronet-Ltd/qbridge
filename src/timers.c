@@ -4,6 +4,7 @@
 #include "serial.h"
 
 Timer MainTimer;
+Timer TestTimer;
 
 void Timer1IRQ() __attribute__((interrupt("IRQ")));
 
@@ -42,6 +43,23 @@ void InitializeTimers() {
     RegisterEICHdlr(EIC_TIMER1, Timer1IRQ, TIMER_IRQ_PRIORITY);
     EICEnableIRQ(EIC_TIMER1);
 
+    // Setup the J1708 Baud Timer, used to:
+    //  1. sync up to the BaudRate Generator
+    TestTimer.wrapCounter = 0;
+    TestTimer.timer = (TimerRegisterMap *)(TIMER0_REG_BASE);
+
+    tcr1.value = 0;
+    tcr2.value = 0;
+    tcr1.TimerCountEnable = 0;  //but don't let it run until we can also start J1708 baud rate generator
+//    tcr1.InputEdgeA = 1;
+//    tcr1.InputEdgeB = 0;
+//    tcr2.InputCaptureAInterruptEnable = 1;
+//    tcr2.InputCaptureBInterruptEnable = 0;  //only concerned with bus idle time, not active time
+//    tcr2.TimerOverflowInterruptEnable = 1;
+    tcr2.PrescalerDivisionFactor = 155;   //given our 24MHz Pb2 frequency, divide by 156 (ie 155+1) as the baud rate generator would do
+    TestTimer.timer->ControlRegister1 = tcr1.value;
+    TestTimer.timer->ControlRegister2 = tcr2.value;
+    TestTimer.timer->Counter = 0; // reset counter
 }
 
 /**************/
@@ -261,7 +279,7 @@ void ResetJ1708IdleTimerIfNeeded() {
 /* GetJ1708IdleTime */
 /*******************/
 UINT32 GetJ1708IdleTime() {
-    if( J1708_bus_not_idle || J1708_BUS_ASSERTED() || UNHANDELED_BUS_TRANSITION() ) return( 0 );
+    if( J1708_bus_not_idle ) return( 0 );
     if( J1708_idle_time >= 40000 ) return( 0xffffffff );
     UINT32 t1 = J1708_last_transition_time;
     UINT32 t2 = GetTime32();
