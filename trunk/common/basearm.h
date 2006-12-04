@@ -53,6 +53,11 @@
                                      "\tLDR  r0, %0\n"          \
                                      "\tMSR  CPSR_c, r0\n" \
                                      : : "m" (saveState) : "r0", "memory" ); }
+#define IRQ_ENABLE()            { asm volatile ( \
+                                     "\tMRS  r0, CPSR\n"        \
+                                     "\tBIC  r0, r0, #0xc0\n" \
+                                     "\tMSR  CPSR_c, r0\n" \
+                                     : : : "r0" ); }
 
 #define ARM_GET_CP15() ({ unsigned long cpval=0; \
           asm volatile ("MRC p15, 0, %0, c1, c0, 0" : "=r" (cpval) : ); cpval; })
