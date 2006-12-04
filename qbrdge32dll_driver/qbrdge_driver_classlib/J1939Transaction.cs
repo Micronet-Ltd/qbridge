@@ -270,8 +270,9 @@ namespace qbrdge_driver_classlib
                 isDone = true;
                 isComplete = false;
                 if (useRTSCTS == false)
+                {
                     isComplete = true;
-                return;
+                }
             }
             QBSerial.CheckForCompleteJ1939();
         }
@@ -322,7 +323,7 @@ namespace qbrdge_driver_classlib
             tot_num_pkts = numPkts;
             max_pkt_send = maxPktSend;
             port_info = portInfo;
-            num_retries = 20;
+            num_retries = 125;
             nextSeq = 1;
             client_idx = clientidx;
             SendCTSPacket(false);
@@ -335,7 +336,7 @@ namespace qbrdge_driver_classlib
 
         public int client_idx; //client number that has claimed DA
 
-        private int PktTimeout = 5000; //milliseconds
+        private int PktTimeout = 1000; //milliseconds
 
         private int nextSeq = 1; //next expected Seq number in DP packet.
         private bool isvalid = true;
