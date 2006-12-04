@@ -378,6 +378,7 @@
 		</Configuration>
 		<Configuration
 			Name="TreqDebug|TREQ (x86)"
+			OutputDirectory="$(SolutionDir)TREQ (x86)\$(ConfigurationName)"
 			IntermediateDirectory="TREQ (x86)\$(ConfigurationName)"
 			ConfigurationType="1"
 			>

@@ -20,7 +20,7 @@ namespace qbrdge_driver_classlib
         public bool isAddressClaim = false;
 
         public byte SA = 0x00;
-        private byte DA = 0x00;
+        public byte DA = 0x00;
         private byte how_priority = 0x00;
 
         public void UpdateJ1939Data(string data) {
@@ -226,6 +226,10 @@ namespace qbrdge_driver_classlib
         //it will parse it if needed for RTS/CTS
         //data is the last 7 bytes of the CAN packet data
         public void ProcessCAN(byte sourceAddr, byte destAddr, byte controlByte, byte[] data) {
+            if (isDone)
+            {
+                return;
+            }
             if (useRTSCTS == false)
             {
                 return;
@@ -234,6 +238,7 @@ namespace qbrdge_driver_classlib
             {
                 PendingIDX = data[1];
                 IDXMax = PendingIDX + data[0];
+                Debug.WriteLine("RECV CTS: " + PendingIDX.ToString() + " -> " + IDXMax.ToString());
                 if (isDone == false)
                     StartTimer();
             }
@@ -278,7 +283,14 @@ namespace qbrdge_driver_classlib
         {
             StopTimer();
             TimerCallback timerDelegate = new TimerCallback(TimeOut);
-            myTimer = new Timer(timerDelegate, this, 5000, Timeout.Infinite);
+            if (useRTSCTS)
+            {
+                myTimer = new Timer(timerDelegate, this, 120000, Timeout.Infinite);
+            }
+            else
+            {
+                myTimer = new Timer(timerDelegate, this, 10000, Timeout.Infinite);
+            }
         }
         private void StopTimer()
         {
@@ -314,11 +326,16 @@ namespace qbrdge_driver_classlib
             nextSeq = 1;
             client_idx = clientidx;
             SendCTSPacket(false);
+
+            //keep track of what packets have been 
+            //received.
+            main_data = new byte[numPkts * 7];
+            main_status = new bool[numPkts];
         }
 
         public int client_idx; //client number that has claimed DA
 
-        private int PktTimeout = 60000; //milliseconds
+        private int PktTimeout = 5000; //milliseconds
 
         private int nextSeq = 1; //next expected Seq number in DP packet.
         private bool isvalid = true;
@@ -336,6 +353,7 @@ namespace qbrdge_driver_classlib
 
         private SerialPortInfo port_info;
         private byte[] main_data = new byte[0];
+        private bool[] main_status = new bool[0];
         private byte num_retries;
 
         private void SendCTSPacket(bool isResend)
@@ -358,7 +376,33 @@ namespace qbrdge_driver_classlib
             //max number of packets that can be sent
             if (isResend)
             {
-                can_pkt[5 + 1] = 1;
+                //find next seq
+                for (int i = 0; i < main_status.Length; i++)
+                {
+                    if (main_status[i] == false)
+                    {
+                        nextSeq = i+1;
+                        break;
+                    }
+                }
+                //total to request
+                byte tot = 0;
+                for (int j = nextSeq-1; j < main_status.Length; j++)
+                {
+                    if (main_status[j] == false)
+                    {
+                        tot++;
+                        if (tot >= max_pkt_send)
+                        {
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                can_pkt[5 + 1] = tot;
             }
             else
             {
@@ -366,7 +410,7 @@ namespace qbrdge_driver_classlib
                 nextCTS = nextSeq + max_pkt_send;
             }
             //next packet
-            can_pkt[5+2] = (byte)nextSeq;
+            can_pkt[5 + 2] = (byte)nextSeq;
             can_pkt[5+3] = 0x00; //reserved
             can_pkt[5+4] = 0x00; //reserved
             can_pkt[5+5] = param_group_num[0]; //parameter group number
@@ -471,20 +515,12 @@ namespace qbrdge_driver_classlib
         //data is the last 7 bytes of the CAN packet data
         public bool UpdateData(string portName, byte sourceAddr, byte seqNum, byte[] data)
         {
-            if (sourceAddr != source_addr || seqNum != nextSeq ||
-                portName != port_info.com.PortName)
+            if (sourceAddr != source_addr || portName != port_info.com.PortName)
             {
-                if (seqNum > nextSeq)
-                {
-                    //resend CTS
-                    //Debug.WriteLine("RESEND CTS!!");
-                    //SendCTSPacket();
-                    StartTimer();
-                }
                 return iscomplete;
             }
 
-            Debug.WriteLine("SEQNUM: " + seqNum.ToString());
+            Debug.WriteLine("CURRSEQ: " + seqNum.ToString() + " HX: "+seqNum.ToString("X2"));
             Debug.Write("SEQDATA: ");
             for (int i = 0; i < data.Length; i++)
             {
@@ -492,22 +528,36 @@ namespace qbrdge_driver_classlib
             }
             Debug.WriteLine("");
 
-            //add data to main_data
-            byte[] new_data = new byte[main_data.Length + data.Length];
-            main_data.CopyTo(new_data, 0);
-            data.CopyTo(new_data, main_data.Length);
-            main_data = new_data;
+            if (seqNum > main_status.Length || data.Length != 7)
+            {
+                return iscomplete;
+            }
 
-            if (tot_num_pkts == nextSeq)
+            //add data to main_data
+            main_status[seqNum-1] = true;
+            Array.Copy(data, 0, main_data, 7 * (seqNum-1), 7);
+
+            //is finish
+            bool isFinish = true;
+            for (int i = 0; i < main_status.Length; i++)
+            {
+                if (main_status[i] == false)
+                {
+                    isFinish = false;
+                }
+            }
+
+            if (isFinish)
             {
                 iscomplete = true;
                 StopTimer();
                 SendEndOfMsgAck();
+                return iscomplete;
             }
-            nextSeq++;
+            nextSeq = seqNum + 1;
             if (nextSeq == nextCTS && iscomplete == false)
             {
-                SendCTSPacket(false);
+                SendCTSPacket(true);
             }
             if (iscomplete == false)
             {
@@ -527,7 +577,6 @@ namespace qbrdge_driver_classlib
             if (num_retries > 0)
             {
                 num_retries--;
-                PktTimeout = PktTimeout + 2000;
                 Debug.WriteLine("TIMEOUT RESEND CTS "+port_info.com.PortName);
                 SendCTSPacket(true);
                 StartTimer();

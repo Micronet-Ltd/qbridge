@@ -28,6 +28,8 @@ namespace qbrdge_driver_classlib
         public List<QBTransaction> QBTransactionNew = new List<QBTransaction>();
         public List<QBTransaction> QBTransactionSent = new List<QBTransaction>();
 
+        public List<QBTransaction> QBTransJ1939Pending = new List<QBTransaction>();
+
         public bool qbInitNeeded = true;
 
         public bool requestRawMode = false;
@@ -117,7 +119,8 @@ namespace qbrdge_driver_classlib
             if (com == null)
             {
                 com = new SerialPort(comNum, 115200, Parity.None, 8, StopBits.One);
-                com.ReadBufferSize = 4096;
+                com.ReadBufferSize = 40000;// 4096;
+
                 try
                 {
                     com.Open();
@@ -132,8 +135,8 @@ namespace qbrdge_driver_classlib
 
 
             // Attach a method to be called when there is data waiting in the port's buffer
+            
             com.DataReceived += new SerialDataReceivedEventHandler(port_DataReceived);
-
 
             newcom.com = com;
 
@@ -588,6 +591,7 @@ namespace qbrdge_driver_classlib
                 {
                     Support.SendClientDataPacket(UDPReplyType.sendJ1708success, qbt);
                     portInfo.QBTransactionSent.RemoveAt(qbtIdx);
+                    CheckJ1939Pending(portInfo);
                 }
                 else
                 {
@@ -607,6 +611,7 @@ namespace qbrdge_driver_classlib
                 //error reply from j1708 packet
                 Support.SendClientDataPacket(UDPReplyType.sendJ1708confirmfail, qbt);
                 portInfo.QBTransactionSent.RemoveAt(qbtIdx);
+                CheckJ1939Pending(portInfo);
             }
             else if (cmdType == PacketCmdCodes.PKT_CMD_J1708_CAN_CONFIRM &&
                 pktData.Length == 5)
@@ -636,6 +641,7 @@ namespace qbrdge_driver_classlib
                                     ClientIDManager.clientIds[qt.clientId].AbortTimer(UDPReplyType.sendJ1939confirmfail);
                                 }
                                 portInfo.QBTransactionSent.RemoveAt(i);
+                                CheckJ1939Pending(portInfo);
                                 break;
                             }
                             else if (pktData[0] == 0x01)
@@ -660,7 +666,7 @@ namespace qbrdge_driver_classlib
                                     {
                                         ClientIDManager.clientIds[qt.clientId].AbortTimer(UDPReplyType.sendJ1939replytimeout);
                                     }
-                                    portInfo.QBTransactionSent.RemoveAt(i);                               
+                                    portInfo.QBTransactionSent.RemoveAt(i);          
                                 }
                                 else
                                 {   //get next j1939 packet, and send... or wait..
@@ -669,6 +675,7 @@ namespace qbrdge_driver_classlib
                                     portInfo.QBTransactionNew.Add(qt);
                                     portInfo.QBTransactionSent.RemoveAt(i);
                                 }
+                                CheckJ1939Pending(portInfo);
                                 break;
                             }
                         }
@@ -683,6 +690,7 @@ namespace qbrdge_driver_classlib
                                 Support.SendClientDataPacket(UDPReplyType.sendJ1708success, qt);
                             }
                             portInfo.QBTransactionSent.RemoveAt(i);
+                            CheckJ1939Pending(portInfo);
                             break;
                         }
                     }
@@ -912,6 +920,7 @@ namespace qbrdge_driver_classlib
                             portInfo.QBTransactionSent.RemoveAt(i - portInfo.QBTransactionNew.Count);
                         }
                         i--;
+                        CheckJ1939Pending(portInfo);
                     }
                 }
             }
@@ -1243,6 +1252,7 @@ namespace qbrdge_driver_classlib
                                 portInfo.QBTransactionSent.RemoveAt(i);
                             }
                             i--;
+                            CheckJ1939Pending(portInfo);
                             if (pktData[5] == 19)
                             {
                                 //EndOfMsgAck... only process one
@@ -1522,6 +1532,7 @@ namespace qbrdge_driver_classlib
                     }
                     serialInfo.QBTransactionNew.RemoveAt(i);
                     i--;
+                    CheckJ1939Pending(serialInfo);
                 }
             }
         }
@@ -1628,7 +1639,6 @@ namespace qbrdge_driver_classlib
             }
 
             qbt.j1939transaction.UpdateJ1939Data(msg); //add message, process
-            qbt.pktData = qbt.j1939transaction.GetCANPacket(); //get packet for current state.
 
             if (qbt.j1939transaction.useRTSCTS && (ClientIDManager.clientIds[clientId].claimAddress < 0 ||
                 qbt.j1939transaction.SA != ClientIDManager.clientIds[clientId].claimAddress ||
@@ -1646,7 +1656,6 @@ namespace qbrdge_driver_classlib
             qbt.numRetries = 2;
             qbt.timePeriod = Support.ackReplyLimit;
             qbt.timeoutReply = UDPReplyType.sendJ1708replytimeout;
-            ClientIdToSerialInfo(clientId).QBTransactionNew.Add(qbt);
 
             //add timestamp to J1939 packet
             byte[] timestamp = Support.Int32ToBytes(Environment.TickCount, true);
@@ -1655,7 +1664,60 @@ namespace qbrdge_driver_classlib
             Support.StringToByteArray(msg).CopyTo(newpkt, 4);
             NewClientsJ1939ReadMessage(newpkt, sinfo.com.PortName, clientId);
 
+            //deley 1939 so that packets to same addr aren't going
+            //at the same time
+            if (IsQBTransJ1939Pending(qbt, ClientIdToSerialInfo(clientId)) == true)
+            {
+                ClientIdToSerialInfo(clientId).QBTransJ1939Pending.Add(qbt);
+                return msgId;
+            }
+            qbt.pktData = qbt.j1939transaction.GetCANPacket(); //get packet for current state.
+            ClientIdToSerialInfo(clientId).QBTransactionNew.Add(qbt);
+
             return msgId;
+        }
+
+        public static void CheckJ1939Pending(SerialPortInfo sinfo) {
+            for (int i = 0; i < sinfo.QBTransJ1939Pending.Count; i++)
+            {
+                QBTransaction qbt = sinfo.QBTransJ1939Pending[i];
+                if (IsQBTransJ1939Pending(qbt, sinfo) == false)
+                {
+                    sinfo.QBTransJ1939Pending.RemoveAt(i);
+                    i--;
+                    qbt.pktData = qbt.j1939transaction.GetCANPacket(); //get packet for current state.
+                    sinfo.QBTransactionNew.Add(qbt);
+                }
+            }
+        }
+
+        public static bool IsQBTransJ1939Pending(QBTransaction qbt, SerialPortInfo portInfo)
+        {
+            if (qbt.isJ1939)
+            {
+                for (int i = 0; i < (portInfo.QBTransactionNew.Count + portInfo.QBTransactionSent.Count); i++)
+                {
+                    QBTransaction qt;
+                    if (i < portInfo.QBTransactionNew.Count)
+                    {
+                        qt = portInfo.QBTransactionNew[i];
+                    }
+                    else
+                    {
+                        qt = portInfo.QBTransactionSent[i - portInfo.QBTransactionNew.Count];
+                    }
+                    if (qt.isJ1939)
+                    {
+                        if (qt.clientId == qbt.clientId && qt.j1939transaction.SA == qbt.j1939transaction.SA &&
+                            qt.j1939transaction.useRTSCTS == qbt.j1939transaction.useRTSCTS &&
+                            qt.j1939transaction.DA == qbt.j1939transaction.DA)
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
         }
 
         public static SerialPortInfo ClientIdToSerialInfo(int clientId)
@@ -1672,7 +1734,7 @@ namespace qbrdge_driver_classlib
         {
             //Debug.WriteLine("Lock comreplytimout");
             lock (Support.lockThis)
-            {
+            {                
                 //Debug.WriteLine("Lock2 comreplytimout");
                 QBTransaction qbt = (QBTransaction)stateInfo;
 
@@ -1888,6 +1950,7 @@ namespace qbrdge_driver_classlib
                             portInfo.QBTransactionSent.RemoveAt(i - portInfo.QBTransactionNew.Count);
                             i--;
                         }
+                        CheckJ1939Pending(portInfo);
                     }
                 }
             }
