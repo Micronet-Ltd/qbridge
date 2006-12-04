@@ -32,7 +32,7 @@ extern SerialPort *hostPort;
 
 void InitializeAllSerialPorts();
 void DisableAllSerialPorts(void);
-bool SetPortSettings (SerialPort *port, UINT32 baud, UINT8 dataBits, UINT8 parity, UINT8 stopBits);
+bool SetPortSettings (SerialPort *port, UINT32 baud, UINT8 dataBits, UINT8 parity, UINT8 stopBits, bool setrun);
 UINT32 Transmit (SerialPort *port, UINT8 *data, int leng);
 void StuffTxFifo(SerialPort *port);
 void ProcessRxFifo (SerialPort *port);

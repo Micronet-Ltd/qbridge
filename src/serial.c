@@ -47,7 +47,7 @@ static const BaudTableEntry BaudRateTable[] = {
    { 600l,    bauddiv_600},
 };
 
-static void InitializePort (SerialPort *port, EIC_SOURCE src, void (*hdlr)(void));
+static void InitializePort (SerialPort *port, EIC_SOURCE src, void (*hdlr)(void), bool setrun );
 static void DisablePort(SerialPort *port);
 
 //SerialPort com1;
@@ -120,7 +120,7 @@ void GPIO_Config (IOPortRegisterMap *GPIOx, UINT16 Port_Pins, Gpio_PinModes GPIO
 /***************************/
 void InitializeAllSerialPorts() {
     debugPort = &com3;
-    hostPort     = &com4;
+    hostPort  = &com4;
     j1708Port = &com2;
 
     // These should really be initialized as constants, but something seems broken about doing that
@@ -139,23 +139,23 @@ void InitializeAllSerialPorts() {
     // Configure the GPIO receive pins as Input Tristate CMOS
    GPIO_Config(ioPort0, /*UART0_Rx_Pin |*/ UART1_Rx_Pin | UART2_Rx_Pin | UART3_Rx_Pin, GPIO_IN_TRI_CMOS);
 
-    //InitializePort(&com1, EIC_UART0, Com1IRQ);
-    InitializePort(&com2, EIC_UART1, Com2IRQ);
-    InitializePort(&com3, EIC_UART2, Com3IRQ);
-    InitializePort(&com4, EIC_UART3, Com4IRQ);
+    //InitializePort(&com1, EIC_UART0, Com1IRQ, TRUE);
+    InitializePort(&com2, EIC_UART1, Com2IRQ, FALSE);   //Important not to start the J1708 port until a timer can be started at the same time
+    InitializePort(&com3, EIC_UART2, Com3IRQ, TRUE);
+    InitializePort(&com4, EIC_UART3, Com4IRQ, TRUE);
 }
 
 /*******************/
 /* InitializePort */
 /*****************/
-static void InitializePort (SerialPort *port, EIC_SOURCE src, void (*hdlr)(void)) {
+static void InitializePort (SerialPort *port, EIC_SOURCE src, void (*hdlr)(void), bool setrun) {
     IRQSTATE saveState = 0;
     DISABLE_IRQ(saveState);
     InitializeQueue(&(port->rxQueue));
     InitializeQueue(&(port->txQueue));
     RESTORE_IRQ(saveState);
 
-    SetPortSettings(port, 115200l, 8, 'N', 1);
+    SetPortSettings(port, 115200l, 8, 'N', 1, setrun);
     port->port->intEnable = (RxHalfFullIE | TimeoutNotEmptyIE | OverrunErrorIE | FrameErrorIE | ParityErrorIE);
     port->port->guardTime = 0;
     port->port->timeout = 8;
@@ -186,7 +186,7 @@ static void DisablePort(SerialPort *port)
 /********************/
 /* SetPortSettings */
 /******************/
-bool SetPortSettings (SerialPort *port, UINT32 baud, UINT8 dataBits, UINT8 parity, UINT8 stopBits) {
+bool SetPortSettings (SerialPort *port, UINT32 baud, UINT8 dataBits, UINT8 parity, UINT8 stopBits, bool setrun ) {
     UINT8 modeSettings[3][3] = {
         { 0x0, 0x3, 0x3 }, // 7 Data Bits ( N E O )
         { 0x1, 0x7, 0x7 }, // 8 Data Bits ( N E O )
@@ -212,7 +212,7 @@ bool SetPortSettings (SerialPort *port, UINT32 baud, UINT8 dataBits, UINT8 parit
     map.fifoEnable = 1;
     map.reserved1 = 0;
     map.rxEnable = 1;
-    map.run = 1;
+    if( setrun ) map.run = 1; else map.run = 0;
     map.loopBack = 0;
 
     if (stopBits == 1) {
