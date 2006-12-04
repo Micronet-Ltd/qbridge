@@ -37,7 +37,7 @@ UINT8 j1708EventLogIndex;
 /* InitializeJ1708 */
 /******************/
 void InitializeJ1708() {
-    SetPortSettings(j1708Port, 9600, 8, 'N', 1);
+    SetPortSettings(j1708Port, 9600, 8, 'N', 1, FALSE); //important not to start baud rate generator until a timer can be started with it at the same time
     j1708Port->port->timeout = 10; // the idle time for a J1708 bus
 
     j1708Queue.head = 0;
@@ -176,6 +176,7 @@ bool MIDPassesFilter () {
 /* ProcessJ1708TransmitQueue */
 /****************************/
 void ProcessJ1708TransmitQueue() {
+    extern bool StartJ1708Transmit( char data_to_send );
     // Is there anything to transmit?
     if ((j1708Queue.head == j1708Queue.tail) && !j1708RetransmitNeeded) {
         return;
@@ -196,13 +197,17 @@ void ProcessJ1708TransmitQueue() {
         if (idleTime < j1708RetransmitIdleTime) {
             return;
         }
+        if( !StartJ1708Transmit( j1708CurTxMessage.data[0] ) ){
+            return;
+        }
         j1708State = JST_Transmitting;
         j1708CheckingMIDCharForCollision = 0;
-        J1708LogEventIdle(JEV_Retry, j1708CurCollisionCount, idleTime);
         j1708Port->port->intEnable |= RxBufNotEmptyIE;
-        J1708DebugPrint ("Retransmit");
-        Transmit (j1708Port, j1708CurTxMessage.data, j1708CurTxMessage.len);
+        Transmit (j1708Port, &j1708CurTxMessage.data[1], j1708CurTxMessage.len-1);
         j1708RetransmitNeeded = false;
+        IRQ_ENABLE();
+        J1708LogEventIdle(JEV_Retry, j1708CurCollisionCount, idleTime);
+        J1708DebugPrint ("Retransmit");
     } else {
         J1708Message *msg = GetNextJ1708Message();
         if (msg == NULL) {
@@ -221,12 +226,15 @@ void ProcessJ1708TransmitQueue() {
             j1708WaitForBusyBusCount++;
             return; // bus has not been idle long enough
         }
-
+        if( !StartJ1708Transmit( msg->data[0] ) ){
+            return;
+        }
         j1708State= JST_Transmitting;
         j1708CheckingMIDCharForCollision = 0;
-        J1708LogEventIdle(JEV_Transmit, 0, idleTime);
         j1708Port->port->intEnable |= RxBufNotEmptyIE;
-        Transmit (j1708Port, msg->data, msg->len);
+        Transmit (j1708Port, &msg->data[1], msg->len-1);
+        IRQ_ENABLE();
+        J1708LogEventIdle(JEV_Transmit, 0, idleTime);
         j1708Queue.tail = (j1708Queue.tail + 1) % J1708_QUEUE_SIZE;
     }
 }
@@ -473,7 +481,11 @@ void J1708EnterCollisionState(enum J1708CollisionReason reason) {
     if (j1708CurCollisionCount < 2) {
         j1708RetransmitIdleTime =  ConvertJ1708IdleCountToTimerTicks(J1708_IDLE_TIME + 2 * j1708CurTxMessage.priority);
     } else {
+#ifdef TEST_RETRANSMIT_NO_RANDOMIZE
+        j1708RetransmitIdleTime =  ConvertJ1708IdleCountToTimerTicks(J1708_IDLE_TIME + 2 * j1708CurTxMessage.priority);
+#else
         j1708RetransmitIdleTime =  ConvertJ1708IdleCountToTimerTicks(J1708_IDLE_TIME + 2 * ((MainTimer.timer->Counter & 0x0007) + 1));
+#endif
     }
 
     if (j1708State == JST_Transmitting) {
