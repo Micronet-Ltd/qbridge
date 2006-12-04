@@ -149,11 +149,13 @@ void LockProgram();
 /* main */
 /********/
 int main(void) {
+    extern void StartJ1708BaudGeneratorAndTimer( void );
     /* Clocks already setup by bootloader */
     InitializeEIC();
     InitializeAllSerialPorts();
     InitializeTimers();
     InitializeJ1708();
+    StartJ1708BaudGeneratorAndTimer();
     Initialize232Protocol();
     InitializeCAN();
 
