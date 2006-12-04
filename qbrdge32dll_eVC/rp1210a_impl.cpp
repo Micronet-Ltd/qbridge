@@ -207,7 +207,7 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 					return ERR_CLIENT_DISCONNECTED;
 				}
 				cs.Pause();
-				::WaitForSingleObject(hEvent, 300000); //SetEvent for release?
+				::WaitForSingleObject(hEvent, 200000); //SetEvent for release?
 				cs.Unpause();
 				::CloseHandle(hEvent);
 
@@ -261,7 +261,7 @@ RP1210AReturnType ReadRP1210Message (short nClientID, char far* fpchAPIMessage, 
 			HANDLE hEvent = GetReadEvent();
 			connections[nClientID].recvMsgEvents.push_back(hEvent);
 			TRACE(_T("PUSH EVENT & READ WAIT\r\n"));
-			::WaitForSingleObject(hEvent, 10000); //SetEvent for release?
+			::WaitForSingleObject(hEvent, 90000); //SetEvent for release?
 			cs.Unpause();
 			::CloseHandle(hEvent);
 			if (connections[nClientID].GetConnectionType() == Conn_Invalid) {
