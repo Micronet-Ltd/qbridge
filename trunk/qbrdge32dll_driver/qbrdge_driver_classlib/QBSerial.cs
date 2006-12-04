@@ -483,13 +483,13 @@ namespace qbrdge_driver_classlib
                 int inDataLen = com.Read(inData, 0, rxSize);
                 
                 // Show all the incoming data in the port's buffer
-                Debug.Write(com.PortName + " Data: ");
-                for (int i = 0; i < inDataLen; i++)
-                {
-                    byte b = (byte)inData[i];
-                    Debug.Write(b.ToString("X2") + ",");
-                }
-                Debug.WriteLine("");
+              //  Debug.Write(com.PortName + " Data: ");
+//                for (int i = 0; i < inDataLen; i++)
+//                {
+//                    byte b = (byte)inData[i];
+//                    Debug.Write(b.ToString("X2") + ",");
+//                }
+//                Debug.WriteLine("");
 
                 // get port info object
                 for (int i = 0; i < comPorts.Count; i++)
@@ -1413,12 +1413,12 @@ namespace qbrdge_driver_classlib
             pktData[0] = (byte)ackCode;
             byte[] newpkt = MakeQBridgePacket(PacketCmdCodes.PKT_CMD_ACK, pktData, ref pktId);
             com.Write(newpkt, 0, newpkt.Length);
-            Debug.Write("OUT " + com.PortName + ": ");
-            for (int i = 0; i < newpkt.Length; i++)
-            {
-                Debug.Write(newpkt[i].ToString("X2") + ",");
-            }
-            Debug.WriteLine("");
+            //Debug.Write("OUT " + com.PortName + ": ");
+            //for (int i = 0; i < newpkt.Length; i++)
+            //{
+            //    Debug.Write(newpkt[i].ToString("X2") + ",");
+            //}
+            //Debug.WriteLine("");
         }
 
         public static byte[] MakeQBridgePacket(PacketCmdCodes cmdType, byte[] data, ref byte pktId)
@@ -1485,13 +1485,13 @@ namespace qbrdge_driver_classlib
                         {
                             if (qbt.j1939transaction.isAddressClaim == false && qbt.j1939transaction.IsDone() == false)
                             {
-                                Debug.Write("OUT " + serialInfo.com.PortName + ": ");
-                                for (int j = 0; j < qbt.lastSentPkt.Length; j++)
-                                {
-                                    byte b = (byte)qbt.lastSentPkt[j];
-                                    Debug.Write(b.ToString("X2") + ",");
-                                }
-                                Debug.WriteLine("");
+                               // Debug.Write("OUT " + serialInfo.com.PortName + ": ");
+//                                for (int j = 0; j < qbt.lastSentPkt.Length; j++)
+//                                {
+//                                    byte b = (byte)qbt.lastSentPkt[j];
+//                                    Debug.Write(b.ToString("X2") + ",");
+//                                }
+//                                Debug.WriteLine("");
                             }
                         }
                         if (qbt.isJ1939) {
@@ -1750,14 +1750,14 @@ namespace qbrdge_driver_classlib
                         }
                     }
                     SerialPort com = Support.ClientToSerialPort(qbt.clientId);
-
-                    Debug.Write("OUT " + com.PortName + ": ");
-                    for (int j = 0; j < qbt.lastSentPkt.Length; j++)
-                    {
-                        byte b = (byte)qbt.lastSentPkt[j];
-                        Debug.Write(b.ToString("X2") + ",");
-                    }
-                    Debug.WriteLine("");
+//
+//                    Debug.Write("OUT " + com.PortName + ": ");
+//                    for (int j = 0; j < qbt.lastSentPkt.Length; j++)
+//                    {
+//                        byte b = (byte)qbt.lastSentPkt[j];
+//                        Debug.Write(b.ToString("X2") + ",");
+//                    }
+//                    Debug.WriteLine("");
 
                     com.Write(qbt.lastSentPkt, 0, qbt.lastSentPkt.Length);
                     qbt.numRetries--;
@@ -1810,6 +1810,7 @@ namespace qbrdge_driver_classlib
                 if (qbts.pktId == qbt.pktId && qbts.cmdType == qbt.cmdType)
                 {
                     sinfo.QBTransactionSent.RemoveAt(i);
+                    CheckJ1939Pending(sinfo);
                     return;
                 }
             }
@@ -1880,13 +1881,13 @@ namespace qbrdge_driver_classlib
                 }
                 outData = Support.StringToByteArray(fileData.Substring(idx1, idx2 - idx1 + 1));
 
-                Debug.Write("OUT " + com.PortName + ": ");
-                for (int j = 0; j < outData.Length; j++)
-                {
-                    byte b = (byte)outData[j];
-                    Debug.Write(b.ToString("X2") + ",");
-                }
-                Debug.WriteLine("");
+              //  Debug.Write("OUT " + com.PortName + ": ");
+//                for (int j = 0; j < outData.Length; j++)
+//                {
+//                    byte b = (byte)outData[j];
+//                    Debug.Write(b.ToString("X2") + ",");
+//                }
+//                Debug.WriteLine("");
 
                 com.Write(outData, 0, outData.Length);
                 try
