@@ -185,7 +185,14 @@ init_bss_done:
    @ Enable Interrupts
    //however, since this might be a 'warm' boot, clear the interrupt sources until fw has a chance to set them up
    ldr   R0,=APB2_REG_BASE+0x14 //APB2_SWRES at offset 0x14
-   MOV   R1,#(1<<14)            //EIC controller is bit 14
+   MOV   R1,#0                  //EIC controller is bit 14, but let's reset everybody!
+   SUB   R1,R1,#1               //this gives us 0xffff
+   STR   R1,[R0]                //do a software reset on the EIC
+   MOV   R1,#0
+   STR   R1,[R0]                //take him out of reset
+   ldr   R0,=APB1_REG_BASE+0x14 //APB1_SWRES at offset 0x14
+   MOV   R1,#0                  //Reset all the UARTS
+   SUB   R1,R1,#1               //this gives us 0xffff
    STR   R1,[R0]                //do a software reset on the EIC
    MOV   R1,#0
    STR   R1,[R0]                //take him out of reset
@@ -201,3 +208,137 @@ jump_to_main:
 
 Init_literals:
    .ltorg
+
+
+
+@*********************************************************************************************************
+@                                          START J1708 TRANSMIT
+@                                      bool StartJ1708Transmit(Byte data)
+@
+@  This code is called to start a J1708 Transmit operation.  According to the J1708 specification a device
+@  must ensure the bus is idle within 1/2 bit time of starting a transmit.  Our device (when writting to
+@  the serial transmit fifo) has one bit of timing uncertainty if you just asynchronously write to the
+@  fifo to get it started.  What we do here is attempt to "sync up" to the "baud clock".  Here we assume
+@  (based on a fair amount of testing) that there is a timing relationship between the "baud clock" and
+@  timer0 (with a carefully chosen clock prescaler).  We watch the value of this timer and then at the
+@  specified time, we start the serial transmit.  In order to meet the timings, I'm making
+@  LOTS of assumptions here.
+@
+@  Measured times are as follows:
+@  target count:                              0  |  1 |  2  |  3 |  4  |  5 |  6  |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 | 15 |
+@  uS before transmission actually begins:   71.5| 65 | 58.5| 52 | 45.5| 39 | 32.5| 26 |19.5| 13 | 6.5| 0  | 98 | 91 | 84 | 78 |
+@
+@  We implement a state machine here so we don't have to site around with interrupts disabled for a long time
+@  and so we can sample the bus for busy/idle immediately before starting transfer and still meet timing
+@
+@  at entry: R0 has the data byte to be transmitted
+@  at exit:  R0 = 0 if we failed to transmit (due to bus not idle)
+@            R0 = 1 if we were were able to write the txBuffer while the bus was idle
+@      interrupts are disabled if we were successful, otherwise they are in the same state as at entry
+@*********************************************************************************************************
+   .text
+StartJ1708Transmit:
+   .global StartJ1708Transmit
+
+    stmdb sp!,{r4,r5,r6,lr}
+    ldr r1,=TIMER0_REG_BASE+COUNTER_OFFSET          //TestTimer.timer->Counter
+    ldr r2,=UART1_REG_BASE+TXBUFFER_OFFSET          //j1708Port->port->txBuffer
+    ldr r3,=IOPORT1_REG_BASE+GPIO_PORT_DATA_OFFSET  //J1708_BUS_ASSERTED IOPORT1_REG_BASE->PD
+
+    ldrh r4,[r1]    //sync up to the baud clock
+bcsync1:
+    ldrh r5,[r1]    // ||
+    cmp r4,r5       //by waiting until we see a change in value
+    beq bcsync1
+    mov  r4,r5
+    ands r5,r5,#0x0f//running same rate as our baud clock but that is 16x over sampled
+    cmp  r5,#8      //so we have to wait for it to be on our desired bit
+    bne bcsync1
+    //Interrupts go off now, may miss our event and have to wait whole bit, but hope not
+    mrs r6,CPSR     //DISABLE_IRQ( ...but note that we don't save the current state
+    ORR r5,r6,#0xc0
+    msr cpsr_c,r5
+bcsync2:
+    ldrh r5,[r1]    //sync to baud clock again now that interrupts are disabled
+    cmp r4,r5       //by waiting until we see a change in value
+    beq bcsync2
+    mov  r4,r5
+    ands r5,r5,#0x0f//running same rate as our baud clock but that is 16x over sampled
+    cmp  r5,#9      //so we have to wait for it to be on our desired bit
+    bne bcsync2
+    //check for unhandeled edge of bus having occured before we got interrupts off and sync'd up
+    ldr r5,=TIMER1_REG_BASE+STATUS_OFFSET //UNHANDELED_BUS_TRANSITION() (MainTimer.timer->StatusRegister & (InputCaptureFlagA | InputCaptureFlagB) )
+    ldrh r5,[r5]
+    tst r5,#INPUT_CAPTURE_A_OR_B
+    bne failcode
+bcsync3:
+    ldrh r5,[r1]    //sync to baud clock again
+    cmp r4,r5       //by waiting until we see a change in value
+    beq bcsync3
+    mov  r4,r5
+    ands r5,r5,#0x0f//running same rate as our baud clock but that is 16x over sampled
+    cmp  r5,#10     //so we have to wait for it to be on our desired bit
+    bne bcsync3
+    ldrh r1,[r3]    //now that we are close.... one last ditch check of bus asserted status
+    tst r1,#P1_4_MASK //Bit 4 of GPIO1 = P1.4 = T1.ICAPA = J1708RX
+    beq failcode    //if( J1708_BUS_ASSERTED() ) return FALSE
+
+    strh r0,[r2]    //start the transmit now (this will give us 10 bit times to do everything else)
+//#ifdef GPIO1p7_PULSE_ON_J1708_TX_BEGIN
+//    //if test trigger needed, use GPIO 1.7
+//    ldrh r1,[r3]
+//    orr  r2,r1,#0x80    //set a trigger bit so we can see it (GPIO1_SET(7))
+//    strh r2,[r3]
+//    strh r1,[r3]        //clear the trigger bit (GPIO1_CLR(7))
+//    //else, not test    //do we need to take same amount of time???, no because critical work has been done
+//#endif
+
+    //Yeah!!! We did it!!!
+    //return TRUE
+    //msr cpsr_c,r6 //interrupts are restored in upper level!
+    mov r0,#1
+    ldmia sp!,{r4,r5,r6,pc}
+failcode:
+    //return FALSE
+    msr cpsr_c,r6
+    mov r0,#0
+    ldmia sp!,{r4,r5,r6,pc}
+
+   .ltorg
+@ End of StartJ1708Transmit
+
+@*********************************************************************************************************
+@                                     START J1708 BAUD GENERATOR AND TIMER
+@                                      void StartJ1708BaudGeneratorAndTimer( void )
+@
+@  This code is called to start the J1708 com port baud rate generator and a timer that is used
+@  to sync the firmware with the baudrate generator "simultaneously"
+@  This is required so that we can get the actual transmission to begin
+@  with known/controlled timing.
+@  LOTS of assumptions here.
+@*********************************************************************************************************
+StartJ1708BaudGeneratorAndTimer:
+   .global StartJ1708BaudGeneratorAndTimer
+
+    stmdb sp!,{r0,r1,r2,r3,r4,lr}
+
+    ldr r0,=TIMER0_REG_BASE+0x014   //TestTimer.timer->ControlRegister1
+    ldr r1,=UART1_REG_BASE+0x0c     //j1708Port->port->portSettings
+    ldrh r2,[r0]    //r2 now has timer control
+    ldrh r3,[r1]    //r3 now has baud rate control (uart control reg)
+    orr  r2,r2,#0x8000   //TimerCountEnable
+    orr  r3,r3,#0x80     //map.run
+    strh r2,[r0]    //start the timer
+    mov r0,r0
+    mov r0,r0
+    mov r0,r0
+    mov r0,r0
+    mov r0,r0
+    mov r0,r0
+    mov r0,r0
+    strh r3,[r1]    //start the baud rate generator
+
+    ldmia sp!,{r0,r1,r2,r3,r4,pc}
+
+   .ltorg
+@ End of StartJ1708BaudGeneratorAndTimer
