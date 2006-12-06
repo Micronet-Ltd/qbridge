@@ -287,9 +287,9 @@ bcsync3:
 //#ifdef GPIO1p7_PULSE_ON_J1708_TX_BEGIN
 //    //if test trigger needed, use GPIO 1.7
 //    ldrh r1,[r3]
-//    orr  r2,r1,#0x80    //set a trigger bit so we can see it (GPIO1_SET(7))
+//    orr  r2,r1,#0x80    //set a trigger bit so we can see it (GPIO_SET(1,7))
 //    strh r2,[r3]
-//    strh r1,[r3]        //clear the trigger bit (GPIO1_CLR(7))
+//    strh r1,[r3]        //clear the trigger bit (GPIO_CLR(1,7))
 //    //else, not test    //do we need to take same amount of time???, no because critical work has been done
 //#endif
 

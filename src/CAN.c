@@ -81,8 +81,8 @@ void InitializeCANBusController( void ) {
 #if 1 //debug //give ourselves a trigger that can be used later
     GPIO_Config((IOPortRegisterMap *)IOPORT1_REG_BASE, BIT(7), GPIO_OUT_PP );
     GPIO_Config((IOPortRegisterMap *)IOPORT1_REG_BASE, BIT(6), GPIO_OUT_PP );
-    GPIO1_CLR(7);
-    GPIO1_CLR(6);
+    GPIO_CLR(1,7);
+    GPIO_CLR(1,6);
 #endif
     CAN->ControlReg = (CANControlRegisterBits)Init;
     setCANBaud( DEFAULT_CAN_BAUD_RATE );  //J1939 specifies 250k baud
@@ -499,7 +499,7 @@ CAN_queue CAN_received_queue;
 /*            b- sent a CAN message (and it was ack'd by someone)   */
 /********************************************************************/
 static void CAN_IRQ_Handler( void ) {
-//    GPIO1_SET(7);
+//    GPIO_SET(1,7);
     bool handled = false;
     UINT16 intid = CAN->InterruptID;
     if( intid == 0x8000 ){ //status interrupt, cleared by reading the status register
@@ -523,7 +523,7 @@ static void CAN_IRQ_Handler( void ) {
                 Bit1ErrCnt++;
                 break;
             case Bit0Err:
-                GPIO1_SET(7);
+                GPIO_SET(1,7);
                 Bit0ErrCnt++;
                 break;
             case CRCErr:
@@ -551,7 +551,7 @@ static void CAN_IRQ_Handler( void ) {
         handled = true;
     }else if( intid && (intid <= 32) ) { //message interrupting
         //read message from message object ram
-        GPIO1_SET(7);
+        GPIO_SET(1,7);
         while( CAN->IF2_Regs.IFn_CRR & CAN_MIF_CRR_BUSY )
             ;
         CAN->IF2_Regs.IFn_CMR = (CAN_IFN_CMRBits)(Arb+Control+DataA+DataB+ClrIntPend+TxRqNewDat);
@@ -666,7 +666,7 @@ static void CAN_IRQ_Handler( void ) {
     }
     EICClearIRQ(EIC_CAN);
 
-    GPIO1_CLR(7);
+    GPIO_CLR(1,7);
 }
 
 //#############################################################################
