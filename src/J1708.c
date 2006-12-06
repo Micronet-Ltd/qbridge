@@ -8,7 +8,7 @@
 #include "stdio.h"
 #include "protocol232.h"
 
-J1708Queue j1708Queue;
+J1708Queue j1708TxQueue;
 
 J1708Message j1708CurTxMessage;
 bool j1708PacketReady;
@@ -40,16 +40,16 @@ void InitializeJ1708() {
     SetPortSettings(j1708Port, 9600, 8, 'N', 1, FALSE); //important not to start baud rate generator until a timer can be started with it at the same time
     j1708Port->port->timeout = 10; // the idle time for a J1708 bus
 
-    j1708Queue.head = 0;
-    j1708Queue.tail = 0;
+    j1708TxQueue.head = 0;
+    j1708TxQueue.tail = 0;
     j1708PacketReady = false;
-    j1708RecvPacketCount = true;
+    j1708RecvPacketCount = 0;
     j1708WaitForBusyBusCount = 0;
     j1708CollisionCount = 0;
     j1708RecvPacketLen = 0;
     j1708State = JST_Passive;
     j1708CurCollisionCount = 0;
-    j1708RetransmitNeeded = 0;
+    j1708RetransmitNeeded = false;
     j1708RetransmitIdleTime = 0;
     j1708CheckingMIDCharForCollision = -1;
 
@@ -69,14 +69,14 @@ void InitializeJ1708() {
 }
 
 /************************/
-/* GetNextJ1708Message */
+/* GetNextJ1708TxMessage */
 /**********************/
-J1708Message * GetNextJ1708Message() {
-    if (j1708Queue.head == j1708Queue.tail) {
+J1708Message * GetNextJ1708TxMessage() {
+    if (j1708TxQueue.head == j1708TxQueue.tail) {
         return NULL;
     }
 
-    return &(j1708Queue.msgs[j1708Queue.tail]);
+    return &(j1708TxQueue.msgs[j1708TxQueue.tail]);
 }
 
 #ifdef _J1708DEBUG
@@ -186,7 +186,7 @@ extern void GPIO_Config(IOPortRegisterMap *ioport, UINT16 pin, Gpio_PinModes md 
 void ProcessJ1708TransmitQueue() {
     extern bool StartJ1708Transmit( char data_to_send );
     // Is there anything to transmit?
-    if ((j1708Queue.head == j1708Queue.tail) && !j1708RetransmitNeeded) {
+    if ((j1708TxQueue.head == j1708TxQueue.tail) && !j1708RetransmitNeeded) {
         return;
     }
 
@@ -219,7 +219,7 @@ void ProcessJ1708TransmitQueue() {
         J1708LogEventIdle(JEV_Retry, j1708CurCollisionCount, idleTime);
         J1708DebugPrint ("Retransmit");
     } else {
-        J1708Message *msg = GetNextJ1708Message();
+        J1708Message *msg = GetNextJ1708TxMessage();
         if (msg == NULL) {
             DebugPrint ("Unexpected null message retreived");
             return;
@@ -233,7 +233,6 @@ void ProcessJ1708TransmitQueue() {
                                 //account for our startup time by shortening the target idle time
 
         j1708CurCollisionCount = 0;
-        memcpy(&j1708CurTxMessage, msg, sizeof(j1708CurTxMessage));
 
         UINT32 idleTime = GetJ1708IdleTime();
         if (busAccessTime > idleTime) {
@@ -248,8 +247,9 @@ void ProcessJ1708TransmitQueue() {
         j1708Port->port->intEnable |= RxBufNotEmptyIE;
         Transmit (j1708Port, &msg->data[1], msg->len-1);
         IRQ_ENABLE();
+        memcpy(&j1708CurTxMessage, msg, sizeof(j1708CurTxMessage));
         J1708LogEventIdle(JEV_Transmit, 0, idleTime);
-        j1708Queue.tail = (j1708Queue.tail + 1) % J1708_QUEUE_SIZE;
+        j1708TxQueue.tail = (j1708TxQueue.tail + 1) % J1708_QUEUE_SIZE;
     }
 }
 
@@ -262,19 +262,19 @@ int J1708AddFormattedTxPacket (UINT8 priority, UINT8 *data, UINT8 len) {
         return -1;
     }
 
-    int nextHead = (j1708Queue.head + 1) % J1708_QUEUE_SIZE;
-    if (nextHead == j1708Queue.tail) {
+    int nextHead = (j1708TxQueue.head + 1) % J1708_QUEUE_SIZE;
+    if (nextHead == j1708TxQueue.tail) {
         // this means that the queue was full
         return -1;
     }
 
-    int curHead = j1708Queue.head;
-    j1708Queue.msgs[curHead].priority = priority;
-    j1708Queue.msgs[curHead].len = len;
-    memcpy(j1708Queue.msgs[curHead].data, data, len);
-    j1708Queue.msgs[curHead].id = getPktIDcounter();
-    j1708Queue.head = nextHead;
-    return j1708Queue.msgs[curHead].id;
+    int curHead = j1708TxQueue.head;
+    j1708TxQueue.msgs[curHead].priority = priority;
+    j1708TxQueue.msgs[curHead].len = len;
+    memcpy(j1708TxQueue.msgs[curHead].data, data, len);
+    j1708TxQueue.msgs[curHead].id = getPktIDcounter();
+    j1708TxQueue.head = nextHead;
+    return j1708TxQueue.msgs[curHead].id;
 }
 
 /********************************/
@@ -299,10 +299,10 @@ int J1708AddUnFormattedTxPacket(UINT8 priority, UINT8 *data, UINT8 len) {
 /************************/
 int GetFreeJ1708TxBuffers() {
     int numInUse;
-    if (j1708Queue.head > j1708Queue.tail) {
-        numInUse = j1708Queue.head - j1708Queue.tail;
+    if (j1708TxQueue.head > j1708TxQueue.tail) {
+        numInUse = j1708TxQueue.head - j1708TxQueue.tail;
     } else {
-        numInUse = (j1708Queue.head + J1708_QUEUE_SIZE) - j1708Queue.tail;
+        numInUse = (j1708TxQueue.head + J1708_QUEUE_SIZE) - j1708TxQueue.tail;
     }
     return (J1708_QUEUE_SIZE - 1) - numInUse;
 }
