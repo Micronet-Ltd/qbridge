@@ -3,10 +3,8 @@
 
 #include "common.h"
 #include "queue.h"
+#include "interrupt.h"
 
-#define CAN_IRQ_PRIORITY 9
-
-// Assumes a baud clock of 24.0000 MHz
 
 //Public methods
 void InitializeCANBusController( void );
