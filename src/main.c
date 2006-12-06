@@ -34,6 +34,7 @@
 #include "J1708.h"
 //#include "J1939.h"
 #include "CAN.h"
+#include "interrupt.h"
 
 /***********/
 /* Pragmas */
@@ -73,7 +74,7 @@ unsigned long qbridge_stack[2048] __attribute__((section(".stack"))) = { 0 };
  *
  * Jeremy, fix the comment above if necessary. - MKE
  */
-unsigned long irq_stack[1024] __attribute__((section(".irqstack"))) = { 0 };
+unsigned long irq_stack[MAX_INT_NEST_LEVEL * AN_INT_STACK_SIZE] __attribute__((section(".irqstack"))) = { 0 };
 
 /* The firmware entry point */
 void __start(void);
