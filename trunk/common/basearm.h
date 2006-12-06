@@ -59,6 +59,35 @@
                                      "\tMSR  CPSR_c, r0\n" \
                                      : : : "r0" ); }
 
+#define SETUP_NEST_INTERRUPT(stack_sub) { asm volatile ( \
+          "\tMOV R0,R13\n"          /* we need to preserve the current SP thru our 'mode switch' from IRQ mode back to normal mode */ \
+          "\tSUB R13,R13,%0\n"      /* give ourselves some room for the current interrupt, this is where the next interrupt will start it's stack */ \
+          "\tMRS R1,CPSR\n"         /* we will also save our current program status */ \
+          "\tMOV R2,R14\n"          /* we will also save our current LR value */ \
+          "\tMRS R3,SPSR\n"         /* get the mode we were in when this interrupt occured (so we can enter it again if nested int happens) */ \
+          "\tORR R4,R3,#0xc0\n"     /* no interrupts for now, we're not setup yet, patients young man, patients */ \
+          "\tMSR CPSR_c,R4\n"       /* back to whatever mode we were in when int occured (but all interrupts are disabled) */ \
+          "\tMOV R4,R13\n"          /* get his stack pointer (current stack pointer value) */ \
+          "\tMOV R13,R0\n"          /* now set stack pointer (his stack pointer... current stack pointer) to point to our stack */ \
+          "\tSTMDB sp!,{r1,r2,r3,r4,r14}\n" /* store his stack pointer and his link register on our stack */ \
+          "\tMOV R14,R2\n"          /* set his LR to what our LR was when we started this mess*/ \
+          "\tMSR CPSR_c,r3\n"       /* now reenable interrupts */ \
+          ::"I" (stack_sub) :"r0","r1","r2","r3","r4","r13","r14");}
+
+#define UNSET_NEST_INTERRUPT() { asm volatile ( \
+          "\tMRS R0,CPSR\n"         /* must first be interrupt safe, so disable interrupts */ \
+          "\tORR R0,R0,#0xc0\n" \
+          "\tMSR CPSR,R0\n"  \
+          "\tLDMIA sp!,{r1,r2,r3,r4,r14}\n" /* this gets his stack pointer and his link register and his CPSR */ \
+          "\tMOV R0,R13\n"          /* need to preserve the current SP thru our mode switch (from normal mode back to IRQ mode) */ \
+          "\tMOV R13,r4\n"          /* restore the stack pointer that will be restored when IRQ is over */ \
+          "\tMSR CPSR_cxsf,r1\n"    /* now back to IRQ mode */ \
+          "\tMOV R13,R0\n"          /* and our stack pointer is back */ \
+          "\tMOV R14,R2\n"          /* and our LR is back */ \
+          "\tMSR SPSR_cxsf,r3\n"    /* restore the status register that will be restored when IRQ is over */ \
+          :::"r0","r1","r2","r3","r4","r13","r14"); }
+
+
 #define ARM_GET_CP15() ({ unsigned long cpval=0; \
           asm volatile ("MRC p15, 0, %0, c1, c0, 0" : "=r" (cpval) : ); cpval; })
 
