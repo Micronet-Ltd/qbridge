@@ -171,6 +171,14 @@ bool MIDPassesFilter () {
     return (j1708EnabledMIDs[MID/8] & BIT(MID%8)) != 0;
 }
 
+extern void GPIO_Config(IOPortRegisterMap *ioport, UINT16 pin, Gpio_PinModes md );
+
+#define J1708_BUS_DISABLE_XMIT_AND_DEASSERT() do{ \
+            GPIO_Config((IOPortRegisterMap *)IOPORT0_REG_BASE, UART1_Tx_Pin, GPIO_OUT_PP ); \
+            GPIO_SET( 0,11 ); /* UART1_Tx_Pin ....deasserted is high */ \
+            }while(0)
+#define J1708_BUS_ENABLE_XMIT() GPIO_Config((IOPortRegisterMap *)IOPORT0_REG_BASE, UART1_Tx_Pin, GPIO_AF_PP )
+
 
 /******************************/
 /* ProcessJ1708TransmitQueue */
@@ -191,6 +199,8 @@ void ProcessJ1708TransmitQueue() {
     if (!IsTxFifoEmpty(j1708Port)) {
         return;
     }
+
+    J1708_BUS_ENABLE_XMIT();
 
     if (j1708RetransmitNeeded) {
         UINT32 idleTime = GetJ1708IdleTime();
@@ -298,12 +308,12 @@ int GetFreeJ1708TxBuffers() {
 /********************/
 // There is an implicit assumption here that a framing error == a bus collision
 void J1708ComIRQHandle() {
-#ifdef _J1708DEBUG
-    if (j1708Port->port->status & ~(TxFull | TxHalfEmpty | TxEmpty)) {
-        J1708LogEvent(JEV_SerIRQ, j1708Port->port->status);
-    }
-    AssertPrint (!j1708PacketReady || !(j1708Port->port->status & RxBufNotEmtpy), "Warning -- J1708 data received before previous packet was processed");
-#endif
+//#ifdef _J1708DEBUG
+//    if (j1708Port->port->status & ~(TxFull | TxHalfEmpty | TxEmpty)) {
+//        J1708LogEvent(JEV_SerIRQ, j1708Port->port->status);
+//    }
+//    AssertPrint (!j1708PacketReady || !(j1708Port->port->status & RxBufNotEmtpy), "Warning -- J1708 data received before previous packet was processed");
+//#endif
 
     // If we received data, we want to get an idle timeout interrupt (this is so we can measure the 10 baud ticks)
     // deliniating a packet boundary, in case this is the final byte of the packet
@@ -325,6 +335,12 @@ void J1708ComIRQHandle() {
         rxChar = j1708Port->port->rxBuffer;
         Enqueue(&j1708Port->rxQueue, &rxChar, 1);
         if (rxChar != j1708CurTxMessage.data[j1708CheckingMIDCharForCollision]) {
+//GPIO_SET(1,6);
+            //as per the J1708 spec, get off the bus at end of this char or sooner, then take this as the mid
+            J1708_BUS_DISABLE_XMIT_AND_DEASSERT();
+            j1708Port->port->txReset = 0;
+            j1708Port->port->intEnable &= ~TxHalfEmptyIE;
+
             J1708DebugPrint ("Collision (mismatch at byte %d -- was %02X, expecting %02X)", j1708CheckingMIDCharForCollision, rxChar, j1708CurTxMessage.data[j1708CheckingMIDCharForCollision]);
             J1708EnterCollisionState(JCR_FirstByteMismatch);
             ClearQueue(&j1708Port->rxQueue);
@@ -347,6 +363,11 @@ void J1708ComIRQHandle() {
             // 2 other devices collided -- nothing for me to worry about
         } else if (j1708State == JST_Transmitting) {
             // A packet I was transmitting was involved in a collision
+//GPIO_SET(1,6);
+            //it's not clear to me what we should do in this case, but let's get off the bus asap
+            J1708_BUS_DISABLE_XMIT_AND_DEASSERT();
+            j1708Port->port->txReset = 0;
+            j1708Port->port->intEnable &= ~TxHalfEmptyIE;
             J1708DebugPrint ("Framing Collision");
             J1708EnterCollisionState(JCR_Framing);
         } else {
@@ -374,6 +395,7 @@ void J1708ComIRQHandle() {
 
         AssertPrint (QueueEmpty(&j1708Port->rxQueue), "Warning -- J1708 recv buffer had extra bytes");
     }
+//GPIO_CLR(1,6);
 }
 
 
