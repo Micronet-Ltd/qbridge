@@ -498,7 +498,7 @@ CAN_queue CAN_received_queue;
 /*            a- received new CAN message                           */
 /*            b- sent a CAN message (and it was ack'd by someone)   */
 /********************************************************************/
-static void CAN_IRQ_Handler( void ) {
+static void myCAN_IRQ_Handler( void ) {
 //    GPIO_SET(1,7);
     bool handled = false;
     UINT16 intid = CAN->InterruptID;
@@ -523,7 +523,7 @@ static void CAN_IRQ_Handler( void ) {
                 Bit1ErrCnt++;
                 break;
             case Bit0Err:
-                GPIO_SET(1,7);
+//                GPIO_SET(1,7);
                 Bit0ErrCnt++;
                 break;
             case CRCErr:
@@ -551,7 +551,7 @@ static void CAN_IRQ_Handler( void ) {
         handled = true;
     }else if( intid && (intid <= 32) ) { //message interrupting
         //read message from message object ram
-        GPIO_SET(1,7);
+//        GPIO_SET(1,7);
         while( CAN->IF2_Regs.IFn_CRR & CAN_MIF_CRR_BUSY )
             ;
         CAN->IF2_Regs.IFn_CMR = (CAN_IFN_CMRBits)(Arb+Control+DataA+DataB+ClrIntPend+TxRqNewDat);
@@ -664,9 +664,16 @@ static void CAN_IRQ_Handler( void ) {
     if (!handled) {
         DebugPrint ("Unknown interrupt on CAN");
     }
-    EICClearIRQ(EIC_CAN);
 
-    GPIO_CLR(1,7);
+//    GPIO_CLR(1,7);
+}
+
+static void CAN_IRQ_Handler( void ) {
+    //need to allow for J1708 interrupt to preempt us so FW can do the hard stuff that HW doesn't do
+    SETUP_NEST_INTERRUPT(AN_INT_STACK_SIZE*sizeof(int));
+    myCAN_IRQ_Handler();
+    UNSET_NEST_INTERRUPT();
+    EICClearIRQ(EIC_CAN);
 }
 
 //#############################################################################
