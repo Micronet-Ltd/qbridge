@@ -14,7 +14,8 @@ void InitializeTimers();
 void StopTimers(void);
 UINT64 GetTimerTime(Timer *timer);
 
-extern UINT32 GetJ1708IdleTime();
+extern UINT32 GetJ1708IdleTime();   //in MainTimer tick units (1/4 microsecond)
+#define t13uS 52    //used to account for J1708 startup time, in MainTimer tick units (1/4 microsecond)
 
 extern inline void StartJ1708IdleTimer();
 extern UINT32 GetMainTimeInBaudTicks();

@@ -227,6 +227,10 @@ void ProcessJ1708TransmitQueue() {
 
         // Not trying to transmit anything, now let us see if we have been idle long enough
         UINT32 busAccessTime = ConvertJ1708IdleCountToTimerTicks(J1708_IDLE_TIME + 2 * msg->priority);
+        busAccessTime -= t13uS; //it takes a constant 19.5uS to actually get the transfer going
+                                //and we do check for idle one last time, so as not to loose out to
+                                //other devices on the bus (that might be doing this in HW), let's
+                                //account for our startup time by shortening the target idle time
 
         j1708CurCollisionCount = 0;
         memcpy(&j1708CurTxMessage, msg, sizeof(j1708CurTxMessage));
@@ -335,7 +339,6 @@ void J1708ComIRQHandle() {
         rxChar = j1708Port->port->rxBuffer;
         Enqueue(&j1708Port->rxQueue, &rxChar, 1);
         if (rxChar != j1708CurTxMessage.data[j1708CheckingMIDCharForCollision]) {
-//GPIO_SET(1,6);
             //as per the J1708 spec, get off the bus at end of this char or sooner, then take this as the mid
             J1708_BUS_DISABLE_XMIT_AND_DEASSERT();
             j1708Port->port->txReset = 0;
@@ -363,7 +366,6 @@ void J1708ComIRQHandle() {
             // 2 other devices collided -- nothing for me to worry about
         } else if (j1708State == JST_Transmitting) {
             // A packet I was transmitting was involved in a collision
-//GPIO_SET(1,6);
             //it's not clear to me what we should do in this case, but let's get off the bus asap
             J1708_BUS_DISABLE_XMIT_AND_DEASSERT();
             j1708Port->port->txReset = 0;
@@ -395,7 +397,6 @@ void J1708ComIRQHandle() {
 
         AssertPrint (QueueEmpty(&j1708Port->rxQueue), "Warning -- J1708 recv buffer had extra bytes");
     }
-//GPIO_CLR(1,6);
 }
 
 
@@ -509,6 +510,10 @@ void J1708EnterCollisionState(enum J1708CollisionReason reason) {
         j1708RetransmitIdleTime =  ConvertJ1708IdleCountToTimerTicks(J1708_IDLE_TIME + 2 * ((MainTimer.timer->Counter & 0x0007) + 1));
 #endif
     }
+    j1708RetransmitIdleTime -= t13uS;//it takes a constant 19.5uS to actually get the transfer going
+                                    //and we do check for idle one last time, so as not to loose out to
+                                    //other devices on the bus (that might be doing this in HW), let's
+                                    //account for our startup time by shortening the target idle time
 
     if (j1708State == JST_Transmitting) {
         j1708RetransmitNeeded = true;
