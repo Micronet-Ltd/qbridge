@@ -3,8 +3,8 @@
 
 #include "common.h"
 #include "queue.h"
+#include "interrupt.h"
 
-#define SERIAL_IRQ_PRIORITY 8
 
 // Assumes a baud clock of 24.0000 MHz
 //#define bauddiv_460800  3.25  // %error = 7.7 --too large

@@ -1,7 +1,7 @@
 #ifndef TIMERS_H
 #define TIMERS_H
 
-#define TIMER_IRQ_PRIORITY 10
+#include "interrupt.h"
 
 typedef struct _Timer {
    TimerRegisterMap *timer;
