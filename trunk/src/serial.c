@@ -47,7 +47,7 @@ static const BaudTableEntry BaudRateTable[] = {
    { 600l,    bauddiv_600},
 };
 
-static void InitializePort (SerialPort *port, EIC_SOURCE src, void (*hdlr)(void), bool setrun );
+static void InitializePort (SerialPort *port, EIC_SOURCE src, void (*hdlr)(void), bool setrun, int portpriority );
 static void DisablePort(SerialPort *port);
 
 //SerialPort com1;
@@ -139,16 +139,16 @@ void InitializeAllSerialPorts() {
     // Configure the GPIO receive pins as Input Tristate CMOS
    GPIO_Config(ioPort0, /*UART0_Rx_Pin |*/ UART1_Rx_Pin | UART2_Rx_Pin | UART3_Rx_Pin, GPIO_IN_TRI_CMOS);
 
-    //InitializePort(&com1, EIC_UART0, Com1IRQ, TRUE);
-    InitializePort(&com2, EIC_UART1, Com2IRQ, FALSE);   //Important not to start the J1708 port until a timer can be started at the same time
-    InitializePort(&com3, EIC_UART2, Com3IRQ, TRUE);
-    InitializePort(&com4, EIC_UART3, Com4IRQ, TRUE);
+    //InitializePort(&com1, EIC_UART0, Com1IRQ, TRUE, SERIAL_IRQ_PRIORITY);
+    InitializePort(&com2, EIC_UART1, Com2IRQ, FALSE, J1708_SERIAL_IRQ_PRIORITY);   //Important not to start the J1708 port until a timer can be started at the same time
+    InitializePort(&com3, EIC_UART2, Com3IRQ, TRUE, SERIAL_IRQ_PRIORITY);
+    InitializePort(&com4, EIC_UART3, Com4IRQ, TRUE, SERIAL_IRQ_PRIORITY);
 }
 
 /*******************/
 /* InitializePort */
 /*****************/
-static void InitializePort (SerialPort *port, EIC_SOURCE src, void (*hdlr)(void), bool setrun) {
+static void InitializePort (SerialPort *port, EIC_SOURCE src, void (*hdlr)(void), bool setrun, int portpriority) {
     IRQSTATE saveState = 0;
     DISABLE_IRQ(saveState);
     InitializeQueue(&(port->rxQueue));
@@ -160,7 +160,7 @@ static void InitializePort (SerialPort *port, EIC_SOURCE src, void (*hdlr)(void)
     port->port->guardTime = 0;
     port->port->timeout = 8;
 
-    RegisterEICHdlr(src, hdlr, SERIAL_IRQ_PRIORITY);
+    RegisterEICHdlr(src, hdlr, portpriority);
     EICEnableIRQ(src);
 }
 
@@ -390,11 +390,18 @@ void DebugCorePrint(char *toPrint) {
     Transmit (debugPort, toPrint, strlen(toPrint));
 }
 
+static void comIRQHandle_with_reenable( void (*fp)( SerialPort *x ), SerialPort *mycom ){
+    SETUP_NEST_INTERRUPT( AN_INT_STACK_SIZE * sizeof(int) );
+    (*fp)( mycom );
+    UNSET_NEST_INTERRUPT();
+}
+
 /************/
 /* Com1IRQ */
 /**********/
 /*void Com1IRQ() {
-    HandleComIRQ(&com1);
+//    HandleComIRQ(&com1);
+    comIRQHandle_with_reenable( HandleComIRQ, &com1 );
     EICClearIRQ(EIC_UART0);
 }*/
 
@@ -402,14 +409,15 @@ void DebugCorePrint(char *toPrint) {
 /* Com2IRQ */
 /**********/
 void Com2IRQ() {
-    J1708ComIRQHandle();
+    J1708ComIRQHandle();    //since this is our highest priority interrupt, we don't bother to reenable interrupts
     EICClearIRQ(EIC_UART1);
 }
 /************/
 /* Com3IRQ */
 /**********/
 void Com3IRQ() {
-    HandleComIRQ(&com3);
+    //HandleComIRQ(&com3);
+    comIRQHandle_with_reenable( HandleComIRQ, &com3 );
     EICClearIRQ(EIC_UART2);
 }
 
@@ -417,7 +425,8 @@ void Com3IRQ() {
 /* COM4IRQ */
 /**********/
 void Com4IRQ() {
-    HandleComIRQ(&com4);
+    //HandleComIRQ(&com4);
+    comIRQHandle_with_reenable( HandleComIRQ, &com4 );
     EICClearIRQ(EIC_UART3);
 }
 
@@ -440,17 +449,23 @@ void HandleComIRQ(SerialPort *port) {
 
     // Overrun
     if ((port->port->status & OverrunError) != 0) {
+        (void)port->port->rxBuffer; //this is what actually clears this interrupt
+        port->port->rxReset = 0;    //must do something to clear the interrupt or we will hang the system!
         DebugPrint ("Serial overrun error on com%d", GetPortNumber(port) );
         handled = true;
     }
 
     // Framing error
     if ((port->port->status & FrameError) != 0) {
+        (void)port->port->rxBuffer;
+        port->port->rxReset = 0;    //must do something to clear the interrupt or we will hang the system!
         DebugPrint ("Framing error error on com%d", GetPortNumber(port));
         handled = true;
     }
 
     if ((port->port->status & ParityError) != 0) {
+        (void)port->port->rxBuffer;
+        port->port->rxReset = 0;    //must do something to clear the interrupt or we will hang the system!
         DebugPrint ("Parity error on com%d", GetPortNumber(port));
         handled = true;
     }
