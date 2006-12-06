@@ -67,7 +67,7 @@ void InitializeJ1708();
 void ProcessJ1708TransmitQueue();
 void ProcessJ1708RecvPacket();
 
-J1708Message *GetNextJ1708Message();
+J1708Message *GetNextJ1708TxMessage();
 int J1708AddFormattedTxPacket (UINT8 priority, UINT8 *data, UINT8 len);
 int J1708AddUnFormattedTxPacket(UINT8 priority, UINT8 *data, UINT8 len);
 int GetFreeJ1708TxBuffers();
