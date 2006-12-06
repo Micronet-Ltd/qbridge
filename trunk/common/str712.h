@@ -515,8 +515,8 @@ typedef enum _Gpio_PinModes {
   GPIO_AF_PP
 } Gpio_PinModes;
 
-#define GPIO1_SET(x) (((IOPortRegisterMap *)(IOPORT1_REG_BASE))->PD |= BIT(x))
-#define GPIO1_CLR(x) (((IOPortRegisterMap *)(IOPORT1_REG_BASE))->PD &= ~BIT(x))
+#define GPIO_SET(p,b) (((IOPortRegisterMap *)(IOPORT##p##_REG_BASE))->PD |= BIT(b))
+#define GPIO_CLR(p,b) (((IOPortRegisterMap *)(IOPORT##p##_REG_BASE))->PD &= ~BIT(b))
 
 #endif /* _ASM_ */
 
