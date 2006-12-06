@@ -71,29 +71,35 @@ void StopTimers(void)
 }
 
 
-/**************/
-/* TimerWrap */
-/************/
-void TimerWrap(Timer *timer) {
-    if (timer->timer->StatusRegister & TimerOverflow) {
-        timer->wrapCounter++;
-        timer->timer->StatusRegister = ~TimerOverflow;
-    } else {
-        DebugPrint ("Unwanted timer interrupt %04x", timer->timer->StatusRegister);
-        timer->timer->StatusRegister = (UINT16)(~(UINT32)(InputCaptureFlagA | OutputCompareFlagA | InputCaptureFlagB | OutputCompareFlagB));
-    }
-
-}
+///**************/
+///* TimerWrap */
+///************/
+//void TimerWrap(Timer *timer) {
+//    if (timer->timer->StatusRegister & TimerOverflow) {
+//        timer->wrapCounter++;
+//        timer->timer->StatusRegister = ~TimerOverflow;
+//    } else {
+//        DebugPrint ("Unwanted timer interrupt %04x", timer->timer->StatusRegister);
+//        timer->timer->StatusRegister = (UINT16)(~(UINT32)(InputCaptureFlagA | OutputCompareFlagA | InputCaptureFlagB | OutputCompareFlagB));
+//    }
+//}
 
 /**************/
 /* Timer1IRQ */
 /************/
 void Timer1IRQ() {
+    SETUP_NEST_INTERRUPT(AN_INT_STACK_SIZE*sizeof(int));
     if (MainTimer.timer->StatusRegister & TimerOverflow) {
-        TimerWrap(&MainTimer);
+//        TimerWrap(&MainTimer);
+        MainTimer.wrapCounter++;
+        MainTimer.timer->StatusRegister = ~TimerOverflow;
         J1708_idle_time++;
         if( J1708_idle_time >= 40000 ) J1708_idle_time=40000;
+    } else {
+        DebugPrint ("Unwanted timer interrupt %04x", MainTimer.timer->StatusRegister);
+        MainTimer.timer->StatusRegister = (UINT16)(~(UINT32)(InputCaptureFlagA | OutputCompareFlagA | InputCaptureFlagB | OutputCompareFlagB));
     }
+    UNSET_NEST_INTERRUPT();
     EICClearIRQ(EIC_TIMER1);
 }
 
