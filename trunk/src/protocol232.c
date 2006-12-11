@@ -48,6 +48,8 @@ static bool awaiting232Ack;
 static UINT32 awaiting232TxTime = 0;
 static int awaiting232FailCount = 0;
 
+static int dropped_due_to_slow_host = 0;
+
 
 static void parseCANcontrol( UINT8 id, UINT8 *data, int dataLen );
 static void set_CAN_filters( UINT8 id, char *data, int dataLen );
@@ -493,11 +495,16 @@ void QueueTxFinal232Packet (UINT8 command, UINT8 packetID, UINT8 *data, UINT32 d
     AssertPrint (dataLen < 64, "Serial transmission request too long");
 
     UINT8 len = dataLen;
-    Enqueue(&txPackets, &len, 1);
-    Enqueue(&txPackets, &command, 1);
-    Enqueue(&txPackets, &packetID, 1);
-    int addedLen = Enqueue(&txPackets, data, dataLen);
-    AssertPrint (addedLen == dataLen, "Error adding data to 232 tx buffer");
+    if( (len + 3) + txPackets.count < QUEUE_SIZE ){
+        Enqueue(&txPackets, &len, 1);
+        Enqueue(&txPackets, &command, 1);
+        Enqueue(&txPackets, &packetID, 1);
+        int addedLen = Enqueue(&txPackets, data, dataLen);
+        AssertPrint (addedLen == dataLen, "Error adding data to 232 tx buffer");
+    }else{
+        dropped_due_to_slow_host++;
+        DebugPrint("Not enough room to queue another packet, dropping cmd %x id %d", command, packetID);
+    }
 
     Transmit232IfReady();
 }
