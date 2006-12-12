@@ -240,7 +240,9 @@ Init_literals:
 StartJ1708Transmit:
    .global StartJ1708Transmit
 
-    stmdb sp!,{r4,r5,r6,lr}
+    mov ip,sp
+    stmdb sp!,{r4,r5,r6,fp,ip,lr,pc}
+    sub fp, ip, #4  ; 0x4
     ldr r1,=TIMER0_REG_BASE+COUNTER_OFFSET          //TestTimer.timer->Counter
     ldr r2,=UART1_REG_BASE+TXBUFFER_OFFSET          //j1708Port->port->txBuffer
     ldr r3,=IOPORT1_REG_BASE+GPIO_PORT_DATA_OFFSET  //J1708_BUS_ASSERTED IOPORT1_REG_BASE->PD
@@ -297,12 +299,14 @@ bcsync3:
     //return TRUE
     //msr cpsr_c,r6 //interrupts are restored in upper level!
     mov r0,#1
-    ldmia sp!,{r4,r5,r6,pc}
+//  stmdb sp!,{r4,r5,r6,fp,ip,lr,pc}
+    ldmdb  fp,{r4,r5,r6,fp,sp,pc}
 failcode:
     //return FALSE
     msr cpsr_c,r6
     mov r0,#0
-    ldmia sp!,{r4,r5,r6,pc}
+//  stmdb sp!,{r4,r5,r6,fp,ip,lr,pc}
+    ldmdb  fp,{r4,r5,r6,fp,sp,pc}
 
    .ltorg
 @ End of StartJ1708Transmit
