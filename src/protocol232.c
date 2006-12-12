@@ -127,7 +127,11 @@ void ProcessReceived232Data() {
         }
 
         //GPJ What if we have only recieved one byte so far????
-        //GPJ this next test will look at invalid data!!!!
+        //GPJ the next test would look at invalid data!!!!
+        //GPJ so to avoid that, we will look to see if we have enough bytes yet
+        if( curPacketRecvBytes < 2 ){
+            return;
+        }
         if (CurPacketSize() > curPacketRecvBytes) {
             // In this case the current packet is larger than the data we have received so far -- just quit and wait for more data
             // Ultimately, we should probably have some sort of timeout mechanism, so that if more than 200ms elapse with no new data
