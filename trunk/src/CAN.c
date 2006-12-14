@@ -790,6 +790,14 @@ void ProcessCANRecievePacket( void ){
         cmd=0;  //don't want to send anything to host
     }
 
+    //go ahead and send the data on it's way
+    if( cmd != 0 ) {
+        if( !QueueTx232Packet( cmd, hostdata, dl ) ){
+            //if no room at the inn, save it and try again next time around
+            return;
+        }
+    }
+
     //now that we have free'd this queue entry,  update tail and CAN_received
     int newtail = (CAN_received_queue.tail + 1 ) % CAN_QUEUE_SIZE;
     DISABLE_IRQ( saveState );
@@ -798,11 +806,6 @@ void ProcessCANRecievePacket( void ){
         CAN_received = FALSE;
     }
     RESTORE_IRQ(saveState);
-
-    //go ahead and send the data on it's way
-    if( cmd != 0 ) {
-        QueueTx232Packet( cmd, hostdata, dl );
-    }
 }
 
 
