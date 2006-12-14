@@ -211,10 +211,15 @@ UINT32 GetMainTimeInBaudTicks() {
 //  when a collision occurs (twice in a row) and you have to retry, the time is
 //    10 + 2*(Rand# + 1) (measured in bit time) Rand # = 0-7
 //  so our min time is 12bits and our max time is 10+2*8=26bits
+// These times are from the last stop bit.  Since we can't tell the difference
+// between a stop bit and any other data bit with the same logic level as a stop
+// bit, we must then assume the whole data field has the same value as the stop
+// bit... thus we must add 1 byte time to the above (8bits plus the stop bit)
+//  so our min time is 21bits and our max time is 35bits
 // J1708 specifies the baud rate as 9600, thus a bit time is 1/9600 = 104.167uS
-// so our min time is 1.25mS... and max time is 2.7083mS
+// so our min time is 2.1875mS... and max time is 3.64583mS
 //Given that our timer tick rate is 0.25uS per tick, these times correspond
-//to 5000 counts for the min time and 10,833.3 counts for the max time
+//to 8750 counts for the min time and 14583.3 counts for the max time
 //
 //This time needs to saturate so that if the bus is idle for a very long time
 //a transfer may begin immediately
@@ -226,7 +231,7 @@ UINT32 GetMainTimeInBaudTicks() {
 //that will capture the time of the edge (rising or falling edge of the J1708
 //receive signal) we will take advantage of that feature.  The time will be
 //captured and held.  We append the rollover counter onto this time and can
-//do so accurately as long as we poll more often that our counter rolls over.
+//do so accurately as long as we poll more often than our counter rolls over.
 //At this point in time, the rollover occurs every 16mS and our typical poll
 //rate (when not busy) is 26uS (a factor of 600+).  It is therefore my beliefe
 //that we have enough margin to do this accurately.
@@ -296,15 +301,21 @@ UINT32 GetJ1708IdleTime() {
 }
 
 
+//since our timer can't distiguish between a stop bit and any other high bit
+//we have to assume that the time we started measuring was the first bit of
+//data... if someone transfers 0xff, there will be 8 data bits and 1 stop bit
+//all high, our timer started right after the start bit... so we need to add
+//9 bit times to our counter values
+#define my9baudbits 3750 //9*(1/9600)/.00000025
 
-static const UINT32 counttotimerticks[] = { 5000, //(12*(1/9600) / .00000025),
-                                            5834,//(14*(1/9600) / .00000025),
-                                            6667,//(16*(1/9600) / .00000025),
-                                            7500,//(18*(1/9600) / .00000025),
-                                            8334,//(20*(1/9600) / .00000025),
-                                            9167,//(22*(1/9600) / .00000025),
-                                           10000, //(24*(1/9600) / .00000025),
-                                           10834, //(26*(1/9600) / .00000025),
+static const UINT32 counttotimerticks[] = { 5000 + my9baudbits, //(12*(1/9600) / .00000025),
+                                            5834 + my9baudbits,//(14*(1/9600) / .00000025),
+                                            6667 + my9baudbits,//(16*(1/9600) / .00000025),
+                                            7500 + my9baudbits,//(18*(1/9600) / .00000025),
+                                            8334 + my9baudbits,//(20*(1/9600) / .00000025),
+                                            9167 + my9baudbits,//(22*(1/9600) / .00000025),
+                                           10000 + my9baudbits, //(24*(1/9600) / .00000025),
+                                           10834 + my9baudbits, //(26*(1/9600) / .00000025),
                                           };
 
 /*************************************/
