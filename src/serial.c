@@ -319,7 +319,7 @@ void ProcessRxFifo (SerialPort *port) {
 /* PortRxFifoNotEmpty */
 /*********************/
 inline bool PortRxFifoNotEmpty(SerialPort *port) {
-    return (port->port->status & RxBufNotEmtpy) != 0;
+    return (port->port->status & RxBufNotEmpty) != 0;
 }
 
 #ifdef _DEBUG

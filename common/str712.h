@@ -143,7 +143,7 @@ enum UartStatusBits {
     ParityError         = 0x0008,
     TxHalfEmpty         = 0x0004,
     TxEmpty             = 0x0002,
-    RxBufNotEmtpy       = 0x0001,
+    RxBufNotEmpty       = 0x0001,
 };
 
 typedef struct _UARTRegisterMap {
