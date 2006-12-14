@@ -481,18 +481,18 @@ void Send232Ack(ACKCodes code, UINT8 id, UINT8* data, UINT32 dataLen) {
 /*********************/
 /* QueueTx232Packet */
 /*******************/
-void QueueTx232Packet (UINT8 command, UINT8 *data, UINT32 dataLen) {
+bool QueueTx232Packet (UINT8 command, UINT8 *data, UINT32 dataLen) {
     packetID++;
     if (packetID == 0) {
         packetID++;
     }
-    QueueTxFinal232Packet (command, packetID, data, dataLen);
+    return QueueTxFinal232Packet (command, packetID, data, dataLen);
 }
 
 /**************************/
 /* QueueTxFinal232Packet */
 /************************/
-void QueueTxFinal232Packet (UINT8 command, UINT8 packetID, UINT8 *data, UINT32 dataLen) {
+bool QueueTxFinal232Packet (UINT8 command, UINT8 packetID, UINT8 *data, UINT32 dataLen) {
     if (dataLen >= MAX_232PACKET - MinPacketSize) {
         return;
     }
@@ -508,9 +508,11 @@ void QueueTxFinal232Packet (UINT8 command, UINT8 packetID, UINT8 *data, UINT32 d
     }else{
         dropped_due_to_slow_host++;
         DebugPrint("Not enough room to queue another packet, dropping cmd %x id %d", command, packetID);
+        return FALSE;
     }
 
     Transmit232IfReady();
+    return TRUE;
 }
 
 static UINT8 last232DataLen = 0;
