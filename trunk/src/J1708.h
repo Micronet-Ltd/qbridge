@@ -2,14 +2,14 @@
 #define J1708_H
 
 #define J1708_IDLE_TIME 10
-#define J1708_QUEUE_SIZE 16
+#define J1708_TX_QUEUE_SIZE 16
+#define J1708_RX_QUEUE_SIZE 128
 #define J1708_DEFAULT_PRIORITY 8
 
 extern int j1708RecvPacketCount;
 extern int j1708IDCounter;
 extern int j1708WaitForBusyBusCount;
 extern int j1708CollisionCount;
-extern int j1708RecvPacketLen;
 extern bool j1708MIDFilterEnabled;
 extern UINT8 j1708EnabledMIDs[64];
 extern bool j1708TransmitConfirm;
@@ -18,17 +18,22 @@ extern bool j1708TransmitConfirm;
 typedef struct _J1708Message {
     UINT8 priority;
     UINT8 len;
+    UINT8 txcnfrm;
     int id;
     UINT8 data[21];
 } J1708Message;
 
-typedef struct _J1708Queue {
+typedef struct _J1708TxQueue {
     int head;
     int tail;
-    J1708Message msgs[J1708_QUEUE_SIZE];
-} J1708Queue;
-extern J1708Queue j1708Queue;
-extern J1708Message j1708CurTxMessage;
+    J1708Message msgs[J1708_TX_QUEUE_SIZE];
+} J1708TxQueue;
+
+typedef struct _J1708RxQueue {
+    int head;
+    int tail;
+    J1708Message msgs[J1708_RX_QUEUE_SIZE];
+} J1708RxQueue;
 
 enum J1708CollisionReason { JCR_Framing = 1, JCR_FullComp = 0, JCR_FirstByteMismatch = 2 };
 enum J1708State { JST_Passive, JST_Transmitting, JST_IgnoreRxData };
@@ -68,11 +73,13 @@ void ProcessJ1708TransmitQueue();
 void ProcessJ1708RecvPacket();
 
 J1708Message *GetNextJ1708TxMessage();
+J1708Message *GetNextJ1708RxMessage();
 int J1708AddFormattedTxPacket (UINT8 priority, UINT8 *data, UINT8 len);
 int J1708AddUnFormattedTxPacket(UINT8 priority, UINT8 *data, UINT8 len);
 int GetFreeJ1708TxBuffers();
+int GetFreeJ1708RxBuffers();
 
-bool MIDPassesFilter();
+bool MIDPassesFilter( char *received_j1708_data );
 void J1708SetMIDState(UINT16 MID, bool state);
 void J1708ResetDefaultPrefs();
 void J1708ComIRQHandle();
