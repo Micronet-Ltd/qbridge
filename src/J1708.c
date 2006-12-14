@@ -8,15 +8,16 @@
 #include "stdio.h"
 #include "protocol232.h"
 
-J1708Queue j1708TxQueue;
+J1708TxQueue j1708TxQueue;
+J1708RxQueue j1708RxQueue;
 
 J1708Message j1708CurTxMessage;
 bool j1708PacketReady;
-int j1708RecvPacketLen;
-char j1708RecvPacket[21];
 int j1708RecvPacketCount;
 int j1708WaitForBusyBusCount;
 int j1708CollisionCount;
+int j1708DroppedRxCount;
+int j1708DroppedTxCnfrmCount;
 enum J1708State j1708State;
 int j1708CurCollisionCount;
 bool j1708RetransmitNeeded;
@@ -33,6 +34,9 @@ J1708EventLog j1708EventLog[256];
 UINT8 j1708EventLogIndex;
 #endif
 
+static void handle_delayed_j1708_com_irq( void );
+
+
 /********************/
 /* InitializeJ1708 */
 /******************/
@@ -42,13 +46,16 @@ void InitializeJ1708() {
 
     j1708TxQueue.head = 0;
     j1708TxQueue.tail = 0;
+    j1708RxQueue.head = 0;
+    j1708RxQueue.tail = 0;
     j1708PacketReady = false;
     j1708RecvPacketCount = 0;
     j1708WaitForBusyBusCount = 0;
     j1708CollisionCount = 0;
-    j1708RecvPacketLen = 0;
     j1708State = JST_Passive;
     j1708CurCollisionCount = 0;
+    j1708DroppedRxCount = 0;
+    j1708DroppedTxCnfrmCount = 0;
     j1708RetransmitNeeded = false;
     j1708RetransmitIdleTime = 0;
     j1708CheckingMIDCharForCollision = -1;
@@ -79,15 +86,29 @@ J1708Message * GetNextJ1708TxMessage() {
     return &(j1708TxQueue.msgs[j1708TxQueue.tail]);
 }
 
+/************************/
+/* GetNextJ1708RxMessage */
+/**********************/
+J1708Message * GetNextJ1708RxMessage() {
+    if (j1708RxQueue.head == j1708RxQueue.tail) {
+        return NULL;
+    }
+
+    return &(j1708RxQueue.msgs[j1708RxQueue.tail]);
+}
+
+
 #ifdef _J1708DEBUG
 /********************************/
 /* J1708DebugPrintRxPacketInfo */
 /******************************/
-void J1708DebugPrintRxPacketInfo(char *msg) {
+void J1708DebugPrintRxPacketInfo(char *msg, J1708Message *inmsg) {
     char tbuf[256];
     int idx = 0;
     int i = 0;
     UINT8 sum = 0;
+    int j1708RecvPacketLen = inmsg->len;
+    char *j1708RecvPacket = inmsg->data;
     msgIdx++;
     J1708LogEvent (JEV_Msg, msgIdx);
     snprintf (tbuf, 256, "%02d Rx J1708 packet. (%s) %d bytes.  State=%d.  Packet=", msgIdx, msg, j1708RecvPacketLen, j1708State);
@@ -109,63 +130,66 @@ void J1708DebugPrintRxPacketInfo(char *msg) {
 /* ProcessJ1708RecvPacket */
 /*************************/
 void ProcessJ1708RecvPacket() {
+    IRQSTATE saveState = 0;
     if (!j1708PacketReady) {
         return;
     }
 
-    J1708LogEvent(JEV_RecvFromBusProc, j1708RecvPacketLen);
-    j1708PacketReady = false;
-
-    if (j1708State == JST_Transmitting) {
-        if (memcmp(j1708RecvPacket, j1708CurTxMessage.data, j1708RecvPacketLen) != 0) {
-            J1708DebugPrint ("Full Compare Collision");
-            J1708EnterCollisionState(JCR_FullComp);
-            J1708DebugPrintRxPacketInfo("col");
-            j1708RetransmitNeeded = true;
-        } else {
-            if (j1708TransmitConfirm) {
-                UINT8 buf[5];
-                buf[0] = 1;
-                memcpy(buf+1, &j1708CurTxMessage.id, 4);
-                QueueTx232Packet(J1708TransmitConfirm, buf, 5);
-            }
-            J1708DebugPrintRxPacketInfo("tx ");
-            j1708CurCollisionCount = 0;
-            j1708RetransmitNeeded = false;
+    J1708Message *msg = GetNextJ1708RxMessage();
+    if( msg == NULL ){
+        return;
+    }
+    if( msg->priority == 100 ){//clue that this is a txconfirm
+        if (j1708TransmitConfirm) {
+            UINT8 buf[5];
+            buf[0] = 1;
+            memcpy(buf+1, &msg->id, 4);
+            QueueTx232Packet(J1708TransmitConfirm, buf, 5);
         }
-        j1708State = JST_Passive;
+//            J1708DebugPrintRxPacketInfo("tx ", msg);
     } else {
+//    J1708LogEvent(JEV_RecvFromBusProc, msg->len);
         UINT8 sum = 0;
         int i;
-        for (i = 0; i < j1708RecvPacketLen; i++) {
-            sum += j1708RecvPacket[i];
+        for (i = 0; i < msg->len; i++) {
+            sum += msg->data[i];
         }
         if (sum != 0) {
             J1708LogEvent(JEV_ChecksumErr, 0);
             J1708DebugPrint ("Invalid checksum received on inbound packet");
+            J1708DebugPrintRxPacketInfo("badsum ", msg);
         } else {
-            AssertPrint (j1708State != JST_IgnoreRxData, "Error -- received packet while in collision state");
             j1708RecvPacketCount++;
-            J1708DebugPrintRxPacketInfo("rx ");
-            if (MIDPassesFilter()) {
-                QueueTx232Packet (ReceiveJ1708Packet, j1708RecvPacket, j1708RecvPacketLen - 1); // Omit checksum byte
+  //          J1708DebugPrintRxPacketInfo("rx ");
+            if (MIDPassesFilter(msg->data)) {
+                if( !QueueTx232Packet (ReceiveJ1708Packet, msg->data, msg->len - 1) ){ // Omit checksum byte
+                    //if we couldn't add this one to the transmit queue, hang on to it so we can try later
+                    return;
+                }
             }
         }
     }
-
+    //now that we have free'd this queue entry,  update tail and j1708PacketReady
+    int newtail = (j1708RxQueue.tail + 1 ) % J1708_RX_QUEUE_SIZE;
+    DISABLE_IRQ( saveState );
+    j1708RxQueue.tail = newtail;
+    if( j1708RxQueue.head == newtail ){
+        j1708PacketReady = FALSE;
+    }
+    RESTORE_IRQ(saveState);
 }
 
 /********************/
 /* MIDPassesFilter */
 /******************/
-bool MIDPassesFilter () {
+bool MIDPassesFilter ( char * received_j1708data ) {
     if (!j1708MIDFilterEnabled) {
         return true;
     }
 
-    int MID = j1708RecvPacket[0];
+    int MID = received_j1708data[0];
     if (MID == 255) {
-        MID = 256 + j1708RecvPacket[1];
+        MID = 256 + received_j1708data[1];
     }
 
     return (j1708EnabledMIDs[MID/8] & BIT(MID%8)) != 0;
@@ -210,10 +234,11 @@ void ProcessJ1708TransmitQueue() {
         if( !StartJ1708Transmit( j1708CurTxMessage.data[0] ) ){
             return;
         }
-        j1708State = JST_Transmitting;
-        j1708CheckingMIDCharForCollision = 0;
-        j1708Port->port->intEnable |= RxBufNotEmptyIE;
         Transmit (j1708Port, &j1708CurTxMessage.data[1], j1708CurTxMessage.len-1);
+        handle_delayed_j1708_com_irq();
+        j1708Port->port->intEnable |= (RxBufNotEmptyIE+ TxEmptyIE); //Rx so we can compare and get off bus if needed, Tx so we can delimit our message from one of his
+        j1708CheckingMIDCharForCollision = 0;
+        j1708State = JST_Transmitting;
         j1708RetransmitNeeded = false;
         IRQ_ENABLE();
         J1708LogEventIdle(JEV_Retry, j1708CurCollisionCount, idleTime);
@@ -224,6 +249,7 @@ void ProcessJ1708TransmitQueue() {
             DebugPrint ("Unexpected null message retreived");
             return;
         }
+        memcpy(&j1708CurTxMessage, msg, sizeof(j1708CurTxMessage));
 
         // Not trying to transmit anything, now let us see if we have been idle long enough
         UINT32 busAccessTime = ConvertJ1708IdleCountToTimerTicks(J1708_IDLE_TIME + 2 * msg->priority);
@@ -242,14 +268,14 @@ void ProcessJ1708TransmitQueue() {
         if( !StartJ1708Transmit( msg->data[0] ) ){
             return;
         }
-        j1708State= JST_Transmitting;
-        j1708CheckingMIDCharForCollision = 0;
-        j1708Port->port->intEnable |= RxBufNotEmptyIE;
         Transmit (j1708Port, &msg->data[1], msg->len-1);
+        handle_delayed_j1708_com_irq();
+        j1708Port->port->intEnable |= (RxBufNotEmptyIE + TxEmptyIE); //Rx so we can compare and get off bus if needed, Tx so we can delimit our message from one of his
+        j1708CheckingMIDCharForCollision = 0;
+        j1708State= JST_Transmitting;
         IRQ_ENABLE();
-        memcpy(&j1708CurTxMessage, msg, sizeof(j1708CurTxMessage));
         J1708LogEventIdle(JEV_Transmit, 0, idleTime);
-        j1708TxQueue.tail = (j1708TxQueue.tail + 1) % J1708_QUEUE_SIZE;
+        j1708TxQueue.tail = (j1708TxQueue.tail + 1) % J1708_TX_QUEUE_SIZE;
     }
 }
 
@@ -262,7 +288,7 @@ int J1708AddFormattedTxPacket (UINT8 priority, UINT8 *data, UINT8 len) {
         return -1;
     }
 
-    int nextHead = (j1708TxQueue.head + 1) % J1708_QUEUE_SIZE;
+    int nextHead = (j1708TxQueue.head + 1) % J1708_TX_QUEUE_SIZE;
     if (nextHead == j1708TxQueue.tail) {
         // this means that the queue was full
         return -1;
@@ -271,6 +297,7 @@ int J1708AddFormattedTxPacket (UINT8 priority, UINT8 *data, UINT8 len) {
     int curHead = j1708TxQueue.head;
     j1708TxQueue.msgs[curHead].priority = priority;
     j1708TxQueue.msgs[curHead].len = len;
+    j1708TxQueue.msgs[curHead].txcnfrm = j1708TransmitConfirm ? 1 : 0;
     memcpy(j1708TxQueue.msgs[curHead].data, data, len);
     j1708TxQueue.msgs[curHead].id = getPktIDcounter();
     j1708TxQueue.head = nextHead;
@@ -302,9 +329,22 @@ int GetFreeJ1708TxBuffers() {
     if (j1708TxQueue.head > j1708TxQueue.tail) {
         numInUse = j1708TxQueue.head - j1708TxQueue.tail;
     } else {
-        numInUse = (j1708TxQueue.head + J1708_QUEUE_SIZE) - j1708TxQueue.tail;
+        numInUse = (j1708TxQueue.head + J1708_TX_QUEUE_SIZE) - j1708TxQueue.tail;
     }
-    return (J1708_QUEUE_SIZE - 1) - numInUse;
+    return (J1708_TX_QUEUE_SIZE - 1) - numInUse;
+}
+
+/**************************/
+/* GetFreeJ1708RxBuffers */
+/************************/
+int GetFreeJ1708RxBuffers() {
+    int numInUse;
+    if (j1708RxQueue.head > j1708RxQueue.tail) {
+        numInUse = j1708RxQueue.head - j1708RxQueue.tail;
+    } else {
+        numInUse = (j1708RxQueue.head + J1708_RX_QUEUE_SIZE) - j1708RxQueue.tail;
+    }
+    return (J1708_RX_QUEUE_SIZE - 1) - numInUse;
 }
 
 /**********************/
@@ -312,28 +352,35 @@ int GetFreeJ1708TxBuffers() {
 /********************/
 // There is an implicit assumption here that a framing error == a bus collision
 void J1708ComIRQHandle() {
+    bool myj1708PacketReady = false;
 //#ifdef _J1708DEBUG
 //    if (j1708Port->port->status & ~(TxFull | TxHalfEmpty | TxEmpty)) {
 //        J1708LogEvent(JEV_SerIRQ, j1708Port->port->status);
 //    }
-//    AssertPrint (!j1708PacketReady || !(j1708Port->port->status & RxBufNotEmtpy), "Warning -- J1708 data received before previous packet was processed");
+//    AssertPrint (!j1708PacketReady || !(j1708Port->port->status & RxBufNotEmpty), "Warning -- J1708 data received before previous packet was processed");
 //#endif
 
     // If we received data, we want to get an idle timeout interrupt (this is so we can measure the 10 baud ticks)
     // deliniating a packet boundary, in case this is the final byte of the packet
-    if (j1708Port->port->status & RxBufNotEmtpy) {
+    if (j1708Port->port->status & RxBufNotEmpty) {
         j1708Port->port->intEnable |= TimeoutIdleIE;
     }
 
     // If a packet was ready, we need to pull it out of the RX buffer in the PostHandle, and also turn off the
     // interrupt on idle timeout
     if (j1708Port->port->status & (TimeoutIdle | TimeoutNotEmtpy)) {
-        j1708PacketReady = true;
-        j1708Port->port->intEnable &= ~TimeoutIdleIE;
+        myj1708PacketReady = true;
+        j1708Port->port->intEnable &= ~(TimeoutIdleIE | TxEmptyIE);
+    }
+
+    // If we are here because we were the transmitter and the TX is now complete, don't delay, grab the message and check that we got it all back correctly
+    if( (j1708Port->port->intEnable & TxEmptyIE) && (j1708Port->port->status & TxEmpty) ){
+        myj1708PacketReady = true;
+        j1708Port->port->intEnable &= ~(TxEmptyIE);
     }
 
     // If we are transmitting, we want to interrupt on the first couple of characters only and check it for a collision
-    while ((j1708CheckingMIDCharForCollision >= 0) && (j1708Port->port->status & RxBufNotEmtpy) && !(j1708Port->port->status & FrameError)) {
+    while ((j1708CheckingMIDCharForCollision >= 0) && (j1708Port->port->status & RxBufNotEmpty) && !(j1708Port->port->status & FrameError)) {
         UINT8 rxChar;
         // we were double checking the first character of a transmission for a collision
         rxChar = j1708Port->port->rxBuffer;
@@ -370,6 +417,7 @@ void J1708ComIRQHandle() {
             J1708_BUS_DISABLE_XMIT_AND_DEASSERT();
             j1708Port->port->txReset = 0;
             j1708Port->port->intEnable &= ~TxHalfEmptyIE;
+            ClearQueue (&j1708Port->txQueue);
             J1708DebugPrint ("Framing Collision");
             J1708EnterCollisionState(JCR_Framing);
         } else {
@@ -380,24 +428,126 @@ void J1708ComIRQHandle() {
         }
         ClearQueue(&j1708Port->rxQueue);
         j1708Port->port->rxReset = 0; // Clear out the RxFifo
+        (void)j1708Port->port->rxBuffer; //read this to clear weird interrupt
 
     } else if (j1708Port->port->status != 0) {
         HandleComIRQ(j1708Port);
     }
 
-    if (j1708PacketReady) {
+    if (myj1708PacketReady) {
         if (QueueEmpty(&j1708Port->rxQueue) || (j1708State == JST_IgnoreRxData)) {
-            j1708PacketReady = false;
+            myj1708PacketReady = false;
             j1708State = JST_Passive;
             ClearQueue(&j1708Port->rxQueue);
         } else {
-            J1708LogEvent(JEV_RecvFromBus, 0);
-            j1708RecvPacketLen = DequeueBuf(&j1708Port->rxQueue, j1708RecvPacket, 21);
-        }
+            if (j1708State == JST_Transmitting) {
+                j1708State = JST_Passive;
+                J1708Message mymsg;
+                mymsg.id = 0;
+                mymsg.priority = 0;
+                mymsg.len = DequeueBuf(&j1708Port->rxQueue, mymsg.data, j1708CurTxMessage.len);
+                //some may still be in the hardware fifo (and the last byte may not yet be complete (our txempty occurs 1 bit early))
+                while(  mymsg.len < j1708CurTxMessage.len ) {
+                    if( j1708Port->port->status & RxBufNotEmpty ) {
+                        mymsg.data[mymsg.len] = j1708Port->port->rxBuffer;
+                        mymsg.len++;
+                    }
+                }
 
-        AssertPrint (QueueEmpty(&j1708Port->rxQueue), "Warning -- J1708 recv buffer had extra bytes");
+                if( (memcmp(mymsg.data, j1708CurTxMessage.data, mymsg.len) != 0) || (mymsg.len != j1708CurTxMessage.len) ) {
+                    J1708DebugPrint ("Full Compare Collision");
+                    J1708EnterCollisionState(JCR_FullComp);
+                    J1708DebugPrintRxPacketInfo("col", &mymsg);
+                    J1708DebugPrintRxPacketInfo("expected", &j1708CurTxMessage);
+                    j1708RetransmitNeeded = true;
+                }else{ //successful transmission
+                    //may need to send a transmit confirm
+                    if( j1708CurTxMessage.txcnfrm ) {
+                        mymsg.priority = 100; //setup to send transmit confirm
+                        mymsg.id = j1708CurTxMessage.id;
+                        int nextHead = (j1708RxQueue.head + 1) % J1708_RX_QUEUE_SIZE;
+                        if (nextHead == j1708RxQueue.tail) {
+                            // this means that the queue is full
+                            j1708DroppedTxCnfrmCount++;
+                        }else{
+                            J1708Message *msg = &j1708RxQueue.msgs[j1708RxQueue.head];
+                            j1708RxQueue.head = nextHead;
+                            memcpy(msg, &mymsg, sizeof(J1708Message));
+                            j1708PacketReady = true;
+                        }
+                    }
+                }
+            }else{ //we were not transmitting
+                J1708LogEvent(JEV_RecvFromBus, 0);
+                int nextHead = (j1708RxQueue.head + 1) % J1708_RX_QUEUE_SIZE;
+                if (nextHead == j1708RxQueue.tail) {
+                    // this means that the queue is full
+                    // but we must still deque this so as to keep track of individual messages (delimited only by time)
+                    J1708Message mymsg;
+                    DequeueBuf(&j1708Port->rxQueue, mymsg.data, 21);
+                    j1708DroppedRxCount++;
+                }else{
+                    J1708Message *msg = &j1708RxQueue.msgs[j1708RxQueue.head];
+                    j1708RxQueue.head = nextHead;
+                    msg->len = DequeueBuf(&j1708Port->rxQueue, msg->data, 21);
+                    msg->id = 0;
+                    msg->priority = 0;
+                    j1708PacketReady = true;
+                }
+            }
+        }
+        AssertPrint( QueueEmpty(&j1708Port->rxQueue) && ((j1708Port->port->status & RxBufNotEmpty)==0), "Warning -- J1708 recv buffer had extra bytes");
     }
 }
+
+/************************************/
+/* handle_delayed_j1708_com_irq     */
+/*    a utility routine needed      */
+/*    because we may start xfer     */
+/*    very close to where one       */
+/*    ends... but we had interrupts */
+/*    disabled                      */
+/************************************/
+static void handle_delayed_j1708_com_irq( void ){
+    if( j1708Port->port->status & (FrameError | OverrunError | ParityError) ) {
+        j1708Port->port->rxReset = 0; // Clear out the RxFifo
+        (void)j1708Port->port->rxBuffer; //read this to clear weird interrupt
+        ClearQueue(&j1708Port->rxQueue);
+    }
+
+    if( j1708State == JST_IgnoreRxData ){
+        j1708Port->port->rxReset = 0; // Clear out the RxFifo
+        (void)j1708Port->port->rxBuffer; //read this to clear weird interrupt
+        ClearQueue(&j1708Port->rxQueue);
+    }
+
+    if( (j1708Port->port->status & RxBufNotEmpty) || (!QueueEmpty(&j1708Port->rxQueue)) ) {
+        J1708LogEvent(JEV_RecvFromBus, 0);
+        int nextHead = (j1708RxQueue.head + 1) % J1708_RX_QUEUE_SIZE;
+        if (nextHead == j1708RxQueue.tail) {
+            // this means that the queue is full
+            j1708Port->port->rxReset = 0; // Clear out the RxFifo
+            (void)j1708Port->port->rxBuffer; //read this to clear weird interrupt
+            ClearQueue(&j1708Port->rxQueue);
+            j1708DroppedRxCount++;
+        }else{
+            J1708Message *msg = &j1708RxQueue.msgs[j1708RxQueue.head];
+            j1708RxQueue.head = nextHead;
+            msg->len = DequeueBuf(&j1708Port->rxQueue, msg->data, 21);
+            //may not have everything from the hardware buffer yet, so grab it here
+            while( (j1708Port->port->status & RxBufNotEmpty) && (msg->len < 21) ){
+                msg->data[msg->len] = j1708Port->port->rxBuffer;
+                msg->len++;
+            }
+            msg->id = 0;
+            msg->priority = 0;
+            j1708PacketReady = true;
+        }
+        AssertPrint( QueueEmpty(&j1708Port->rxQueue) && ((j1708Port->port->status & RxBufNotEmpty)==0), "Warning -- J1708 recv buffer had extra bytes");
+    }
+}
+
+
 
 
 #ifdef _J1708DEBUG
@@ -457,7 +607,7 @@ void J1708PrintEventLog() {
                     (j1708EventLog[i].flags & ParityError) != 0,
                     (j1708EventLog[i].flags & TxHalfEmpty) != 0,
                     (j1708EventLog[i].flags & TxEmpty) != 0,
-                    (j1708EventLog[i].flags & RxBufNotEmtpy) != 0);
+                    (j1708EventLog[i].flags & RxBufNotEmpty) != 0);
                 break;
             case JEV_RecvFromBus:
                 snprintf (buf, 256, "Received packet from bus\r\n");
