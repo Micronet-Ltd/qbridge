@@ -439,6 +439,7 @@ void J1708ComIRQHandle() {
             myj1708PacketReady = false;
             j1708State = JST_Passive;
             ClearQueue(&j1708Port->rxQueue);
+            j1708Port->port->rxReset = 0;
         } else {
             if (j1708State == JST_Transmitting) {
                 j1708State = JST_Passive;
@@ -701,9 +702,30 @@ void J1708SetMIDState(UINT16 MID, bool state) {
 /* J1708ResetDefaultPrefs */
 /*************************/
 void J1708ResetDefaultPrefs() {
+    IRQSTATE saveState = 0;
     memset (j1708EnabledMIDs, 0, sizeof(j1708EnabledMIDs));
     j1708MIDFilterEnabled = true;
     j1708TransmitConfirm = false;
+    //clear the tx and rx queues
+    DISABLE_IRQ(saveState);
+    j1708TxQueue.head = 0;
+    j1708TxQueue.tail = 0;
+    j1708RxQueue.head = 0;
+    j1708RxQueue.tail = 0;
+    j1708PacketReady = false;
+    j1708RetransmitNeeded = false;
+    //attempt to abort/ignore any transmissions that may be in progress
+    if( j1708State == JST_Transmitting ){
+        J1708_BUS_DISABLE_XMIT_AND_DEASSERT();
+        j1708Port->port->txReset = 0;
+        j1708Port->port->intEnable &= ~TxHalfEmptyIE;
+        ClearQueue (&j1708Port->txQueue);
+        j1708State = JST_Passive;
+    }
+    if( (j1708Port->port->status & RxBufNotEmpty) || !QueueEmpty(&j1708Port->rxQueue) ){
+        j1708State = JST_IgnoreRxData;
+    }
+    RESTORE_IRQ(saveState);
 }
 
 #ifdef _DEBUG
