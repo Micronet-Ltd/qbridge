@@ -533,18 +533,20 @@ static void myCAN_IRQ_Handler( void ) {
         if( intstat & EWarn ){  //not sure what to do if we get this interrupt
         }
         if( intstat & BOff ) {  //part won't recover from this unless we clear the Init bit again
-            //que up a message to go to the host
-            CAN_received = TRUE;
-            int nextHead = (CAN_received_queue.head + 1) % CAN_QUEUE_SIZE;
-            if( nextHead == CAN_received_queue.tail ){
-                can_int_queue_overflow = TRUE;   //the queue was full... we'll just overwrite whatever was there, but leave an indicator that it happened
-            }
-            CAN_message *cmsg = &CAN_received_queue.CAN_messages[CAN_received_queue.head];
-            CAN_received_queue.head = nextHead;
+            if( CAN->ControlReg & Init ){
+                //que up a message to go to the host
+                CAN_received = TRUE;
+                int nextHead = (CAN_received_queue.head + 1) % CAN_QUEUE_SIZE;
+                if( nextHead == CAN_received_queue.tail ){
+                    can_int_queue_overflow = TRUE;   //the queue was full... we'll just overwrite whatever was there, but leave an indicator that it happened
+                }
+                CAN_message *cmsg = &CAN_received_queue.CAN_messages[CAN_received_queue.head];
+                CAN_received_queue.head = nextHead;
 
-            cmsg->len = 0;
-            cmsg->id = 0;
-            cmsg->src = SRC_BOF;
+                cmsg->len = 0;
+                cmsg->id = 0;
+                cmsg->src = SRC_BOF;
+            }
         }
         if( intstat & EPass ){  //this will not interrupt, but if we are in this state... then what?
         }
