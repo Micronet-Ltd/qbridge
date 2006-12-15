@@ -211,6 +211,7 @@ char *romfind( char *romstart, char *tofind, int romsize){
     }
     return 0;
 }
+
 /*********************/
 /* Process232Packet */
 /*******************/
@@ -494,7 +495,7 @@ bool QueueTx232Packet (UINT8 command, UINT8 *data, UINT32 dataLen) {
 /************************/
 bool QueueTxFinal232Packet (UINT8 command, UINT8 packetID, UINT8 *data, UINT32 dataLen) {
     if (dataLen >= MAX_232PACKET - MinPacketSize) {
-        return;
+        return FALSE;
     }
     AssertPrint (dataLen < 64, "Serial transmission request too long");
 
