@@ -1,0 +1,237 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "afxres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// English (U.S.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+#endif //_WIN32
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "#define _AFX_NO_SPLITTER_RESOURCES\r\n"
+    "#define _AFX_NO_OLE_RESOURCES\r\n"
+    "#define _AFX_NO_TRACKER_RESOURCES\r\n"
+    "#define _AFX_NO_PROPERTY_RESOURCES\r\n"
+    "\r\n"
+    "#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)\r\n"
+    "LANGUAGE 9, 1\r\n"
+    "#pragma code_page(1252)\r\n"
+    "#include ""res\\TestAppMFC.rc2""  // non-Microsoft Visual C++ edited resources\r\n"
+    "#include ""afxres.rc""     // Standard components\r\n"
+    "#endif\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDR_MAINFRAME           ICON                    "res\\TestAppMFC.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_ABOUTBOX DIALOGEX 0, 0, 235, 55
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "About TestAppMFC"
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    ICON            IDR_MAINFRAME,IDC_STATIC,11,17,20,20
+    LTEXT           "TestAppMFC Version 1.0",IDC_STATIC,40,10,119,8,SS_NOPREFIX
+    LTEXT           "Copyright (C) 2006",IDC_STATIC,40,25,119,8
+    DEFPUSHBUTTON   "OK",IDOK,178,7,50,16,WS_GROUP
+END
+
+IDD_TESTAPPMFC_DIALOG DIALOGEX 0, 0, 224, 386
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+EXSTYLE WS_EX_APPWINDOW
+CAPTION "z"
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,167,363,50,16
+    PUSHBUTTON      "Cancel",IDCANCEL,95,363,50,16
+    PUSHBUTTON      "RP1210_GetStatusInfo",IDC_BUTTON1,3,4,105,16
+    PUSHBUTTON      "Load DLL",IDC_BUTTON2,112,0,48,13
+    PUSHBUTTON      "Free DLL",IDC_BUTTON3,161,0,44,13
+    PUSHBUTTON      "CreateJ1708Connection, COM3",IDC_BUTTON4,4,22,105,16
+    EDITTEXT        IDC_EDIT1,7,340,210,22,ES_MULTILINE | ES_AUTOHSCROLL
+    PUSHBUTTON      "ClientDisconnect ALL Clients",IDC_BUTTON5,112,91,105,16
+    PUSHBUTTON      "RP1210_SendMessage, COM3",IDC_BUTTON6,4,40,105,16
+    PUSHBUTTON      "RP1210_ReadMessage, COM3",IDC_BUTTON7,4,57,105,16
+    PUSHBUTTON      "CreateJ1708Connection, COM4",IDC_CREATECON4_BTN,112,22,105,16
+    PUSHBUTTON      "RP1210_SendMessage, COM4",IDC_SEND_COM4BTN,112,39,105,16
+    PUSHBUTTON      "RP1210_ReadMessage, COM4",IDC_READCOM4_BTN,112,56,105,16
+    PUSHBUTTON      "ReadMessageBLOCK, COM3",IDC_BUTTON8,3,75,105,16
+    PUSHBUTTON      "SendCmd, ResetDev COM3",IDC_SENDRESETCMD_BTN,3,93,105,16
+    PUSHBUTTON      "SendCmd, Upgrade FW COM3",IDC_SENDRESETCMD_BTN2,3,110,105,16
+    PUSHBUTTON      "GetHardwareStatus, COM3",IDC_SENDRESETCMD_BTN3,4,128,105,16
+    PUSHBUTTON      "CreateJ1939Conn, COM3",IDC_BUTTON9,4,184,106,17
+    PUSHBUTTON      "SendMessageJ1939, COM3",IDC_sendj1939msgbtn,4,203,105,11
+    PUSHBUTTON      "SetJ1708 Filter T, COM3",IDC_SETJ1708FILTERBTN,4,145,105,17
+    PUSHBUTTON      "ReadMessage 0, COM4",IDC_READCOM4_BTN2,112,73,105,11
+    PUSHBUTTON      "Conn,Send,Disconn",IDC_BUTTON10,113,108,104,17
+    PUSHBUTTON      "connect, filter, send, read",IDC_BUTTON11,112,127,105,18
+    PUSHBUTTON      "zero length msg problem",IDC_BUTTON12,112,146,105,17
+    PUSHBUTTON      "reset cmd error",IDC_BUTTON13,4,164,106,18
+    PUSHBUTTON      "Create j1939 Conn, COM4",IDC_BUTTON14,114,182,102,15
+    PUSHBUTTON      "SendMsgJ1939 BAM, COM3",IDC_sendj1939msgbtn2,3,219,106,16
+    PUSHBUTTON      "MsgJ1939 (1785) BAM, COM3",IDC_sendj1939msgbtn3,3,235,106,9
+    PUSHBUTTON      "J1939 (1786 Error) BAM, COM3",IDC_sendj1939msgbtn4,3,255,106,13
+    PUSHBUTTON      "MsgJ1939 (1785) BAM, COM3",IDC_sendj1939msgbtn5,3,245,106,10
+    PUSHBUTTON      "SendMsgJ1939 RTS/CTS, COM3",IDC_sendj1939msgbtn6,3,268,106,12
+    EDITTEXT        DBGEB,112,275,105,62,ES_MULTILINE | ES_AUTOHSCROLL
+    PUSHBUTTON      "ReadMsg J1939, COM4",IDC_READCOM4_BTN3,112,198,105,15
+    PUSHBUTTON      "J1939 RTS/CTS(1785), COM3",IDC_sendj1939msgbtn7,3,281,106,12
+    PUSHBUTTON      "J1939 Claim Addr 6 High NAME, COM3",IDC_AddrClaimCom3,3,294,106,17,BS_MULTILINE
+    PUSHBUTTON      "Claim Addr 6 Low NAME, COM4",IDC_AddrClaimCom4,112,214,106,9,BS_MULTILINE
+    PUSHBUTTON      "SendMsgJ1939 RTS/CTS, COM4",IDC_sendj1939msgbtn8,111,232,106,12
+    PUSHBUTTON      "Send Command Com4",IDC_BUTTON16,112,165,105,14
+    PUSHBUTTON      "Set J1939 filter PGN 1FFFF",IDC_BUTTON15,2,312,107,11
+    PUSHBUTTON      "SendMessageJ1939, COM4",IDC_sendj1939msgbtn9,112,245,105,11
+    PUSHBUTTON      "SendMsg PGN 1FFFF, COM4",IDC_sendj1939msgbtn10,112,257,105,11
+    PUSHBUTTON      "ReadMsg J1939, COM3",IDC_READCOM4_BTN4,3,324,105,15
+    PUSHBUTTON      "Claim Addr 8 Low NAME, COM4",IDC_AddrClaimCom5,111,223,106,9,BS_MULTILINE
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,0,0,1
+ PRODUCTVERSION 1,0,0,1
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x4L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904e4"
+        BEGIN
+            VALUE "CompanyName", "TODO: <Company name>"
+            VALUE "FileDescription", "TODO: <File description>"
+            VALUE "FileVersion", "1.0.0.1"
+            VALUE "InternalName", "TestAppMFC.exe"
+            VALUE "LegalCopyright", "TODO: (c) <Company name>.  All rights reserved."
+            VALUE "OriginalFilename", "TestAppMFC.exe"
+            VALUE "ProductName", "TODO: <Product name>"
+            VALUE "ProductVersion", "1.0.0.1"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1252
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO 
+BEGIN
+    IDD_ABOUTBOX, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 228
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 48
+    END
+
+    IDD_TESTAPPMFC_DIALOG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 217
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 379
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE 
+BEGIN
+    IDS_ABOUTBOX            "&About TestAppMFC..."
+END
+
+#endif    // English (U.S.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+#define _AFX_NO_SPLITTER_RESOURCES
+#define _AFX_NO_OLE_RESOURCES
+#define _AFX_NO_TRACKER_RESOURCES
+#define _AFX_NO_PROPERTY_RESOURCES
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+LANGUAGE 9, 1
+#pragma code_page(1252)
+#include "res\TestAppMFC.rc2"  // non-Microsoft Visual C++ edited resources
+#include "afxres.rc"     // Standard components
+#endif
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+
