@@ -173,6 +173,7 @@ UINT32 Get_uS_TimeStamp( void ) {
     t1 = timer->wrapCounter;
     t3 = timer->timer->Counter;
     if( (t2 > t3) || (timer->timer->StatusRegister & TimerOverflow) ){   //wrap occured right before our very eyes!
+        t3 = timer->timer->Counter;
         t1++;
     }
     RESTORE_IRQ(saveState);
