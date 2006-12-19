@@ -851,6 +851,7 @@ namespace qbrdge_driver_classlib
                 }
                 if (dllPorts.Count == 0)
                 {
+                    QBSerial.checkCloseComports();
                     EndProgram();
                 }
                 else
