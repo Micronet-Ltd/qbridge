@@ -438,9 +438,9 @@ bool ConnectToDriverApp(){
 				::ReleaseMutex(hMutex);
 				return false;
 			}
-			for (int i = 0; i < 6; i++)
+			for (int i = 0; i < 10; i++)
 			{
-				::Sleep(750);
+				::Sleep(500);
 				if (QueryDriverApp(QUERY_NEWPORT_PKT, DRIVER_LISTEN_PORT-1, dmy, NULL, 0, 0) == true) {
 					appon = true;
 					break;
