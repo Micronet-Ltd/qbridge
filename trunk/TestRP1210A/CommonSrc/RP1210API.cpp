@@ -16,7 +16,12 @@ RP1210API::RP1210API(CString dllBaseName)
 	pRP1210_GetHardwareStatus = NULL;
 	hRP1210DLL = NULL;
 
+//#ifdef WINCE
+//	dllBaseName = _T("\\HardDisk\\BIN\\") + dllBaseName;
+//#endif
+
 	if ( ( hRP1210DLL = LoadLibrary( dllBaseName ) ) == NULL ) {
+		HRESULT err = GetLastError();
 		TRACE(_T("Error: LoadLibrary( %s ) failed! \n"), dllBaseName );
 		valid = false;
 		return;
@@ -37,6 +42,10 @@ RP1210API::RP1210API(CString dllBaseName)
 /************************/
 RP1210API::~RP1210API(void)
 {
+	if (hRP1210DLL) {
+		// Don't call freeLibrary, or running the next test will take forever
+		//FreeLibrary(hRP1210DLL);
+	}
 }
 
 #ifndef WINCE

@@ -10,6 +10,7 @@
 
 #define PARM(a,b) (a), L#a L##b
 #define TEST(a,b) if (testList.find(_T(a)) != testList.end()) { b; }
+#define ARRAYLEN(a) (sizeof(a)/sizeof(a[0]))
 
 #define MS_VC_EXCEPTION 0x406D1388
 typedef struct tagTHREADNAME_INFO
@@ -171,9 +172,10 @@ void TestRP1210::TestCustom(INIMgr::Devices &dev1, INIMgr::Devices &dev2) {
 		char msgData[500] = {0};
 		int size = 490;
 		p.Get1939Data(msgData, size);
-		TRACE ("PASS Received data %d bytes.  Data=%s\n", result, msgData);
+		CString msgDataAsTChar(msgData);
+		TRACE(_T("PASS Received data %d bytes.  Data=%s\n"), result, msgDataAsTChar);
 	} else {
-		TRACE ("Receive error\n");
+		TRACE (_T("Receive error\n"));
 	}
 
 	VerifyDisconnect(api1, cl1a);
@@ -212,10 +214,10 @@ void TestRP1210::Test (const set<CString> &testList, vector<INIMgr::Devices> &de
 	api2->userAPIName = _T("API 2");
 
 // specialized tests to hone in on errors
-log.LogText(_T("Custom test selected.  Checked tests will not be performed.  View Debugger output for results, they may not be logged."), Log::Blue);
-TestCustom (devs[idx1], devs[idx2]);
-return;
-////
+//log.LogText(_T("Custom test selected.  Checked tests will not be performed.  View Debugger output for results, they may not be logged."), Log::Blue);
+//TestCustom (devs[idx1], devs[idx2]);
+//return;
+//////
 	TEST("Read Version", TestReadVersion());
 	TEST("Connect", TestConnect(devs, idx1));
 	TEST("Multiconnect", TestMulticonnect(devs, idx1));
@@ -272,7 +274,9 @@ return;
 	TEST("J1939 Address Claim", Test1939AddressClaim(devs[idx1], devs[idx2]));
 	TEST("J1939 Basic Read", Test1939BasicRead(devs[idx1]));
 	TEST("J1939 Advanced Read", Test1939AdvancedRead(devs[idx1], devs[idx2]));
-
+	TEST("J1939 Basic Send", Test1939BasicSend(devs[idx1], devs[idx2]));
+	TEST("J1939 Window Notify", Test1939WinNotify(devs[idx1]));
+	TEST("J1939 Filters", Test1939Filters(devs[idx1], devs[idx2]));
 	KillThreads();
 	VerifyDisconnect(api2, secondaryClient);
 	VerifyDisconnect(api2, secondary1939Client);
@@ -375,7 +379,7 @@ void TestRP1210::TestBasicRead(INIMgr::Devices &dev, int primaryClient) {
 
 			DWORD tick = GetTickCount();
 			DWORD tickTimeStamps[3];
-			for (i = 0; (i < 3) && (GetTickCount() < tick+3500); ) {
+			for (i = 0; (i < 3) && (GetTickCount() < tick+4500); ) {
 				int result = api1->pRP1210_ReadMessage(primaryClient, buf, sizeof(buf), blocking);
 				if (result < 0) {
 					log.LogText(_T("    Receive error"), Log::Red);
@@ -547,7 +551,8 @@ TRACE (_T("Reading on %d (%d)\n"), i, connections[i]);
 					foundMessage[pkt.data[1]] = true;
 				} else {
 					rxBuf[result] = '\0';
-					TRACE (("Odd Read %d bytes %s\n"), pkt.data.size(), rxBuf+4);
+					CString rxBufAsTChar(rxBuf+4);
+					TRACE (_T("Odd Read %d bytes %s\n"), pkt.data.size(), rxBufAsTChar);
 					log.LogText (_T("    Unexpected read data"), Log::Red);
 					passed = false;
 				}
@@ -557,7 +562,7 @@ TRACE (_T("Reading on %d (%d)\n"), i, connections[i]);
 					int size = 256;
 					pkt.Get1939Data(msg, size);
 					if (size != 1) {
-						TRACE ("Odd Read\n");
+						TRACE (_T("Odd Read\n"));
 					} else {
 						if ((msg[0] >= 0) && (msg[0] < 4)) {
 							foundMessage[msg[0]] = true;
@@ -610,7 +615,25 @@ TRACE (_T("Closing connection %d, clientid=%d\n"), i, connections[i]);
 /****************************/
 void TestRP1210::TestBasicSend (int primaryClient) {
 	log.LogText (_T("Testing: SendMessage (basic)"), Log::Blue);
+	TestGenericSend (true, primaryClient);
+}	
 
+/**********************************/
+/* TestRP1210::Test1939BasicSend */
+/********************************/
+void TestRP1210::Test1939BasicSend(INIMgr::Devices &dev1, INIMgr::Devices &dev2) {
+	int primaryClient = VerifyConnect(api1, dev1, "J1939");
+	VerifyProtectAddress(api1, primaryClient, 100, 1, 1);
+
+	TestGenericSend (false, primaryClient);
+
+	VerifyDisconnect(api1, primaryClient);
+}
+
+/********************************/
+/* TestRP1210::TestGenericSend */
+/******************************/
+void TestRP1210::TestGenericSend (bool isJ1708, int primaryClient) {
 	{
 		CritSection sec;
 		secondaryRxMsgs.clear();
@@ -623,16 +646,29 @@ void TestRP1210::TestBasicSend (int primaryClient) {
 		CString state = (j == 0) ? _T("Blocking") : _T("Non-Blocking");
 		bool blocking = j == 0;
 
-		char txBuf[] = { 4, PrimarySend, '0' };
 		DWORD time = GetTickCount();
 		for (i = 0; i < 3; i++) {
-			txBuf[2] = i+'0';
-			api1->pRP1210_SendMessage(primaryClient, txBuf, sizeof(txBuf), false, blocking);
+			char *msg;
+			int msgLen;
+			char txBuf[] = { 4, PrimarySend, '0'+i };
+			TxBuffer J1939Msg (0x003300, 1, 4, 100, 255, (char *)(&i), 4);
+			
+			if (isJ1708) {
+				msg = txBuf;
+				msgLen = sizeof(txBuf);
+			} else {
+				msg = J1939Msg;
+				msgLen = J1939Msg;
+			}
+
+			api1->pRP1210_SendMessage(primaryClient, msg, msgLen, false, blocking);
 		}
 		time = GetTickCount() - time;
-		CString msg;
-		msg.Format(_T("    Tx time was %d"), time);
-		if (blocking && (time < 100))
+		if (blocking && (time < 100)) {
+			CString msg;
+			msg.Format(_T("    Tx time was %d"), time);
+			log.LogText(_T("   Blocking time was suspicous (not necessarily an error): ") + msg, 0x8000FF);
+		}
 
 		Sleep(40);
 		DWORD tick = GetTickCount();
@@ -644,21 +680,45 @@ void TestRP1210::TestBasicSend (int primaryClient) {
 					RecvMsgPacket pkt = *secondaryRxMsgs.begin();
 					secondaryRxMsgs.pop_front();
 					
-					if (pkt.data.size() != 2) {
-						continue;
+					if (isJ1708) {
+						if (pkt.data.size() != 2) {
+							continue;
+						}
+						if (pkt.data[0] != PrimarySend) {
+							continue;
+						}
+						if (pkt.data[1] != i + '0') {
+							log.LogText(_T("    Unexpected packet data contents"), Log::Red);
+							continue;
+						}
+						i++;
+						if (i >= 3) {
+							goto doubleBreak;
+							break;
+						}
+					} else {
+						if (pkt.GetPGN() != 0x003300) {
+							continue;
+						}
+						char data[100];
+						int len = sizeof(data);
+						len = pkt.Get1939Data(data, len);
+						if (len != 4) {
+							log.LogText(_T("    Wrong packet length"), Log::Red);
+							continue;
+						}
+						int readValue = *(int *)(data);
+						if (readValue != i) {
+							log.LogText(_T("    Unexpected 1939 packet data contents"), Log::Red);
+							continue;
+						}
+						i++;
+						if (i >= 3) {
+							goto doubleBreak;
+							break;
+						}
 					}
-					if (pkt.data[0] != PrimarySend) {
-						continue;
-					}
-					if (pkt.data[1] != i + '0') {
-						log.LogText(_T("    Unexpected packet data contents"), Log::Red);
-						continue;
-					}
-					i++;
-					if (i >= 3) {
-						goto doubleBreak;
-						break;
-					}
+
 				}
 			}
 			Sleep(10);
@@ -723,8 +783,8 @@ void TestRP1210::TestAdvancedSend(INIMgr::Devices &dev, int primaryClient) {
 
 	bool failed = false;
 //log.LogText (_T("    Skipping Invalid Priority Test.  Don't skip this once Ron has fixed the problem"), Log::Red);
-	ErrorSend (this, "Fpfty hour weeks are rough", 10, dev, _T("Invalid priority"), ERR_NOT_ADDED_TO_BUS, failed);
-	ErrorSend (this, NULL, 0, dev, _T("Zero Length message"), ERR_MESSAGE_NOT_SENT, failed);
+	ErrorSend (this, "Fpfty hour weeks are rough", 10, dev, _T("Invalid priority"), ERR_INVALID_MSG_PACKET, failed);
+	ErrorSend (this, NULL, 0, dev, _T("Zero Length message"), ERR_INVALID_MSG_PACKET, failed);
 	char buf[1000] = { 4, PrimarySend, 'a', 'b', 'c', 'd', 'e' };
 	ErrorSend (this, buf, sizeof(buf), dev, _T("Message Too Long"), ERR_MESSAGE_TOO_LONG, failed);
 		
@@ -782,9 +842,21 @@ void TestRP1210::TestAdvancedSend(INIMgr::Devices &dev, int primaryClient) {
 /****************************/
 void TestRP1210::TestWinNotify(INIMgr::Devices &dev) {
 	log.LogText (_T("Testing: Window Notification"), Log::Blue);
-	DlgTestWinNotify dlg(this, dev);
+	DlgTestWinNotify dlg(this, dev, true);
 	dlg.DoModal();
 }
+
+/**********************************/
+/* TestRP1210::Test1939WinNotify */
+/********************************/
+void TestRP1210::Test1939WinNotify(INIMgr::Devices &dev) {
+	log.LogText (_T("Testing: Window Notification (J1939)"), Log::Blue);
+	sendJ1939 = true;
+	DlgTestWinNotify dlg(this, dev, false);
+	dlg.DoModal();
+	sendJ1939 = false;
+}
+
 
 /********************************************/
 /* TestRP1210::VerifyConnectAndPassFilters */
@@ -1178,6 +1250,172 @@ TRACE (_T("Received message (woor=%d).  MID=%d, msg=%s\n"), warnOutOfRange, pkt.
 	VerifyDisconnect (api1, clRx);
 }
 
+/********************************/
+/* TestRP1210::Test1939Filters */
+/******************************/
+void TestRP1210::Test1939Filters(INIMgr::Devices dev1, INIMgr::Devices dev2) {
+	const int delay = 1000;
+	sendJ1939 = false;
+
+	int cljunk = VerifyConnect (api1, dev1, "J1939");
+	int cl1a = VerifyConnect (api1, dev1, "J1939");
+	int cl1b = VerifyConnect (api1, dev1, "J1939");
+	int cl2a = VerifyConnect (api2, dev2, "J1939");
+	int cl2b = VerifyConnect (api2, dev2, "J1939");
+
+	VerifyProtectAddress (api1, cljunk, 90, 1, 1);
+	VerifyProtectAddress (api1, cl1a, 110, 2, 2);
+	VerifyProtectAddress (api1, cl1b, 111, 3, 3);
+	VerifyProtectAddress (api1, cl2a, 210, 4, 4);
+	VerifyProtectAddress (api1, cl2b, 211, 5, 5);
+
+	VerifyInvalidSendCommand (api1, PARM(SetMessageFilteringForJ1939, "Bad client ID"), 127, "", 0, ERR_INVALID_CLIENT_ID);
+	VerifyInvalidSendCommand (api1, PARM(SetMessageFilteringForJ1939, "Zero Len"), cljunk, "", 0, ERR_INVALID_COMMAND);
+	VerifyInvalidSendCommand (api1, PARM(SetMessageFilteringForJ1939, "Junk data"), cljunk, "abcde", 5, ERR_INVALID_COMMAND);
+	VerifyInvalidSendCommand (api1, PARM(SetMessageFilteringForJ1939, "bad filter flag"), cljunk, "z\x00\x00\x00\x03\x20\x20", 0, ERR_INVALID_COMMAND);
+
+	VerifyValidSendCommand (api1, PARM(SetAllFiltersToPass, ""), cl1b, NULL, 0, false);
+
+	vector <TxBuffer> txBufferList;
+	txBufferList.push_back(TxBuffer (0x004100, true, 4, 210, 255, "\x00", 1));
+	txBufferList.push_back(TxBuffer (0x004100, true, 4, 211, 255, "\x01", 1));
+	txBufferList.push_back(TxBuffer (0x004200, false, 4, 210, 110, "\x02", 1));
+	txBufferList.push_back(TxBuffer (0x004200, false, 4, 211, 110, "\x03", 1));
+	txBufferList.push_back(TxBuffer (0x004200, true, 3, 210, 255, "\x04", 1));
+	txBufferList.push_back(TxBuffer (0x004200, true, 3, 211, 255, "\x05", 1));
+
+#pragma pack (push, 1)
+	union {
+		struct {
+			unsigned char flag;
+			unsigned char pgn[3];
+			unsigned char priority;
+			unsigned char src;
+			unsigned char dst;
+		};
+		char unifiedData[7];
+	} filters[] = {
+		{ { FILTER_PGN,        { 0x00, 0x41, 0x00 }, 0,   0,   0 } },
+		{ { FILTER_PGN,        { 0x00, 0x42, 0x00 }, 0,   0,   0 } },
+		{ { FILTER_SOURCE,     { 0x00, 0x00, 0x00 }, 0, 211,   0 } },
+		{ { FILTER_DESTINATION,{ 0x00, 0x00, 0x00 }, 0,   0, 110 } },
+		{ { FILTER_PRIORITY,   { 0x00, 0x00, 0x00 }, 3,   0,   0 } },
+		{ { FILTER_PRIORITY | FILTER_PGN,   { 0x00, 0x41, 0x00 }, 4,   0,   0 } },
+	};
+	ASSERT (sizeof(filters[0]) == 7);
+#pragma pack (pop)
+
+	struct {
+		int start;
+		int stop;
+		bool clear;
+		bool expectedResults [50];
+		TCHAR * testName;
+	} filterTests [] = {
+		{ 0, 1, true,  { true , true , false, false, false, false }, _T("Basic PGN") },
+		{ 1, 2, false, { true , true , true , true , true , true  }, _T("Basic, add to filters") },
+		{ 0, 1, true,  { true , true , false, false, false, false }, _T("Revert to original") },
+		{ 2, 3, true,  { false, true , false, true , false, true  }, _T("Filter on source") },
+		{ 3, 4, true,  { false, false, true , true , false, false }, _T("Filter on destination") },
+		{ 4, 5, true,  { false, false, false, false, true , true  }, _T("Filter on priority") },
+		{ 5, 6, true,  { true , true , false, false, false, false }, _T("Filter on priority & pgn") },
+	};
+
+	for (int i = 0; i < ARRAYLEN(filterTests); i++) {
+		if (filterTests[i].clear) {
+			VerifyValidSendCommand (api1, PARM(SetAllFilterStatesToDiscard, ""), cl1a, NULL, 0, false);
+		}
+
+		CString cmdStr;
+		cmdStr.Format (_T("(%s)"), filterTests[i].testName);
+		VerifyValidSendCommand (api1, SetMessageFilteringForJ1939, cmdStr, cl1a, filters[0].unifiedData + (7 * filterTests[i].start), 7 * (filterTests[i].stop-filterTests[i].start), false);
+
+		for (size_t j = 0; j < txBufferList.size(); j++) {
+			TxBuffer &theBuf = txBufferList[j];
+			char src = static_cast<char *>(theBuf)[4];
+			int txClient = cl2a;
+			RP1210API *api = api2;
+
+			if (src == 211) {
+				txClient = cl2b;
+				api = api2;
+			} else if (src == 111) { 
+				txClient = cl1b;
+				api = api1;
+			} else if (src == 110) {
+				api = api1;
+				txClient = cl1a;
+			}
+
+			VerifiedSend(api, txClient, theBuf, theBuf, true);
+		}
+		Sleep(delay);
+
+		bool results_cl1a[50] = { 0 };
+		bool results_cl1b[50] = { 0 };
+		char rxBuf[2000];
+
+		int rxLen = VerifiedRead (api1, cl1a, rxBuf, sizeof(rxBuf), false);
+		while (rxLen > 0) {
+			RecvMsgPacket pkt(rxBuf, rxLen);
+			int leng = sizeof(rxBuf);
+			pkt.Get1939Data(rxBuf, leng);
+
+			if (leng != 1) {
+				log.LogText(_T("    Warning, bad length packet got through"), Log::Red);
+			} else if (rxBuf[0] >= ARRAYLEN(results_cl1a)) {
+				log.LogText (_T("    Invalid packet contents"), Log::Red);			
+			} else {
+				results_cl1a[rxBuf[0]] = true;
+
+				if (pkt.GetDest() == 110) { // if packet is directed, the "receive all" client may not get it
+					results_cl1b[rxBuf[0]] = true;
+				}
+			}
+			rxLen = VerifiedRead (api1, cl1a, rxBuf, sizeof(rxBuf), false);
+		}
+		
+		rxLen = VerifiedRead (api1, cl1b, rxBuf, sizeof(rxBuf), false);
+		while (rxLen > 0) {
+			RecvMsgPacket pkt(rxBuf, rxLen);
+			int leng = sizeof(rxBuf);
+			pkt.Get1939Data(rxBuf, leng);
+
+			if ((leng == 1) && (rxBuf[0] < ARRAYLEN(results_cl1a))) {
+				results_cl1b[rxBuf[0]] = true;
+			}
+			rxLen = VerifiedRead (api1, cl1b, rxBuf, sizeof(rxBuf), false);
+		}
+
+		for (size_t j = 0; j < txBufferList.size(); j++) {
+			if (!results_cl1b[j]) {
+				CString msg;
+				msg.Format (_T("    Did not receive all packets on control connection (%s)"), filterTests[i].testName);
+				log.LogText(msg, Log::Red);
+				break;
+			}
+		}
+
+		if (!equal(results_cl1a, results_cl1a+txBufferList.size(), filterTests[i].expectedResults)) {
+			CString desired;
+			CString received;
+			for (size_t j = 0; j < txBufferList.size(); j++) {
+				desired += filterTests[i].expectedResults[j] ? _T("true, ") : _T("false, ");
+				received += results_cl1a[j] ? _T("true, ") : _T("false, ");
+			}
+			desired.Trim (_T(", "));
+			received.Trim (_T(", "));
+			CString msg;
+			msg.Format (_T("    Filter failure (%s).  Expected: [%s], Received: [%s]"), filterTests[i].testName, desired, received);
+			log.LogText(msg, Log::Red);
+		} else {
+			CString msg;
+			msg.Format (_T("    Pass %s"), filterTests[i].testName);
+			log.LogText(msg, Log::Black);
+		}
+	}
+}
+
 /*************************************/
 /* TestRP1210::VerifyProtectAddress */
 /***********************************/
@@ -1283,7 +1521,7 @@ CString ArrayAsHex(const char *buf, int len) {
 /***************************/
 bool TestRP1210::VerifiedSend (RP1210API *api, int clientID, char *txBuf, int txLen, bool block, int expectedResult, TCHAR * desc) {
 	int result = api->pRP1210_SendMessage(clientID, txBuf, txLen, 0, block);
-	TRACE (_T("Sending %d byte message %s. (%s).  Result=%d\n"), txLen, ArrayAsHex(txBuf, txLen), desc, result);
+	TRACE (_T("Sending %d byte message %s. (%s).  Result=%d (time=%0.3f)\n"), txLen, ArrayAsHex(txBuf, txLen), desc, result, GetTickCount() / 1000.0);
 	if (result == 0) {
 		if (expectedResult == 0) {
 			return true;
@@ -1377,17 +1615,20 @@ void TestRP1210::Test1939BasicRead (INIMgr::Devices &dev) {
 	
 	char buf[500];
 	for (j = 0; j < 2; j++) {
+		Sleep(1000);
 		CString state = (j == 0) ? _T("Blocking") : _T("Non-Blocking");
 		bool blocking = j == 0;
+TRACE (_T("Starting test (%s)\n"), state);
 	
 		FlushReads(api1, cl1a);
 		DWORD tick = GetTickCount();
 		DWORD tickTimeStamps[3];
-		for (i = 0; (i < 3) && (GetTickCount() < tick+3500); ) {
+		for (i = 0; (i < 3) && (GetTickCount() < tick+4500); ) {
 			int result = VerifiedRead(api1, cl1a, buf, sizeof(buf), blocking);
 			if (result == 0) { // Nothing received
 				continue;
 			}
+TRACE (_T("        Rx %d byte pkt\n"), result);
 			RecvMsgPacket p((unsigned char *)buf, result);
 			if (p.GetPGN() == 0x1aabb) {
 				tickTimeStamps[i] = (DWORD)(((__int64)p.timeStamp * (__int64)dev.timeStampWeight) / 1000); // Normalize to milliseconds
@@ -1408,9 +1649,10 @@ void TestRP1210::Test1939BasicRead (INIMgr::Devices &dev) {
 					log.LogText(_T("    Bad data"), Log::Red);
 				}
 			} else {
-				TRACE ("Received bad PGN.  PGN=%06x\n", p.GetPGN());
+				TRACE (_T("Received bad PGN.  PGN=%06x\n"), p.GetPGN());
 				TRACE (_T("    Dissect=%s\n"), p.Dissect1939());
 			}
+			Sleep(100);
 		}
 		if (i == 3) {
 			log.LogText (_T("    Pass Basic Read (") + state + _T(")"));
@@ -1474,10 +1716,10 @@ void TestRP1210::Test1939AdvancedRead(INIMgr::Devices &dev1, INIMgr::Devices &de
 	TxBuffer norm2LoPGN(0x06622, false, 1, 101, 100, "norm 2l", 7);
 	TxBuffer norm1HiPGN(0x0F611, false, 1, 100, 101, "norm 1h", 7);
 	TxBuffer norm2HiPGN(0x0F622, false, 1, 101, 100, "norm 2h", 7);
-	char longBuf[1785];
+	char longBuf[1500];
 	for (int i = 0; i < sizeof(longBuf); i++) { longBuf[i] = 64 + i % 32; }
 	TxBuffer long1(0x05511, false, 5, 100, 101, longBuf, sizeof(longBuf));
-	TxBuffer long2(0x05511, false, 5, 100, 101, longBuf, sizeof(longBuf));
+	TxBuffer long2(0x05511, false, 5, 101, 100, longBuf, sizeof(longBuf));
 
 	// the BAM must be the first and second tests!!!!!
 	TxBuffer * buf1[] = { &bam1LoPGN, &bam1LoPGN, &broad1LoPGN, &broad1HiPGN, &rts1LoPGN, &norm1LoPGN, &norm1HiPGN, &long1 };
@@ -1507,7 +1749,7 @@ void TestRP1210::Test1939AdvancedRead(INIMgr::Devices &dev1, INIMgr::Devices &de
 			char rxBuf[2000];
 			FlushReads(rxAPI, rxClient);
 			if (!VerifiedSend(txAPI, txClient, *(theBuf[i]), *(theBuf[i]), true)) {
-				TRACE ("!!!!!!!!!!!!!!!!!!!!!!!!!Error %d, %d\n", j, i);
+				TRACE (_T("!!!!!!!!!!!!!!!!!!!!!!!!!Error %d, %d\n"), j, i);
 			}
 			int size;
 //retry:
@@ -1594,7 +1836,7 @@ void TestRP1210::Test1939AdvancedRead(INIMgr::Devices &dev1, INIMgr::Devices &de
 	// Hi PGN RTS/CTS (not allowed)
 	{
 		TxBuffer rts2HiPGN(0x0F711, false, 2, 100, 101, "This is a RTS/CTS packet 1", 26);
-		VerifiedSend(api1, cl1a, rts2HiPGN, rts2HiPGN, true, 254, _T("RTS/CTS packet with illegal PGN"));
+		VerifiedSend(api1, cl1a, rts2HiPGN, rts2HiPGN, true, 199, _T("RTS/CTS packet with illegal PGN"));
 	}
 
 	// insufficient buffer
@@ -1625,6 +1867,10 @@ void TestRP1210::Test1939AdvancedRead(INIMgr::Devices &dev1, INIMgr::Devices &de
 /***********************/
 void TestRP1210::LogError (RP1210API &api, int code, COLORREF clr) {
 	//CritSection crit;
+if (code == ERR_MESSAGE_TOO_LONG) { 
+	int x = 9;
+}
+
 	char buf[120];
 	CString threadName;
 	if (GetCurrentThreadId() != baseThreadID) {
@@ -1633,7 +1879,7 @@ void TestRP1210::LogError (RP1210API &api, int code, COLORREF clr) {
 
 	if (api.pRP1210_GetErrorMsg(code, buf) == 0) {
 		TRACE (_T("      Error %d from api %s.  Err=%s\n"), code, api.userAPIName, CString(buf));
-		log.LogText(_T("        API returned error=") + CString(buf) + threadName, clr);
+		log.LogText(_T("        API ") + api.userAPIName + _T(" returned error=") + CString(buf) + threadName, clr);
 	} else {
 		CString fmt;
 		fmt.Format(_T("        No error code for error %d") + threadName, code);
@@ -1711,7 +1957,7 @@ UINT __cdecl TestRP1210::SecondaryDeviceTXThread( LPVOID pParam ) {
 			}
 
 			if (thisObj->sendSpectrum) {
-				TRACE ("Sending Spectrum\n");
+				TRACE (_T("Sending Spectrum\n"));
 				for (int j = SecondaryPeriodicTX+1; j <= SecondaryPeriodicTX+6; j++) {
 					basicJ1708TxBuf[1] = j;
 					result = thisObj->api2->pRP1210_SendMessage(thisObj->secondaryClient, basicJ1708TxBuf, sizeof(basicJ1708TxBuf), false, false);
@@ -1730,7 +1976,7 @@ UINT __cdecl TestRP1210::SecondaryDeviceTXThread( LPVOID pParam ) {
 			VerifiedSend(thisObj->api2, thisObj->secondary1939Client, tx1939, tx1939, true, 0, _T("Secondary Tx Thread"));
 		}
 
-		while (GetTickCount() < time+500) { Sleep(10); }
+		while (GetTickCount() < time+500) { Sleep(100); }
 	}
 	return 0;
 }
@@ -1742,26 +1988,31 @@ UINT __cdecl TestRP1210::SecondaryDeviceRXThread( LPVOID pParam ) {
 	TestRP1210 *thisObj = (TestRP1210*)pParam;
 
 	thisObj->api2->pRP1210_SendCommand(SetAllFiltersToPass, thisObj->secondaryClient, "", 0);
+	thisObj->api2->pRP1210_SendCommand(SetAllFiltersToPass, thisObj->secondary1939Client, "", 0);
 	//int resultEcho = thisObj->api2->pRP1210_SendCommand(SetEchoTxMsgs, thisObj->secondaryClient, "1", 1);
 	while (!thisObj->threadsMustDie) {
-		char buf[525] = {0};
-		int result = thisObj->api2->pRP1210_ReadMessage(thisObj->secondaryClient, buf, sizeof(buf), true);
-		
+		char buf[2500] = {0};
+
+		int result = thisObj->api2->pRP1210_ReadMessage(thisObj->secondaryClient, buf, sizeof(buf), false);
+		if (result == 0) {
+			result = thisObj->api2->pRP1210_ReadMessage(thisObj->secondary1939Client, buf, sizeof(buf), false);
+		}
+
 		// Ignore custom error messages (probably indicating that a block timed out)
 		if (result < 0) {
 			if (result < -192) {
 				continue;
 			}
 			thisObj->LogError (*(thisObj->api2), -result);
-		} else {
+		} else if (result > 0) {
 			CritSection sec;
 			thisObj->secondaryRxMsgs.push_back(RecvMsgPacket((unsigned char *)buf, result));
-int i;
-for (i = 4; i < result; i++) {
-	if (buf[i] < 32) { buf[i] = '*'; }
-	//if (buf[i] > 127) { buf[i] = '!'; }
-}
-TRACE (_T("Received %d byte message %s\n"), result, CString(buf+4));
+//int i;
+//for (i = 4; i < result; i++) {
+//	if (buf[i] < 32) { buf[i] = '*'; }
+//	//if (buf[i] > 127) { buf[i] = '!'; }
+//}
+//TRACE (_T("Received %d byte message %s\n"), result, CString(buf+4));
 		}
 		Sleep(10);
 	}

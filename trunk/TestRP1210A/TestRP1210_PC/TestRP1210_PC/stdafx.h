@@ -62,7 +62,7 @@
 #include "list"
 using namespace std;
 
-
+#define log loga
 
 
 #ifdef _UNICODE

@@ -25,11 +25,16 @@ void Log::LogText (const CString &text, COLORREF clr) {
 		return;
 	}
 
+
 	re->SetSel(-1, -1);
 	
 	CString reallyAdd;
 	if (GetRValue(clr) > __max(GetGValue(clr), GetBValue(clr))) {
-		reallyAdd = _T(" !!  ") + text;
+		if (clr == 0x0000FF) {
+			reallyAdd = _T(" !!!!!") + text;
+		} else {
+			reallyAdd = _T(" !!  ") + text;
+		}
 	} else {
 		reallyAdd = _T("     ") + text;
 	}
