@@ -15,8 +15,8 @@ IMPLEMENT_DYNAMIC(DlgTestWinNotify, CDialog)
 /***************************************/
 /* DlgTestWinNotify::DlgTestWinNotify */
 /*************************************/
-DlgTestWinNotify::DlgTestWinNotify(TestRP1210 *inTest, INIMgr::Devices &inDev, CWnd* pParent /*=NULL*/)
-	: CDialog(DlgTestWinNotify::IDD, pParent), test(inTest), dev(inDev), recvCount(0)
+DlgTestWinNotify::DlgTestWinNotify(TestRP1210 *inTest, INIMgr::Devices &inDev, bool inIsJ1708, CWnd* pParent /*=NULL*/)
+	: CDialog(DlgTestWinNotify::IDD, pParent), test(inTest), dev(inDev), recvCount(0), isJ1708(inIsJ1708)
 {
 	notifyMsg = RegisterWindowMessage(dev.msgString);
 	errMsg = RegisterWindowMessage(dev.errString);
@@ -87,7 +87,7 @@ BOOL DlgTestWinNotify::OnInitDialog()
 {
 	CDialog::OnInitDialog();
 
-TRACE ("Init Dialog\n");
+TRACE (_T("Init Dialog\n"));
 	PostMessage(WM_APP);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
@@ -107,7 +107,22 @@ void DlgTestWinNotify::FlushMessages() {
 /* DlgTestWinNotify::PerformTest */
 /********************************/
 void DlgTestWinNotify::PerformTest() {
-	char txBuffer[] = { 4, TestRP1210::PrimarySend, 'H', 'i', ' ', 'T', 'h', 'e', 'r', 'e' };
+	char txJ1708[] = { 4, TestRP1210::PrimarySend, 'H', 'i', ' ', 'T', 'h', 'e', 'r', 'e' };
+	TxBuffer txJ1939 (0x004400, 1, 4, 100, 255, "Hi There", 4);
+
+	char *realTx;
+	int realTxSize;
+	char *protocolString;
+	if (isJ1708) {
+		realTx = txJ1708;
+		realTxSize = sizeof(txJ1708);
+		protocolString = "J1708";
+	} else {
+		realTx = txJ1939;
+		realTxSize = txJ1939;
+		protocolString = "J1939";
+	}
+	
 	int result = -1;
 	int i;
 	bool passed = true;
@@ -115,12 +130,16 @@ void DlgTestWinNotify::PerformTest() {
 	set<int> msgNums;
 	bool floodPass = false;
 TRACE (_T("Starting Notify test\n"));
-	int clientID = test->api1->pRP1210_ClientConnect(*this, dev.deviceID, "J1708", 0,0,0);
+	int clientID = test->api1->pRP1210_ClientConnect(*this, dev.deviceID, protocolString, 0,0,0);
 	if (!IsValid(clientID)) {
 		log.LogText (_T("    Couldn't open client for testing"), Log::Red);
 		test->LogError(*test->api1, clientID);
 		passed = false;
 		goto veryEnd;
+	}
+
+	if (!isJ1708) {
+		test->VerifyProtectAddress(test->api1, clientID, 100, 1, 1);
 	}
 
 	result = test->api1->pRP1210_SendCommand (TestRP1210::SetAllFiltersToPass, clientID, "", 0);
@@ -138,7 +157,7 @@ TRACE (_T("Starting Notify test\n"));
 	recvCount = 0;
 PostMessage(errMsg, 0xFFFFFFFF, 1);
 	for (i = 0; i < 15; i++) {
-		result = test->api1->pRP1210_SendMessage(clientID, txBuffer, sizeof(txBuffer), true, false);
+		result = test->api1->pRP1210_SendMessage(clientID, realTx, realTxSize, true, false);
 		if (IsValid(result)) {
 			msgNums.insert(result);
 		} else {
@@ -148,7 +167,7 @@ PostMessage(errMsg, 0xFFFFFFFF, 1);
 	}
 PostMessage(errMsg, 0xFFFFFFFF, 2);
 	// try blocking for a bit.  This ensures that everything else has gone out
-	result = test->api1->pRP1210_SendMessage(clientID, txBuffer, sizeof(txBuffer), false, true);
+	result = test->api1->pRP1210_SendMessage(clientID, realTx, realTxSize, false, true);
 PostMessage(errMsg, 0xFFFFFFFF, 3);
 
 	// Now wait for 2 seconds or until the sets match
@@ -161,7 +180,7 @@ PostMessage(errMsg, 0xFFFFFFFF, 3);
 			break;
 		}
 	}
-TRACE ("After wait loop\n");
+TRACE (_T("After wait loop\n"));
 	if (sent != msgNums) {
 		vector <int> leftover(msgNums.size());
 		size_t count = set_difference(msgNums.begin(), msgNums.end(), sent.begin(), sent.end(), leftover.begin()) - leftover.begin();
@@ -177,7 +196,8 @@ TRACE ("After wait loop\n");
 	for (int j = 0; j < 2; j++) {
 		floodPass = false;
 		for (i = 0; i < 200; i++) {
-			result = test->api1->pRP1210_SendMessage(clientID, txBuffer, sizeof(txBuffer), true, false);
+			result = test->api1->pRP1210_SendMessage(clientID, realTx, realTxSize, true, false);
+TRACE (_T("j=%d, i=%d, result=%d\n"), j, i, result);
 			if (result == ERR_MAX_NOTIFY_EXCEEDED) {
 				floodPass = true;
 			} else if (result == 0) {
@@ -196,7 +216,11 @@ TRACE ("After wait loop\n");
 		if (floodPass) {
 			log.LogText (_T("    Flood (") + speedString + _T(") test passed"));
 		} else {
-			log.LogText (_T("    Flood (") + speedString + _T(") test failed. (for delay test, this can be OK)"), Log::Red);
+			if (isJ1708) {
+				log.LogText (_T("    Flood (") + speedString + _T(") test failed. (for delay test, this can be OK)"), Log::Red);
+			} else {
+				log.LogText (_T("    Flood (") + speedString + _T(") test is inconclusive for J1939"));
+			}
 		}
 
 		if (j == 0) {
@@ -205,6 +229,7 @@ TRACE ("After wait loop\n");
 		}
 	}
 
+	Sleep(3000);
 	// by now, we should have at least 4 message, and probably more messages receive notified.
 	if (recvCount < 4) {
 		CString msg;
@@ -220,7 +245,7 @@ TRACE ("After wait loop\n");
 PostMessage(errMsg, 0xFFFFFFFF, 4);
 end:
 	// try blocking for a bit.  This ensures that everything else has gone out
-	result = test->api1->pRP1210_SendMessage(clientID, txBuffer, sizeof(txBuffer), false, true);
+	result = test->api1->pRP1210_SendMessage(clientID, realTx, realTxSize, false, true);
 
 	result = test->api1->pRP1210_ClientDisconnect(clientID);
 	if (!IsValid(result)) {

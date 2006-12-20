@@ -11,7 +11,7 @@ class DlgTestWinNotify : public CDialog
 	DECLARE_DYNAMIC(DlgTestWinNotify)
 
 public:
-	DlgTestWinNotify(TestRP1210 *inTest, INIMgr::Devices &inDev, CWnd* pParent = NULL);   // standard constructor
+	DlgTestWinNotify(TestRP1210 *inTest, INIMgr::Devices &inDev, bool inIsJ1708, CWnd* pParent = NULL);   // standard constructor
 	virtual ~DlgTestWinNotify();
 
 // Dialog Data
@@ -20,6 +20,7 @@ public:
 protected:
 	TestRP1210 *test;
 	INIMgr::Devices &dev;
+	bool isJ1708;
 	UINT notifyMsg;
 	UINT errMsg;
 

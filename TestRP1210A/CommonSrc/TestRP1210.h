@@ -49,6 +49,8 @@ class RP1210API;
 #define ERR_NOT_ADDED_TO_BUS					195
 #define ERR_MISC_COMMUNICATION					196
 #define ERR_RECV_OPERATION_TIMEOUT				197
+#define ERR_J1939_SEND_RTS_CTS_TIMEOUT			198
+#define ERR_INVALID_MSG_PACKET					199	
 
 
 class CritSection {
@@ -93,6 +95,7 @@ struct RecvMsgPacket {
 	int Get1939Data(char *buf, int &leng) { 
 		if (data.size() < 6) {
 			leng = 0;
+			return 0;
 		}
 		if (leng > int(data.size()-6)) { 
 			leng = int(data.size()-6);
@@ -109,7 +112,7 @@ public:
 	TxBuffer (int pgn, bool how, int priority, int srcAddr, int dstAddr, const char *inData, int dataLen);
 	TxBuffer (const TxBuffer & txb) : len(txb.len) { Copy(txb); }
 	~TxBuffer () { Free(); }
-	TxBuffer & operator = (const TxBuffer &txb) { if (&txb != this) { Free(); Copy(txb); } }
+	TxBuffer & operator = (const TxBuffer &txb) { if (&txb != this) { Free(); Copy(txb); }  return *this; }
 
 	operator char *() { return data; }
 	operator int () { return len; }
@@ -131,6 +134,7 @@ public:
 	enum Commands { ResetDevice = 0, SetAllFiltersToPass = 3, SetMessageFilteringForJ1939 = 4, SetMessageFilteringForCAN = 5, 
 					SetMessageFilteringForJ1708 = 7, GenericDriverCmd = 14, SetJ1708Mode = 15, SetEchoTxMsgs = 16, 
 					SetAllFilterStatesToDiscard = 17, SetMessageReceive = 18, ProtectJ1939Address = 19 };
+	enum FilterFlag { FILTER_PGN = 0x01, FILTER_SOURCE = 0x04, FILTER_DESTINATION = 0x08, FILTER_PRIORITY = 0x02 };
 
 	void Test (const set<CString> &testList, vector<INIMgr::Devices> &devs, int idx1, int idx2);
 	static void LogError (RP1210API &api, int code, COLORREF clr = 0x000090);
@@ -173,6 +177,9 @@ private:
 	void Test1939AddressClaim (INIMgr::Devices &dev1, INIMgr::Devices &dev2);
 	void Test1939BasicRead (INIMgr::Devices &dev);
 	void Test1939AdvancedRead(INIMgr::Devices &dev1, INIMgr::Devices &dev2);
+	void Test1939BasicSend(INIMgr::Devices &dev1, INIMgr::Devices &dev2);
+	void Test1939WinNotify(INIMgr::Devices &dev);
+	void Test1939Filters(INIMgr::Devices dev1, INIMgr::Devices dev2);
 
 	enum BlockType { BLOCK_UNTIL_DONE = 0, POST_MESSAGE = 1, RETURN_BEFORE_COMPLETION = 2 };
 	static bool VerifyProtectAddress (RP1210API *api, int clientID, int address, int vehicalSystem, int identityNum, BlockType block = BLOCK_UNTIL_DONE, int expectedError = 0); 
@@ -193,6 +200,7 @@ private:
 	void TestFilters(INIMgr::Devices &dev, int primaryClient);
 
 	void TestGenericMultiread(INIMgr::Devices &dev, bool isJ1708);
+	void TestGenericSend (bool isJ1708, int primaryClient);
 	void TestCustom (INIMgr::Devices &dev1, INIMgr::Devices &dev2);
 
 

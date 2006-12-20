@@ -759,7 +759,9 @@ bool OpenDriverApp() {
 	execInfo.lpDirectory = 0;
 	execInfo.nShow = SW_SHOW;
 	execInfo.hInstApp = 0;
+TRACE (_T("Loading %s\n"), buf);
 	if (ShellExecuteEx(&execInfo) == FALSE) {
+		::MessageBox(NULL, buf, _T(""), MB_OK);
 		return false;
 	}
 	else
