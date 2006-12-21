@@ -348,12 +348,11 @@ void _AssertPrint (bool assertExpression, char *assertStr, char *file, int line,
 
     Transmit (debugPort, buf, len);
 }
-#endif
 
 /***************/
 /* DebugPrint */
 /*************/
-void DebugPrint(char *formatStr, ...) {
+void _DebugPrint(char *formatStr, ...) {
     char buf[256] = "* ";
     int len;
     va_list ap;
@@ -386,9 +385,10 @@ void DebugPrint(char *formatStr, ...) {
 /*******************/
 /* DebugCorePrint */
 /*****************/
-void DebugCorePrint(char *toPrint) {
+void _DebugCorePrint(char *toPrint) {
     Transmit (debugPort, toPrint, strlen(toPrint));
 }
+#endif
 
 static void comIRQHandle_with_reenable( void (*fp)( SerialPort *x ), SerialPort *mycom ){
     SETUP_NEST_INTERRUPT( AN_INT_STACK_SIZE * sizeof(int) );

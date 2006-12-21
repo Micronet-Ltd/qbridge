@@ -160,8 +160,10 @@ int main(void) {
     Initialize232Protocol();
     InitializeCAN();
 
+#ifdef _DEBUG
     extern const unsigned char BuildDateStr[];
     DebugPrint ("Starting QBridge. Version %s. %s.", VERSION, BuildDateStr);
+#endif
     while (1) {
         ValidateProgramState();
         ProcessReceived232Data();
@@ -201,11 +203,13 @@ void ValidateProgramState() {
 /* LockProgram */
 /**************/
 void LockProgram() {
+#ifdef _DEBUG
     extern int allocPoolIdx;
     extern const int MaxAllocPool;
 
     DebugPrint ("End of program reached. . . . Entering pass through mode.");
     DebugPrint ("Allocation Pool at index %d / %d", allocPoolIdx, MaxAllocPool );
+#endif
 
     while(1) {
         if (!QueueEmpty(&(hostPort->rxQueue))) {

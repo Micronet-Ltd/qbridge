@@ -54,7 +54,9 @@ static int dropped_due_to_slow_host = 0;
 static void parseCANcontrol( UINT8 id, UINT8 *data, int dataLen );
 static void set_CAN_filters( UINT8 id, char *data, int dataLen );
 static void get_CAN_filters( UINT8 id, char *data, int dataLen );
+#ifdef _DEBUG
 static void dopjdebug( UINT8 id, UINT8 *data, int dataLen);
+#endif
 
 //GPJ... had to modify these for the new oscillator (for CAN -- 12MHz osc, 24MHz system clock
 //GPJ... not sure what to do, match comment or match values.  Times based on values here
@@ -63,7 +65,7 @@ static void dopjdebug( UINT8 id, UINT8 *data, int dataLen);
 //#define SERIAL_TX_TIMEOUT   38400 // 1 second
 #define SERIAL_RECV_TIMEOUT Three_Quarters_of_a_Second //One_Eighth_of_a_Second
 #define SERIAL_TX_TIMEOUT  (2*One_Second) //One_Half_of_a_Second
-#define MAX_232_RETRIES 3
+#define MAX_232_RETRIES 2
 
 /**************************/
 /* Initialize232Protocol */
@@ -92,7 +94,7 @@ void ProcessReceived232Data() {
         if (Get_uS_TimeStamp() - lastDataReceiveTime > SERIAL_RECV_TIMEOUT ) {
             // timeout
             curPacketRecvBytes = 0;
-            SERIAL_PROTOCOL_DEBUG("Serial 232 data in buffer after timeout");
+            SERIAL_PROTOCOL_DEBUG("Serial 232 data in buffer after timeout (%d bytes)", curPacketRecvBytes );
         }
     }
     if (QueueEmpty(&hostPort->rxQueue)) {
@@ -296,8 +298,10 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
             break;
         case InfoReq:
             {
+#ifdef _DEBUG
                 extern int allocPoolIdx;
                 extern const int MaxAllocPool;
+#endif
                 extern const unsigned char BuildDateStr[];
                 extern char _BootROMvars[];
                 char myver[140];
@@ -454,9 +458,11 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
         case CANcontrol:
             parseCANcontrol( id, data, dataLen );
             break;
+#ifdef _DEBUG
         case PJDebug:
             dopjdebug( id, data, dataLen );
             break;
+#endif
         case J1708TransmitConfirm:
         case ReceiveJ1708Packet:
         case ReceiveCANPacket:
@@ -506,6 +512,7 @@ bool QueueTxFinal232Packet (UINT8 command, UINT8 packetID, UINT8 *data, UINT32 d
         Enqueue(&txPackets, &packetID, 1);
         int addedLen = Enqueue(&txPackets, data, dataLen);
         AssertPrint (addedLen == dataLen, "Error adding data to 232 tx buffer");
+        addedLen++; //remove the compiler warning when _DEBUG not defined
     }else{
         dropped_due_to_slow_host++;
         DebugPrint("Not enough room to queue another packet, dropping cmd %x id %d", command, packetID);
@@ -548,6 +555,7 @@ void Transmit232IfReady() {
     last232PacketID = DequeueOne(&txPackets);
     int retreivedLen = DequeueBuf(&txPackets, last232Data, last232DataLen);
     AssertPrint (retreivedLen == last232DataLen, "Error retreiving data from buffer");
+    retreivedLen++; //remove the compiler warning when _DEBUG not defined
 
     RetryLast232();
     awaiting232FailCount = 0;
@@ -830,7 +838,7 @@ static void get_CAN_filters( UINT8 id, char *data, int dataLen ){
     Send232Ack( ACK_OK, id, myretd, list-myretd );
 }
 
-#if 1
+#ifdef _DEBUG
 //#############################################################################
 //#############################################################################
 //#############################################################################
@@ -905,6 +913,8 @@ static void dopjwritestuff( void *where, void *vals, int num, UINT8 type ) {
     if( type == 1 ) { dopjwritebytes((UINT8  *)where, (UINT8  *)vals, num); return; }
 }
 
+UINT32 measure_get_on_bus_time;
+
 static void dopjdebug( UINT8 id, UINT8 *data, int dataLen ){
     UINT8 size;
     UINT8 listtype;
@@ -915,7 +925,7 @@ static void dopjdebug( UINT8 id, UINT8 *data, int dataLen ){
     UINT8 outdata[256];
 
     if( dataLen == 0 ) { Send232Ack(ACK_OK, id, NULL, 0); return; }
-    if( (dataLen < 4) != 0 ) { Send232Ack(ACK_INVALID_PACKET, id, NULL, 0); return; }
+    if( (dataLen % 4) != 0 ) { Send232Ack(ACK_INVALID_PACKET, id, NULL, 0); return; }
     dataLen -= 4;   //skip the descriptor for everything else
     switch( data[0] ) {
         case 'r':   //read
@@ -989,6 +999,25 @@ static void dopjdebug( UINT8 id, UINT8 *data, int dataLen ){
                 default:
                     Send232Ack(ACK_INVALID_PACKET, id, NULL, 0);
                     return;
+            }
+            break;
+        case 'j':   //j1708 test command
+            {
+            extern void GPIO_Config(IOPortRegisterMap *ioport, UINT16 pin, Gpio_PinModes md );
+            if( data[1] == '0' ){
+                //J1708_BUS_DISABLE_XMIT_AND_DEASSERT();
+                GPIO_Config((IOPortRegisterMap *)IOPORT0_REG_BASE, UART1_Tx_Pin, GPIO_OUT_PP ); \
+                GPIO_CLR( 0,11 ); /* UART1_Tx_Pin ....deasserted is high */ \
+            }
+            if( data[1] == '1' ){
+                measure_get_on_bus_time = 0;
+                GPIO_SET( 0,11 ); /* UART1_Tx_Pin ....deasserted is high */ \
+                //J1708_BUS_ENABLE_XMIT();
+                GPIO_Config((IOPortRegisterMap *)IOPORT0_REG_BASE, UART1_Tx_Pin, GPIO_AF_PP );
+            }
+            if( data[1] == '2' ){
+            }
+            Send232Ack(ACK_OK,id, (char *)&measure_get_on_bus_time, 4);
             }
             break;
         case 'x':   //execute
