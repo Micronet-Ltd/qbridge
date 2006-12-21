@@ -1716,7 +1716,7 @@ void TestRP1210::Test1939AdvancedRead(INIMgr::Devices &dev1, INIMgr::Devices &de
 	TxBuffer norm2LoPGN(0x06622, false, 1, 101, 100, "norm 2l", 7);
 	TxBuffer norm1HiPGN(0x0F611, false, 1, 100, 101, "norm 1h", 7);
 	TxBuffer norm2HiPGN(0x0F622, false, 1, 101, 100, "norm 2h", 7);
-	char longBuf[1500];
+	char longBuf[1785];
 	for (int i = 0; i < sizeof(longBuf); i++) { longBuf[i] = 64 + i % 32; }
 	TxBuffer long1(0x05511, false, 5, 100, 101, longBuf, sizeof(longBuf));
 	TxBuffer long2(0x05511, false, 5, 101, 100, longBuf, sizeof(longBuf));
@@ -1996,6 +1996,12 @@ UINT __cdecl TestRP1210::SecondaryDeviceRXThread( LPVOID pParam ) {
 		int result = thisObj->api2->pRP1210_ReadMessage(thisObj->secondaryClient, buf, sizeof(buf), false);
 		if (result == 0) {
 			result = thisObj->api2->pRP1210_ReadMessage(thisObj->secondary1939Client, buf, sizeof(buf), false);
+			if (result > 1500) {
+				CString msg;
+				RecvMsgPacket pkt(buf, result);
+				msg.Format(_T("Got long packet.  My addr=220.  DstAddr=%d.  Pkt Len=%d"), pkt.GetDest(), result);
+				log.LogText (msg, 0x000080);
+			}
 		}
 
 		// Ignore custom error messages (probably indicating that a block timed out)

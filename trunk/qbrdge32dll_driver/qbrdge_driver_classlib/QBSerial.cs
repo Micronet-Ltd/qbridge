@@ -319,8 +319,9 @@ namespace qbrdge_driver_classlib
             if (Support.ArrayCompare(verCrc, pktCrc) == false)
             {
                 Debug.WriteLine("INVALID CRC FROM QBRIDGE");
-                RemoveLeftData(ref inData, ref inDataLen, idx1 + pktLen);
-                return PacketRecvType.PKT_INVALID;
+                RemoveLeftData(ref inData, ref inDataLen, idx1 + 1);
+                //RemoveLeftData(ref inData, ref inDataLen, idx1 + pktLen);
+                return PacketRecvType.PKT_INCOMPLETE;
             }
 
             cmdType = (PacketCmdCodes)pkt[2];
@@ -477,19 +478,23 @@ namespace qbrdge_driver_classlib
             SerialPortInfo portInfo = null;
             try
             {
-                int rxSize = com.BytesToRead * 2;
+                int rxSize = (com.BytesToRead * 2) + 200;
                 byte[] inData = new byte[rxSize];
                 com.ReadTimeout = 200;
+                if (com.BytesToRead == 0)
+                {
+                    return;
+                }
                 int inDataLen = com.Read(inData, 0, rxSize);
                 
                 // Show all the incoming data in the port's buffer
-              //  Debug.Write(com.PortName + " Data: ");
-//                for (int i = 0; i < inDataLen; i++)
-//                {
-//                    byte b = (byte)inData[i];
-//                    Debug.Write(b.ToString("X2") + ",");
-//                }
-//                Debug.WriteLine("");
+                Debug.Write(com.PortName + " Data: ");
+                for (int i = 0; i < inDataLen; i++)
+                {
+                    byte b = (byte)inData[i];
+                    Debug.Write(b.ToString("X2") + ",");
+                }
+                Debug.WriteLine("");
 
                 // get port info object
                 for (int i = 0; i < comPorts.Count; i++)
@@ -719,13 +724,13 @@ namespace qbrdge_driver_classlib
                 {
                     if (pktData[3] != 0xEE)
                     {
-                        Debug.WriteLine("");
-                        Debug.Write("RECV CAN " + portInfo.com.PortName + ": ");
-                        for (int i = 0; i < pktData.Length; i++)
-                        {
-                            Debug.Write(pktData[i].ToString("X2") + ",");
-                        }
-                        Debug.WriteLine("");
+                      //  Debug.WriteLine("");
+//                        Debug.Write("RECV CAN " + portInfo.com.PortName + ": ");
+//                        for (int i = 0; i < pktData.Length; i++)
+//                        {
+//                            Debug.Write(pktData[i].ToString("X2") + ",");
+//                        }
+//                        Debug.WriteLine("");
                     }
 
                     J1939PktRecv(portInfo, pktData, -1);
@@ -1627,16 +1632,16 @@ namespace qbrdge_driver_classlib
             qbt.j1939transaction = new J1939Transaction();
             qbt.cmdType = PacketCmdCodes.PKT_CMD_SEND_CAN;
 
-            if (msg[3] != 0xEE)
-            {
-                Debug.WriteLine("");
-                Debug.Write("J1939 UPDTE " + sinfo.com.PortName + ": ");
-                for (int i = 0; i < msg.Length; i++)
-                {
-                    Debug.Write(Support.StringToByteArray(msg)[i].ToString() + ",");
-                }
-                Debug.WriteLine("");
-            }
+           // if (msg[3] != 0xEE)
+//            {
+//                Debug.WriteLine("");
+//                Debug.Write("J1939 UPDTE " + sinfo.com.PortName + ": ");
+//                for (int i = 0; i < msg.Length; i++)
+//                {
+//                    Debug.Write(Support.StringToByteArray(msg)[i].ToString() + ",");
+//                }
+//                Debug.WriteLine("");
+//            }
 
             qbt.j1939transaction.UpdateJ1939Data(msg); //add message, process
 
