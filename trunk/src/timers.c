@@ -264,6 +264,20 @@ void ResetJ1708IdleTimerIfNeeded() {
         J1708_idle_time = 0;
         MainTimer.timer->StatusRegister = (UINT16)(~(InputCaptureFlagB));
         J1708_bus_not_idle = TRUE;
+#ifdef _DEBUG
+        extern UINT32 measure_get_on_bus_time;
+        if( measure_get_on_bus_time==0 ){
+            UINT32 t1 = MainTimer.timer->InputCaptureB; //only edge we care about is rising edge (J1708 bus not actively being driven)
+            UINT32 t2 = MainTimer.wrapCounter;          //memorize time of this edge... but watch for rollover (handled before we got to this point in the code)
+            UINT32 t3 = MainTimer.timer->Counter;
+            if( (t1 > t3) && ((MainTimer.timer->StatusRegister & TimerOverflow)==0) ) {
+                t2 = MainTimer.wrapCounter-1;
+            }
+            UINT32 first_assertion = (t2 << 16) | t1; //we save a 32bit timestamp
+            measure_get_on_bus_time = first_assertion - J1708_last_transition_time;
+            if( measure_get_on_bus_time == 0 ) measure_get_on_bus_time++;
+        }
+#endif
     }
     if( MainTimer.timer->StatusRegister & InputCaptureFlagA ) {// | (InputCaptureFlagB)) ) {
         //a rising edge has occured, let's reset our timestamp that indicates time of edge

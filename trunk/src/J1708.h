@@ -66,6 +66,7 @@ void J1708PrintMIDInfo();
 #define J1708LogEvent(event, flags)
 #define J1708PrintEventLog()
 #define J1708DebugPrint(args...)
+#define J1708LogEventIdle(event, flags, idleTime)
 #endif
 
 void InitializeJ1708();

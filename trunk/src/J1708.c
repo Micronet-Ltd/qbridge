@@ -123,7 +123,7 @@ void J1708DebugPrintRxPacketInfo(char *msg, J1708Message *inmsg) {
     J1708DebugPrint (tbuf);
 }
 #else
-#define J1708DebugPrintRxPacketInfo(msg)
+#define J1708DebugPrintRxPacketInfo(msg,inmsg)
 #endif
 
 /***************************/
