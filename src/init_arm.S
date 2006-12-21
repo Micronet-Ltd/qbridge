@@ -242,7 +242,7 @@ StartJ1708Transmit:
 
     mov ip,sp
     stmdb sp!,{r4,r5,r6,fp,ip,lr,pc}
-    sub fp, ip, #4  ; 0x4
+    sub fp, ip, #4
     ldr r1,=TIMER0_REG_BASE+COUNTER_OFFSET          //TestTimer.timer->Counter
     ldr r2,=UART1_REG_BASE+TXBUFFER_OFFSET          //j1708Port->port->txBuffer
     ldr r3,=IOPORT1_REG_BASE+GPIO_PORT_DATA_OFFSET  //J1708_BUS_ASSERTED IOPORT1_REG_BASE->PD
