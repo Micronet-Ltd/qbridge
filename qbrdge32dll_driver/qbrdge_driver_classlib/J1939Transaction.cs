@@ -134,6 +134,7 @@ namespace qbrdge_driver_classlib
 
         private void AddTPDTCanPackets(byte DA, byte SA, string data, byte tot_pkts)
         {
+            Debug.WriteLine("length: " + data.Length.ToString());
             for (int i = 0; i < tot_pkts; i++)
             {
                 //send TP.DT pkts
@@ -153,7 +154,6 @@ namespace qbrdge_driver_classlib
                 //sequence number
                 tp_pkt[5] = (byte)(i + 1);
                 //data 7 bytes
-                Debug.WriteLine("length: " + data.Length.ToString());
                 for (int j = 0; j < 7; j++)
                 {                        
                     int idx = 6 + (i * 7) + j;
@@ -522,12 +522,12 @@ namespace qbrdge_driver_classlib
             }
 
             Debug.WriteLine("CURRSEQ: " + seqNum.ToString() + " HX: "+seqNum.ToString("X2"));
-            Debug.Write("SEQDATA: ");
-            for (int i = 0; i < data.Length; i++)
-            {
-                Debug.Write(data[i].ToString() + ",");
-            }
-            Debug.WriteLine("");
+         //   Debug.Write("SEQDATA: ");
+//            for (int i = 0; i < data.Length; i++)
+//            {
+//                Debug.Write(data[i].ToString() + ",");
+//            }
+//            Debug.WriteLine("");
 
             if (seqNum > main_status.Length || data.Length != 7)
             {

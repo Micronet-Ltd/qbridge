@@ -424,20 +424,25 @@ bool ConnectToDriverApp(){
 	if (GetAssignPort() > 0) {
 		return true;
 	}
+	TRACE(_T("Starting ConnectToDriverApp %d\n"), GetTickCount());
 	// start mutex
 	HANDLE hMutex = ::CreateMutex(NULL, FALSE, _T("qbridgeDLLMutex"));
 	if (hMutex == NULL)
 		return false;
 	if(WAIT_OBJECT_0 == ::WaitForSingleObject(hMutex, 10000))
 	{
+		TRACE(_T("After WaitForSingleObject %d\n"), GetTickCount());
 		int dmy;
 		bool appon = false;
 		if (QueryDriverApp(QUERY_NEWPORT_PKT, DRIVER_LISTEN_PORT-1, dmy, NULL, 0, 0) == false) {
+			
+			TRACE(_T("After First QueryDriverApp %d\n"), GetTickCount());
 			if (OpenDriverApp() == false) {
 				//_DbgTrace(_T("Error opening driver app.\n"));
 				::ReleaseMutex(hMutex);
 				return false;
 			}
+			TRACE(_T("After OpenDriverApp %d\n"), GetTickCount());
 			for (int i = 0; i < 10; i++)
 			{
 				::Sleep(500);
@@ -445,15 +450,18 @@ bool ConnectToDriverApp(){
 					appon = true;
 					break;
 				}
+				TRACE(_T("QueryDriverApp%d %d\n"), i, GetTickCount());
 			}
 			if (appon == false) {
 				//_DbgTrace(_T("Error retrieving assigned port from driver application\n"));
 				::ReleaseMutex(hMutex);
 				return false;
 			}
+			TRACE(_T("QueryDriverApp PROCID %d\n"), i, GetTickCount());
 			if (QueryDriverApp(QUERY_PROCID_PKT, GetAssignPort(), dmy, NULL, 0, 0) == false) {
 				//_DbgTrace(_T("Error retrieving Process ID from driver application\n"));
 				::ReleaseMutex(hMutex);
+				TRACE(_T("QueryDriverApp PROCID done %d\n"), i, GetTickCount());
 				return false;
 			}
 		}
@@ -565,6 +573,10 @@ bool QueryDriverApp(PACKET_TYPE queryId, int localPort,
 	fd_set fdErrorSet;
     TIMEVAL timeout = {5, 0}; // 5 second timeout
 	bool isTimeout = false;
+
+	if (queryId == QUERY_NEWPORT_PKT) {
+		retryLimit = 1;
+	}
 
 	//_DbgTrace(_T("QueryDriverApp()\n"));
 		
