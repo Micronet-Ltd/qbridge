@@ -248,6 +248,9 @@ void StartJ1708IdleTimer() {
 #define J1708_BUS_ASSERTED() ((((IOPortRegisterMap *)(IOPORT1_REG_BASE))->PD & BIT(4)) == 0 )
 #define UNHANDELED_BUS_TRANSITION() (MainTimer.timer->StatusRegister & (InputCaptureFlagA | InputCaptureFlagB) )
 
+bool j1708BusTransitionDetected;
+bool j1708BusCurState;
+
 /******************************/
 /* ResetJ1708IdleTimeIfNeeded */
 /******************************/
@@ -264,6 +267,7 @@ void ResetJ1708IdleTimerIfNeeded() {
         J1708_idle_time = 0;
         MainTimer.timer->StatusRegister = (UINT16)(~(InputCaptureFlagB));
         J1708_bus_not_idle = TRUE;
+        j1708BusTransitionDetected = TRUE;
 #ifdef _DEBUG
         extern UINT32 measure_get_on_bus_time;
         if( measure_get_on_bus_time==0 ){
@@ -293,10 +297,14 @@ void ResetJ1708IdleTimerIfNeeded() {
         J1708_last_transition_time = (t2 << 16) | t1; //we save a 32bit timestamp
         MainTimer.timer->StatusRegister = (UINT16)(~(InputCaptureFlagA));
         J1708_bus_not_idle = FALSE;
+        j1708BusTransitionDetected = TRUE;
     }
     if( J1708_BUS_ASSERTED() ) {
         J1708_idle_time = 0;
         J1708_bus_not_idle = TRUE;
+        j1708BusCurState = TRUE;
+    } else {
+        j1708BusCurState = FALSE;
     }
 }
 

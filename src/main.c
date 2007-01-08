@@ -175,6 +175,7 @@ int main(void) {
 //        ProcessJ1939RecievePacket();
         ProcessCANTransmitQueue();
         ProcessCANRecievePacket();
+        detect_CAN_bus_transitions();
     }
 
     LockProgram();

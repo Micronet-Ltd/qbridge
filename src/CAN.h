@@ -17,6 +17,7 @@ void ProcessCANTransmitQueue( void );
 void ProcessCANRecievePacket( void );
 int CANaddTxPacket( UINT8 type, UINT32 CAN_id, UINT8 *data, UINT8 len  );
 int GetFreeCANtxBuffers( void );
+int GetFreeCANrxBuffers( void );
 void CANResetDefaultPrefs( void );
 
 
@@ -31,6 +32,11 @@ void DisableCANTxIP( void );
 void ClearCANTxQueue( void );
 void ClearCANRxQueue( void );
 void CANRestart( void );
+
+UINT32 getCANBaud( void );
+int getCANTestMode( void );
+int getCANhwErrCnt( void );
+void detect_CAN_bus_transitions( void );
 
 
 extern bool CANtransmitConfirm;
