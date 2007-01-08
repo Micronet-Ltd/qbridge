@@ -42,7 +42,7 @@
 /* Defines */
 /***********/
 // common debugging options
-#define _DEBUG
+#undef  _DEBUG
 #ifdef _DEBUG
 #define DEBUG_SERIAL
 #endif
