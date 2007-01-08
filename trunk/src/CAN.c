@@ -38,6 +38,15 @@ bool CANtransmitConfirm = FALSE;
 bool CANBusOffNotify = FALSE;
 bool CANAutoRestart = TRUE;
 
+int CANdroppedFromHostCount = 0;
+int CANrxWaitForHostCount = 0;
+int CANrxBadValueCount = 0;
+int CANautoRecoverCount = 0;
+int CANbusErrReportCount = 0;
+
+bool CANBusTransitionDetected;
+bool CANBusCurState;
+
 //Private methods
 static void CAN_IRQ_Handler( void ) __attribute__ ((interrupt("IRQ")));
 
@@ -376,6 +385,17 @@ bool setCANBaud( UINT32 desired_baud ) {
     return true;
 }
 
+UINT32 getCANBaud( void ){
+    UINT16 CANBitTimingRegVal = CAN->BitTimeReg;
+    int i;
+    for (i = 0; i < ARRAY_SIZE(CANBaudRateTable); i++) {
+        if (CANBaudRateTable[i].BitTimingRegValue == CANBitTimingRegVal) {
+            return CANBaudRateTable[i].baud;
+        }
+    }
+    return 0xffffffff;
+}
+
 /********************************************************************/
 /* set the CAN Bus Controller for test mode                         */
 /********************************************************************/
@@ -402,6 +422,16 @@ void setCANTestMode( CANTestModesEnum myTestMode) {
             DebugPrint ("Unknown CAN debug mode requested.");
             break;
     }
+}
+
+int getCANTestMode( void ){
+    int tmp = CAN->TestReg & (Silent | LBack);
+    if( tmp == Silent) return Test_Silent;
+    if( tmp == LBack) return Test_Loop_Back;
+    if( tmp == (LBack | Silent) ) return Test_Hot_SelfTest;
+    if( tmp == 0 ) return Test_No_Test_Mode;
+    DebugPrint("Can't decode test mode");
+    return 0xffffffff;
 }
 
 
@@ -484,6 +514,10 @@ int Bit1ErrCnt = 0;
 int Bit0ErrCnt = 0;
 int CRCErrCnt = 0;
 int LostMessageCnt = 0;
+int can_int_queue_overflow_count = 0;
+int boff_int_cnt = 0;
+int boff_notify_cnt = 0;
+int boff_want_notify_cnt = 0;
 bool can_int_queue_overflow = FALSE;
 bool CAN_received = FALSE;
 
@@ -533,19 +567,26 @@ static void myCAN_IRQ_Handler( void ) {
         if( intstat & EWarn ){  //not sure what to do if we get this interrupt
         }
         if( intstat & BOff ) {  //part won't recover from this unless we clear the Init bit again
+            boff_int_cnt++;
             if( CAN->ControlReg & Init ){
-                //que up a message to go to the host
-                CAN_received = TRUE;
-                int nextHead = (CAN_received_queue.head + 1) % CAN_QUEUE_SIZE;
-                if( nextHead == CAN_received_queue.tail ){
-                    can_int_queue_overflow = TRUE;   //the queue was full... we'll just overwrite whatever was there, but leave an indicator that it happened
-                }
-                CAN_message *cmsg = &CAN_received_queue.CAN_messages[CAN_received_queue.head];
-                CAN_received_queue.head = nextHead;
+                boff_want_notify_cnt++;
+                if( CANBusOffNotify ){
+                    //que up a message to go to the host
+                    boff_notify_cnt++;
+                    CAN_received = TRUE;
+                    int nextHead = (CAN_received_queue.head + 1) % CAN_QUEUE_SIZE;
+                    if( nextHead == CAN_received_queue.tail ){
+                        can_int_queue_overflow = TRUE;   //the queue was full... we'll just overwrite whatever was there, but leave an indicator that it happened
+                        nextHead = CAN_received_queue.head;//overwrite last thing placed in the queue
+                        can_int_queue_overflow_count++;
+                    }
+                    CAN_message *cmsg = &CAN_received_queue.CAN_messages[CAN_received_queue.head];
+                    CAN_received_queue.head = nextHead;
 
-                cmsg->len = 0;
-                cmsg->id = 0;
-                cmsg->src = SRC_BOF;
+                    cmsg->len = 0;
+                    cmsg->id = 0;
+                    cmsg->src = SRC_BOF;
+                }
             }
         }
         if( intstat & EPass ){  //this will not interrupt, but if we are in this state... then what?
@@ -573,6 +614,8 @@ static void myCAN_IRQ_Handler( void ) {
             int nextHead = (CAN_received_queue.head + 1) % CAN_QUEUE_SIZE;
             if( nextHead == CAN_received_queue.tail ){
                 can_int_queue_overflow = TRUE;   //the queue was full... we'll just overwrite whatever was there, but leave an indicator that it happened
+                nextHead = CAN_received_queue.head;//overwrite last thing placed in the queue
+                can_int_queue_overflow_count++;
             }
             CAN_message *cmsg = &CAN_received_queue.CAN_messages[CAN_received_queue.head];
             CAN_received_queue.head = nextHead;
@@ -648,6 +691,8 @@ static void myCAN_IRQ_Handler( void ) {
                 int nextHead = (CAN_received_queue.head + 1) % CAN_QUEUE_SIZE;
                 if( nextHead == CAN_received_queue.tail ){
                     can_int_queue_overflow = TRUE;   //the queue was full... we'll just overwrite whatever was there, but leave an indicator that it happened
+                    nextHead = CAN_received_queue.head;//overwrite last thing placed in the queue
+                    can_int_queue_overflow_count++;
                 }
                 CAN_message *cmsg = &CAN_received_queue.CAN_messages[CAN_received_queue.head];
                 CAN_received_queue.head = nextHead;
@@ -788,6 +833,7 @@ void ProcessCANRecievePacket( void ){
         cmd = CANbusErr;
     }else{  //anything else should be in this queue
         DebugPrint("Bad source of message found in queue bound for transfer to host!");
+        CANrxBadValueCount++;
         //need to still remove this from the que
         cmd=0;  //don't want to send anything to host
     }
@@ -796,6 +842,7 @@ void ProcessCANRecievePacket( void ){
     if( cmd != 0 ) {
         if( !QueueTx232Packet( cmd, hostdata, dl ) ){
             //if no room at the inn, save it and try again next time around
+            CANrxWaitForHostCount++;
             return;
         }
     }
@@ -830,12 +877,15 @@ static CAN_message * GetNextCANmessage( void ){
 int CANaddTxPacket( UINT8 type, UINT32 CAN_id, UINT8 *data, UINT8 len  ){
     int nextHead = (CAN_tosend_queue.head + 1) % CAN_QUEUE_SIZE;
     if( nextHead == CAN_tosend_queue.tail ){
+        CANdroppedFromHostCount++;
         return( -1 );   //this means that the queue was full
     }
     if( CAN->ControlReg & (CANControlRegisterBits)Init ) {//the bus has a fault that has caused us to not be able to transmit
         if( CANAutoRestart == TRUE ){
             CAN->ControlReg &= ~((CANControlRegisterBits)Init );
+            CANautoRecoverCount++;
         }
+        CANbusErrReportCount++;
         return( -2 );   //this means that the BUS has a fault condition
     }
     int curHead = CAN_tosend_queue.head;
@@ -854,7 +904,7 @@ int CANaddTxPacket( UINT8 type, UINT32 CAN_id, UINT8 *data, UINT8 len  ){
 /**************************/
 int GetFreeCANtxBuffers( void ) {
     int numInUse;
-    if (CAN_tosend_queue.head > CAN_tosend_queue.tail) {
+    if (CAN_tosend_queue.head >= CAN_tosend_queue.tail) {
         numInUse = CAN_tosend_queue.head - CAN_tosend_queue.tail;
     } else {
         numInUse = (CAN_tosend_queue.head + CAN_QUEUE_SIZE) - CAN_tosend_queue.tail;
@@ -862,6 +912,18 @@ int GetFreeCANtxBuffers( void ) {
     return (CAN_QUEUE_SIZE - 1) - numInUse;
 }
 
+/**************************/
+/* GetFreeCANrxBuffers    */
+/**************************/
+int GetFreeCANrxBuffers( void ) {
+    int numInUse;
+    if (CAN_received_queue.head >= CAN_received_queue.tail) {
+        numInUse = CAN_received_queue.head - CAN_received_queue.tail;
+    } else {
+        numInUse = (CAN_received_queue.head + CAN_QUEUE_SIZE) - CAN_received_queue.tail;
+    }
+    return (CAN_QUEUE_SIZE - 1) - numInUse;
+}
 
 /********************************************************************/
 /* Initialize CAN structures... software structs to handle our stuff*/
@@ -878,4 +940,28 @@ void ClearCANRxQueue( void ){
     DISABLE_IRQ(saveState);
     CAN_received_queue.tail = CAN_received_queue.head;
     RESTORE_IRQ(saveState);
+}
+
+/********************************************************************/
+/* Some routines to report hardware status to host for debug of bus */
+/********************************************************************/
+int getCANhwErrCnt( void ){
+    int tmp = CAN->ErrorReg;
+    if( tmp & 0x8000 ){
+        tmp &= ~0x8000;
+        tmp |= 0x10000; //move the error passive indicator up one bit
+    }
+    tmp |= (CAN->ControlReg & 0xff)<<24;
+    return tmp;
+}
+
+static bool lastlook;
+
+void detect_CAN_bus_transitions( void ){
+    int tmp = CAN->TestReg & 0x80; //CANTestRegisterBits::CAN_Rx_Pin;
+    CANBusCurState = (tmp==0) ? true : false;
+    if( (CANBusCurState && (lastlook==false)) || (!CANBusCurState  && (lastlook==true)) ){
+        CANBusTransitionDetected = true;
+    }
+    lastlook = CANBusCurState;
 }

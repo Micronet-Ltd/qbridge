@@ -214,6 +214,11 @@ char *romfind( char *romstart, char *tofind, int romsize){
     return 0;
 }
 
+static int can_overflow_report = 0;
+static int j1708_overflow_report = 0;
+extern bool can_int_queue_overflow;
+extern bool j1708RxQueueOverflowed;
+
 /*********************/
 /* Process232Packet */
 /*******************/
@@ -224,6 +229,16 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
             return;
         }
         lastPacketID = id;
+        if( (can_int_queue_overflow && can_overflow_report==0) ) can_overflow_report = 1;
+        if( (j1708RxQueueOverflowed && j1708_overflow_report==0) ) j1708_overflow_report = 1;
+        if( (can_overflow_report==1) || (j1708_overflow_report==1) ){
+            UINT8 mydata = 0;
+            mydata |= (can_overflow_report==1) ? 1 : 0;
+            mydata |= (j1708_overflow_report==1) ? 2 : 0;
+            if( can_overflow_report==1 ) can_overflow_report=2;
+            if( j1708_overflow_report==1) j1708_overflow_report=2;
+            Send232Ack( ACK_OVERFLOW_OCCURRED,id, &mydata, 1);
+        }
     }
 
     switch (cmd) {
@@ -283,13 +298,79 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
                 }
 
                 if (data[0] == 0) {
-                    mydl = snprintf(myver, 140,"QBridge firmware version %s. %s", VERSION, BuildDateStr);
+                    mydl = snprintf(myver, 140,"QBridge firmware version %s. %s\n", VERSION, BuildDateStr);
                     char *sptr = romfind(_RomStartAddr, "Bootloader", 8*1024);
                     if( sptr != 0 )
                         mydl += snprintf(&myver[mydl], 140-mydl,"QBridge %s", sptr);
                     sptr = romfind(_BootROMvars, "Built", 8*1024);
                     if( sptr != 0 )
                         mydl += snprintf(&myver[mydl], 140-mydl,"Bootloader %s", sptr);
+                }else if( data[0] == 1 ){ //get j1708 bus debug information
+                    memset(myver,0,sizeof(myver));
+                    #define cpyit(offset,var,vtype) extern vtype var; \
+                                                    memcpy(myver+offset, &var, sizeof(vtype))
+                    cpyit(  0, j1708RecvPacketCount, int);
+                    cpyit(  4, j1708WaitForBusyBusCount, int);
+                    cpyit(  8, j1708CollisionCount, int);
+                    cpyit( 12, j1708DroppedRxCount, int);
+                    cpyit( 16, j1708DroppedTxCnfrmCount, int);
+                    cpyit( 20, j1708DroppedFromHostCount, int);
+                    cpyit( 24, j1708MIDFilterEnabled, bool);
+                    cpyit( 28, j1708TransmitConfirm, bool);
+                    cpyit( 32, j1708RxQueueOverflowed, bool);
+                    cpyit( 36, j1708BusTransitionDetected, bool);
+                    cpyit( 40, j1708BusCurState, bool);
+                    j1708BusTransitionDetected = false;
+                    int tmp = GetFreeJ1708TxBuffers();
+                    memcpy( myver+44, &tmp, sizeof(int));
+                    tmp = GetFreeJ1708RxBuffers();
+                    memcpy( myver+48, &tmp, sizeof(int));
+                    cpyit( 52, j1708_overflow_report, int);
+                    mydl = 56;
+                }else if( data[0] == 2 ){ //get CAN bus debug information
+                    memset(myver,0,sizeof(myver));
+                    cpyit( 0,TxCnt, int);
+                    cpyit( 4,RxCnt, int);
+                    cpyit( 8,StuffErrCnt, int);
+                    cpyit(12,FormErrCnt, int);
+                    cpyit(16,AckErrCnt, int);
+                    cpyit(20,Bit1ErrCnt, int);
+                    cpyit(24,Bit0ErrCnt, int);
+                    cpyit(28,CRCErrCnt, int);
+                    cpyit(32,LostMessageCnt, int);
+                    cpyit(36,can_int_queue_overflow, bool);
+                    cpyit(40,can_int_queue_overflow_count, int);
+                    cpyit(44,CANtransmitConfirm, bool);
+                    cpyit(48,CANBusOffNotify, bool);
+                    cpyit(52,CANAutoRestart, bool);
+                    cpyit(56,CANautoRecoverCount, int);
+                    cpyit(60,CANrxWaitForHostCount, int);
+                    cpyit(64,CANrxBadValueCount, int);
+                    cpyit(68,boff_int_cnt, int);
+                    cpyit(72,boff_notify_cnt, int);
+                    cpyit(76,boff_want_notify_cnt, int);
+                    cpyit(80,CANbusErrReportCount, int);
+                    cpyit(84,CANdroppedFromHostCount, int);
+                    cpyit(88,CANBusTransitionDetected, bool); //memcpy( myver+44, &CANBusTransitionDetected, sizeof(bool));
+                    cpyit(92,CANBusCurState, bool);//memcpy( myver+48, &CANBusCurState, sizeof(bool));
+                    CANBusTransitionDetected = false;
+                    int tmp = GetFreeCANtxBuffers();
+                    memcpy( myver+96, &tmp, sizeof(int));
+                    tmp = GetFreeCANrxBuffers();
+                    memcpy( myver+100, &tmp, sizeof(int));
+                    tmp = getCANBaud();
+                    memcpy( myver+104, &tmp, sizeof(int));
+                    tmp = getCANTestMode();
+                    memcpy( myver+108, &tmp, sizeof(int));
+                    tmp = getCANhwErrCnt();
+                    memcpy( myver+112, &tmp, sizeof(int));
+                    cpyit( 116, can_overflow_report, int);
+                    mydl = 120;
+                }else if( data[0] == 3 ){ //reset the rx queue overflow errors
+                    can_overflow_report=0;
+                    j1708_overflow_report=0;
+                    can_int_queue_overflow=false;
+                    j1708RxQueueOverflowed=false;
                 } else {
                     DebugPrint ("Unknown GetInfo request (%d)", data[0]);
                 }

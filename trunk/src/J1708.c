@@ -18,9 +18,11 @@ int j1708WaitForBusyBusCount;
 int j1708CollisionCount;
 int j1708DroppedRxCount;
 int j1708DroppedTxCnfrmCount;
+int j1708DroppedFromHostCount;
 enum J1708State j1708State;
 int j1708CurCollisionCount;
 bool j1708RetransmitNeeded;
+bool j1708RxQueueOverflowed;
 UINT32 j1708RetransmitIdleTime;
 int  j1708CheckingMIDCharForCollision = -1;
 
@@ -56,6 +58,8 @@ void InitializeJ1708() {
     j1708CurCollisionCount = 0;
     j1708DroppedRxCount = 0;
     j1708DroppedTxCnfrmCount = 0;
+    j1708DroppedFromHostCount = 0;
+    j1708RxQueueOverflowed = false;
     j1708RetransmitNeeded = false;
     j1708RetransmitIdleTime = 0;
     j1708CheckingMIDCharForCollision = -1;
@@ -291,6 +295,7 @@ int J1708AddFormattedTxPacket (UINT8 priority, UINT8 *data, UINT8 len) {
     int nextHead = (j1708TxQueue.head + 1) % J1708_TX_QUEUE_SIZE;
     if (nextHead == j1708TxQueue.tail) {
         // this means that the queue was full
+        j1708DroppedFromHostCount++;
         return -1;
     }
 
@@ -326,7 +331,7 @@ int J1708AddUnFormattedTxPacket(UINT8 priority, UINT8 *data, UINT8 len) {
 /************************/
 int GetFreeJ1708TxBuffers() {
     int numInUse;
-    if (j1708TxQueue.head > j1708TxQueue.tail) {
+    if (j1708TxQueue.head >= j1708TxQueue.tail) {
         numInUse = j1708TxQueue.head - j1708TxQueue.tail;
     } else {
         numInUse = (j1708TxQueue.head + J1708_TX_QUEUE_SIZE) - j1708TxQueue.tail;
@@ -339,7 +344,7 @@ int GetFreeJ1708TxBuffers() {
 /************************/
 int GetFreeJ1708RxBuffers() {
     int numInUse;
-    if (j1708RxQueue.head > j1708RxQueue.tail) {
+    if (j1708RxQueue.head >= j1708RxQueue.tail) {
         numInUse = j1708RxQueue.head - j1708RxQueue.tail;
     } else {
         numInUse = (j1708RxQueue.head + J1708_RX_QUEUE_SIZE) - j1708RxQueue.tail;
@@ -470,6 +475,7 @@ void J1708ComIRQHandle() {
                         if (nextHead == j1708RxQueue.tail) {
                             // this means that the queue is full
                             j1708DroppedTxCnfrmCount++;
+                            j1708RxQueueOverflowed = true;
                         }else{
                             J1708Message *msg = &j1708RxQueue.msgs[j1708RxQueue.head];
                             j1708RxQueue.head = nextHead;
@@ -487,6 +493,7 @@ void J1708ComIRQHandle() {
                     J1708Message mymsg;
                     DequeueBuf(&j1708Port->rxQueue, mymsg.data, 21);
                     j1708DroppedRxCount++;
+                    j1708RxQueueOverflowed = true;
                 }else{
                     J1708Message *msg = &j1708RxQueue.msgs[j1708RxQueue.head];
                     j1708RxQueue.head = nextHead;
@@ -531,6 +538,7 @@ static void handle_delayed_j1708_com_irq( void ){
             (void)j1708Port->port->rxBuffer; //read this to clear weird interrupt
             ClearQueue(&j1708Port->rxQueue);
             j1708DroppedRxCount++;
+            j1708RxQueueOverflowed = true;
         }else{
             J1708Message *msg = &j1708RxQueue.msgs[j1708RxQueue.head];
             j1708RxQueue.head = nextHead;
