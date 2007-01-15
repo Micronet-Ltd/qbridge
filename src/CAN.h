@@ -44,6 +44,7 @@ extern bool CANBusOffNotify;
 extern bool CANAutoRestart;
 
 typedef struct {
+    UINT32 timestamp;
     UINT32 CAN_Identifier;  //msbit is our indicator as to whether this is STANDARD=1 or EXTENDED=0
     UINT8 data[8];
     UINT32 id;
@@ -57,7 +58,7 @@ typedef struct {
 #define SRC_TXC 2
 #define SRC_BOF 3
 
-#define CAN_QUEUE_SIZE 100
+#define CAN_QUEUE_SIZE 300
 
 typedef struct {
     int head;
