@@ -7,8 +7,8 @@
 #  Defines  #
 #############
 
-version	        := V0.005
-test_version    := x
+version	        := V0.006
+test_version    := 
 versdash        := -
 
 target	  	:= qbboot
@@ -17,7 +17,7 @@ linkscript 	:= $(target)_rel.x
 
 ARCH            := arm
 COMPILER_PREFIX := arm-elf-
-CFLAGS          := -mcpu=arm7tdmi -mlittle-endian -mapcs-32 -Wall -fno-strict-aliasing -fno-builtin -g
+CFLAGS          := -mcpu=arm7tdmi -mlittle-endian -Wall -Wno-pointer-sign -fno-strict-aliasing -fno-builtin -g
 OPTIMIZE        := -Os
 IFLAGS          := -Isrc -I../common -I../newlib/arm-elf/include
 
