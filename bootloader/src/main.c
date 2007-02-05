@@ -55,7 +55,7 @@
 extern unsigned char BuildDate[];
 
 const char CopyrightMsg[] __attribute__((section(".Copyright"))) = {
-    "Copyright 2000-05 QSI Corporation - all rights reserved"
+    "Copyright 2000-07 QSI Corporation - all rights reserved"
 };
 
 /* The bootloader stack */
