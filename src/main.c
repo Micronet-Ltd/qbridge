@@ -61,7 +61,7 @@
 /********************/
 
 const char CopyrightMsg[] __attribute__((section(".Copyright"))) = {
-    "Copyright 2005 QSI Corporation - all rights reserved"
+    "Copyright 2005-07 QSI Corporation - all rights reserved"
 };
 
 /* The qbridge stack */
