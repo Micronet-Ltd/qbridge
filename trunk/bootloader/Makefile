@@ -24,7 +24,7 @@ IFLAGS          := -Isrc -I../common -I../newlib/arm-elf/include
 LIBPATH         := -L../newlib/arm-elf
 LIBINCLUDES     := -lc -lgcc
 
-SEC_EXCLUDES    := -R .bss -R .stack
+SEC_EXCLUDES    := -R .bss -R .stack -R .BootFlag
 
 version 	:= $(addsuffix $(test_version),$(version))
 defs 		+= -DVERSION=\"$(version)\"
