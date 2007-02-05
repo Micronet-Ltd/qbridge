@@ -97,7 +97,12 @@ $(SOBJS): obj/%.o : src/%.S dpn/%.d Makefile
 	$(CC) $(DEBUG_FLAGS) $(OPTIMIZE) $(CFLAGS) $(IFLAGS) $(defs) -Wa,-ahld=lst/$*.lst -c -o $@ $< 
 
 tools/sreccrc: tools/sreccrc.c
+	@echo -e '\E[34m'"\033[1mBuilding helper tool $@\033[0m"
 	@gcc -o tools/sreccrc tools/sreccrc.c
+
+tools/crc: tools/crc.c
+	@echo -e '\E[34m'"\033[1mBuilding helper tool $@\033[0m"
+	@gcc -o tools/crc tools/crc.c
 
 ##########
 #  Link  #
@@ -107,10 +112,10 @@ $(target).srec: $(target).elf tools/sreccrc
 	$(OBJCPY) -v -S $(SEC_EXCLUDES) --gap-fill=51 -O symbolsrec $(target).elf $(target).srec
 	@tools/sreccrc $(target).srec
 
-$(target).bin: $(target).srec
+$(target).bin: $(target).srec tools/crc
 	$(OBJCPY) -v -I symbolsrec -O binary $(target).srec $(target).bin
-	@crc -l -b$(target).bin:0
-	@echo -e '\E[36m'"\033[1m**************Target Made**************\033[0m"
+	@tools/crc -l -b$(target).bin:0
+	@echo -e '\E[36m'"\033[1m**************Target Made Successfully**************\033[0m"
 
 $(target).elf: $(OBJS) $(linkscript)
 	@echo -e '\E[32m'"\033[1mLinking $@\033[0m"
