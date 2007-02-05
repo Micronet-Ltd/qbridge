@@ -104,6 +104,13 @@ tools/crc: tools/crc.c
 	@echo -e '\E[34m'"\033[1mBuilding helper tool $@\033[0m"
 	@gcc -o tools/crc tools/crc.c
 
+tools/srec2hex: tools/srec2hex.c
+	@echo -e '\E[34m'"\033[1mBuilding helper tool $@\033[0m"
+	@gcc -o tools/srec2hex tools/srec2hex.c
+
+bootloader/qbboot.srec:
+	$(MAKE) -C ./bootloader
+
 ##########
 #  Link  #
 ##########
@@ -115,12 +122,19 @@ $(target).srec: $(target).elf tools/sreccrc
 $(target).bin: $(target).srec tools/crc
 	$(OBJCPY) -v -I symbolsrec -O binary $(target).srec $(target).bin
 	@tools/crc -l -b$(target).bin:0
-	@echo -e '\E[36m'"\033[1m**************Target Made Successfully**************\033[0m"
+	@echo -e '\E[36m'"\033[1m**************$(target).bin made successfully**************\033[0m"
 
 $(target).elf: $(OBJS) $(linkscript)
 	@echo -e '\E[32m'"\033[1mLinking $@\033[0m"
 	$(CC) $(CFLAGS) $(OBJS) -Xlinker -Map -Xlinker $(target).map --warn-common \
 		-T$(linkscript) -nostdlib -static $(LIBPATH) $(LIBINCLUDES) -o $(target).elf
+
+flashimage.srec: $(target).srec bootloader/qbboot.srec
+	cat bootloader/qbboot.srec $(target).srec > flashimage.srec
+
+flashimage.hex: flashimage.srec tools/srec2hex
+	tools/srec2hex flashimage.srec flashimage.hex
+	@echo -e '\E[34m'"\033[1m**************flashimage made successfully**************\033[0m"
 
 ##################
 #  Dependencies  #
@@ -141,7 +155,7 @@ clean:
 	@echo -e '\E[37m'"\033[1m#################################################"
 	@echo -e '### Cleaning all generated files'
 	@echo -e '#################################################'"\033[0m"
-	@$(RM) obj/*.o lst/*.lst *.elf *.bin *.map *.srec TAGS
+	@$(RM) obj/*.o lst/*.lst *.elf *.bin *.map *.srec *.hex TAGS
 
 realclean: clean
 	@echo '#################################################'
