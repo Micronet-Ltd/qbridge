@@ -96,20 +96,23 @@ $(SOBJS): obj/%.o : src/%.S dpn/%.d Makefile
 	@echo -e '\E[32m'"\033[1m$<\033[0m"
 	$(CC) $(DEBUG_FLAGS) $(OPTIMIZE) $(CFLAGS) $(IFLAGS) $(defs) -Wa,-ahld=lst/$*.lst -c -o $@ $< 
 
-tools/sreccrc: tools/sreccrc.c
+tools/sreccrc: tools/sreccrc.c Makefile
 	@echo -e '\E[34m'"\033[1mBuilding helper tool $@\033[0m"
 	@gcc -o tools/sreccrc tools/sreccrc.c
 
-tools/crc: tools/crc.c
+tools/crc: tools/crc.c Makefile
 	@echo -e '\E[34m'"\033[1mBuilding helper tool $@\033[0m"
 	@gcc -o tools/crc tools/crc.c
 
-tools/srec2hex: tools/srec2hex.c
+tools/srec2hex: tools/srec2hex.c Makefile
 	@echo -e '\E[34m'"\033[1mBuilding helper tool $@\033[0m"
 	@gcc -o tools/srec2hex tools/srec2hex.c
 
 bootloader/qbboot.srec:
 	$(MAKE) -C ./bootloader
+
+.DELETE_ON_ERROR:
+	
 
 ##########
 #  Link  #
@@ -129,12 +132,12 @@ $(target).elf: $(OBJS) $(linkscript)
 	$(CC) $(CFLAGS) $(OBJS) -Xlinker -Map -Xlinker $(target).map --warn-common \
 		-T$(linkscript) -nostdlib -static $(LIBPATH) $(LIBINCLUDES) -o $(target).elf
 
-flashimage.srec: $(target).srec bootloader/qbboot.srec
+flashimage.srec: bootloader/qbboot.srec $(target).srec 
 	cat bootloader/qbboot.srec $(target).srec > flashimage.srec
 
 flashimage.hex: flashimage.srec tools/srec2hex
 	tools/srec2hex flashimage.srec flashimage.hex
-	@echo -e '\E[34m'"\033[1m**************flashimage made successfully**************\033[0m"
+	@echo -e '\E[34m'"\033[1m**************flashimage.hex made successfully**************\033[0m"
 
 ##################
 #  Dependencies  #
@@ -156,12 +159,17 @@ clean:
 	@echo -e '### Cleaning all generated files'
 	@echo -e '#################################################'"\033[0m"
 	@$(RM) obj/*.o lst/*.lst *.elf *.bin *.map *.srec *.hex TAGS
+	@$(RM) tools/sreccrc tools/crc tools/srec2hex 
 
 realclean: clean
 	@echo '#################################################'
 	@echo '### Cleaning dependencies'
 	@echo '#################################################'
 	@$(RM) dpn/*.d
+
+sweepclean: realclean
+	@$(MAKE) -C ./bootloader realclean
+
 
 listsrc:
 	@echo 'Ssrcs are: $(SSRCS)'
