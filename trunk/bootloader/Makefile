@@ -17,7 +17,7 @@ linkscript 	:= $(target)_rel.x
 
 ARCH            := arm
 COMPILER_PREFIX := arm-elf-
-CFLAGS          := -mcpu=arm7tdmi -mlittle-endian -Wall -Wno-pointer-sign -fno-strict-aliasing -fno-builtin -g
+CFLAGS          := -mcpu=arm7tdmi -mlittle-endian -Wall -Wcast-align -Wno-pointer-sign -fno-strict-aliasing -fno-builtin -g
 OPTIMIZE        := -Os
 IFLAGS          := -Isrc -I../common -I../newlib/arm-elf/include
 
