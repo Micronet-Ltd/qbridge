@@ -216,38 +216,76 @@ int FlashEraseRegion(unsigned char *addrptr, int len)
     return flash->er & FLASH_ERMASK;
 }
 
+static unsigned long ba2ul( unsigned char *d){
+    unsigned long tmp;
+    switch( (unsigned long)d & 3 ){
+        case 0: //word aligned
+            tmp = *(unsigned long *)(void *)d;
+            break;
+        default:
+        case 1:
+        case 3:
+            tmp = d[0];
+            tmp |= d[1]<<8;
+            tmp |= d[2]<<16;
+            tmp |= d[3]<<24;
+            break;
+        case 2: //16bit aligned
+            tmp = *(unsigned short *)(void *)d;
+            tmp |= *((unsigned short *)(void *)(d+2)) << 16;
+            break;
+    }
+    return( tmp );
+}
+
 /********************/
 /* FlashWriteBuffer */
 /********************/
 int FlashWriteBuffer(unsigned char *data, unsigned char *addrptr, int len)
 {
-    const unsigned long mask[3] = { 0x00ffffff, 0x0000ffff, 0x000000ff };
+    const unsigned long mask[3] = { 0x000000ff, 0x0000ffff, 0x00ffffff };
     unsigned long addr = (unsigned long)addrptr;
     unsigned long err;
 
     /* Must be at least word aligned */
     if (addr & 0x3) {
-        return -1;
+        //return -1;
+        unsigned long firstword = *(unsigned long *)(void *)(addr & ~3);
+        int mylen = 4 - (addr & 3);
+        int i;
+        mylen = mylen > len ? len : mylen;
+        for( i=0; i<mylen; i++ ){
+            firstword &= ~(0xff << (8*((addr+i) & 3)));
+            firstword |= ((data[i]) << (8*((addr+i) & 3)));
+        }
+        err = FlashWriteWord((addr & ~3), firstword);
+        if (err) return err;
+        data += mylen;
+        addr += mylen;
+        len -= mylen;
     }
 
     while (len > 0) {
         if (len >= 8 && !(addr & 0x7)) {
-            err = FlashWriteDoubleWord(addr, *(unsigned long *)data, *(unsigned long *)(data + 4));
+            //err = FlashWriteDoubleWord(addr, *(unsigned long *)data, *(unsigned long *)(data + 4));
+            err = FlashWriteDoubleWord(addr, ba2ul(&data[0]), ba2ul(&data[4]));
             if (err) return err;
             data += 8;
             addr += 8;
             len -= 8;
         } else if (len >= 4) {
-            err = FlashWriteWord(addr, *(unsigned long *)data);
+            //err = FlashWriteWord(addr, *(unsigned long *)data);
+            err = FlashWriteWord(addr, ba2ul(data));
             if (err) return err;
             data += 4;
             addr += 4;
             len -= 4;
         } else {
-            unsigned long lastword = *(unsigned long *)data;
+            //unsigned long lastword = *(unsigned long *)data;
+            unsigned long lastword = ba2ul(data);
             lastword &= mask[len - 1];
             lastword |= (*(unsigned long *)addr & ~mask[len - 1]);
-            err = FlashWriteWord(addr, *(unsigned long *)data);
+            err = FlashWriteWord(addr, lastword);
             if (err) return err;
             len = 0;
         }
