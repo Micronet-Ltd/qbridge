@@ -333,8 +333,11 @@ void CTestAppMFCTreqDlg::rp1210ReadMessage(short comClient, short nBlockOnRead) 
 		m_editbox.SetWindowTextW(c);
 	}
 	else if (nRet > 0) {
-		CString c(fpchMessage);
-		m_editbox.SetWindowTextW(c);
+		CString c("");
+		char pchBuf[512];
+		sprintf(pchBuf, "read msg: %d, %s", nRet, fpchMessage);
+		CString cstr(pchBuf);
+		m_editbox.SetWindowTextW(cstr);
 	}
 	else if (nRet == 0) {
 		CString c("Return 0, no messages for client");
@@ -351,13 +354,17 @@ void CTestAppMFCTreqDlg::OnBnClickedCreatecon4Btn()
 {
 	char far* fpchProtocol = "J1708";
 	rp1210ClientConnect(4, fpchProtocol, lastCom4Client);
+	CString cstr("");	
+	cstr.Format(_T("new client id: %d"), lastCom4Client);
+	m_editbox.SetWindowTextW(cstr);	
 }
 
 void CTestAppMFCTreqDlg::OnBnClickedSendCom4btn()
-{
-	for (int i = 0; i < 6; i++) {
-		rp1210SendMessage(lastCom4Client, 0);
-	}
+{	
+	rp1210SendCommand(3, lastCom4Client);
+	//for (int i = 0; i < 6; i++) {
+		rp1210SendMessage(lastCom4Client, 1);
+	//}
 }
 void CTestAppMFCTreqDlg::OnBnClickedButton6()
 {
