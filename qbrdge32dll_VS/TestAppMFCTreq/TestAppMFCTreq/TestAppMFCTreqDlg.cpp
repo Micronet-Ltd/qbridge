@@ -335,7 +335,7 @@ void CTestAppMFCTreqDlg::rp1210ReadMessage(short comClient, short nBlockOnRead) 
 	else if (nRet > 0) {
 		CString c("");
 		char pchBuf[512];
-		sprintf(pchBuf, "read msg: %d, %s", nRet, fpchMessage);
+		sprintf(pchBuf, "read msg: %d, %s", nRet-3, fpchMessage+2);
 		CString cstr(pchBuf);
 		m_editbox.SetWindowTextW(cstr);
 	}
