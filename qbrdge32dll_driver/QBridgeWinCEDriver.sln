@@ -1,6 +1,6 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 9.00
-# Visual Studio 2005
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "qbrdge_driver_classlib", "qbrdge_driver_classlib\qbrdge_driver_classlib.csproj", "{DCBCCB6B-7A57-4F73-90FC-9DBB5CF5BE6B}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "qbrdge_driver", "qbrdge_driver\qbrdge_driver.csproj", "{712375D2-CAB0-45EB-9525-0036D15E349C}"
