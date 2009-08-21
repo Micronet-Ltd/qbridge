@@ -1013,6 +1013,10 @@ namespace qbrdge_driver_classlib
             tstamp.CopyTo(ptmp, 0);
             pktData.CopyTo(ptmp, 4);
             pktData = ptmp;
+            byte mid = 0;
+            if (pktData.Length > 4) {
+                mid = pktData[4];
+            }
 
             for (int i = 0; i < ClientIDManager.clientIds.Length; i++)
             {
@@ -1023,18 +1027,13 @@ namespace qbrdge_driver_classlib
                     clientInfo.isJ1939Client == false &&
                     i != ignoreClientId)
                 {
-                    byte mid = pktData[4];
-                    if (clientInfo.J1708MIDFilter == false)
-                    {
+                    if (clientInfo.J1708MIDFilter == false) {
                         Support.SendClientDataPacket(UDPReplyType.readmessage,
                             i, pktData);
                     }
-                    else
-                    {
-                        for (int j = 0; j < clientInfo.J1708MIDList.Length; j++)
-                        {
-                            if (mid == clientInfo.J1708MIDList[j])
-                            {
+                    else {
+                        for (int j = 0; j < clientInfo.J1708MIDList.Length; j++) {
+                            if (mid == clientInfo.J1708MIDList[j]) {
                                 //if client is registered to recieving port then send message
                                 Support.SendClientDataPacket(UDPReplyType.readmessage,
                                     i, pktData);
