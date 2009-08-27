@@ -1017,6 +1017,9 @@ namespace qbrdge_driver_classlib
             if (pktData.Length > 4) {
                 mid = pktData[4];
             }
+            else {
+                return;
+            }
 
             for (int i = 0; i < ClientIDManager.clientIds.Length; i++)
             {
