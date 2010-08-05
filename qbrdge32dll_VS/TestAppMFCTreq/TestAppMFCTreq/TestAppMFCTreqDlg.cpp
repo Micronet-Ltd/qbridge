@@ -97,11 +97,22 @@ void CTestAppMFCTreqDlg::OnBnClickedButton1()
 	TCHAR buf[128];
 
 	cfunc(buf, 128);
+	CString cstr("");
+	cstr.Format(_T("RP1210 StatusInfo: %s"), buf);
+	m_editbox.SetWindowTextW(cstr);
 }
 
 void CTestAppMFCTreqDlg::OnBnClickedButton2()
 {
 	mod = LoadLibrary(_T("QBRDGE32.dll"));
+	CString cstr("");	
+
+	if( mod == NULL ){
+		cstr.Format(_T("failed to load QBRDGE32.dll"));
+	}else{
+		cstr.Format(_T("successfully loaded QBRDGE32.dll"));
+	}
+	m_editbox.SetWindowTextW(cstr);	
 }
 
 void CTestAppMFCTreqDlg::OnBnClickedButton3()
@@ -295,7 +306,9 @@ void CTestAppMFCTreqDlg::rp1210SendMessage(short comClient, short nBlockOnSend) 
 	}
 	else
 	{
-
+		CString c("");
+		c.Format(_T("RP1210_SendMessage return value: %d"), nRet);
+		m_editbox.SetWindowTextW(c);
 	}
 }
 
@@ -348,7 +361,11 @@ void CTestAppMFCTreqDlg::rp1210ReadMessage(short comClient, short nBlockOnRead) 
 void CTestAppMFCTreqDlg::OnBnClickedButton4()
 {
 	char far* fpchProtocol = "J1708";
+	short tmp = lastCom3Client;
 	rp1210ClientConnect(3, fpchProtocol, lastCom3Client);
+	CString cstr("");
+	cstr.Format(_T("lastcom3Client: was %d is %d"),tmp, lastCom3Client);
+	m_editbox.SetWindowTextW(cstr);	
 }
 void CTestAppMFCTreqDlg::OnBnClickedCreatecon4Btn()
 {
