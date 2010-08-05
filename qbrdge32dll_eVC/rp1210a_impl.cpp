@@ -443,7 +443,8 @@ bool ConnectToDriverApp(){
 				return false;
 			}
 			TRACE(_T("After OpenDriverApp %d\n"), GetTickCount());
-			for (int i = 0; i < 10; i++)
+			int i;
+			for (i = 0; i < 10; i++)
 			{
 				::Sleep(500);
 				if (QueryDriverApp(QUERY_NEWPORT_PKT, DRIVER_LISTEN_PORT-1, dmy, NULL, 0, 0) == true) {
