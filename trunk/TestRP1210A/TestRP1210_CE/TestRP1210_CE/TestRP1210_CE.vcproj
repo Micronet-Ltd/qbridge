@@ -1,22 +1,23 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="8.00"
+	Version="9.00"
 	Name="TestRP1210_CE"
 	ProjectGUID="{1F7F9C9E-B32B-4DBD-A201-3DAED989D046}"
 	RootNamespace="TestRP1210_CE"
 	Keyword="MFCProj"
+	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
 		<Platform
-			Name="TREQ (x86)"
+			Name="TREQ-M4 (ARMV4I)"
 		/>
 	</Platforms>
 	<ToolFiles>
 	</ToolFiles>
 	<Configurations>
 		<Configuration
-			Name="Debug|TREQ (x86)"
+			Name="Debug|TREQ-M4 (ARMV4I)"
 			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="1"
@@ -69,6 +70,8 @@
 				LinkIncremental="2"
 				GenerateDebugInformation="true"
 				EntryPointSymbol="WinMainCRTStartup"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -78,6 +81,9 @@
 			/>
 			<Tool
 				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
 			/>
 			<Tool
 				Name="VCCodeSignTool"
@@ -95,7 +101,7 @@
 			/>
 		</Configuration>
 		<Configuration
-			Name="Release|TREQ (x86)"
+			Name="Release|TREQ-M4 (ARMV4I)"
 			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="1"
@@ -150,6 +156,8 @@
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
 				EntryPointSymbol="WinMainCRTStartup"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -159,6 +167,9 @@
 			/>
 			<Tool
 				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
 			/>
 			<Tool
 				Name="VCCodeSignTool"
@@ -204,7 +215,7 @@
 				RelativePath=".\stdafx.cpp"
 				>
 				<FileConfiguration
-					Name="Debug|TREQ (x86)"
+					Name="Debug|TREQ-M4 (ARMV4I)"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -212,7 +223,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release|TREQ (x86)"
+					Name="Release|TREQ-M4 (ARMV4I)"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
