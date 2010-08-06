@@ -200,7 +200,7 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 				for (int i = 0; i < 80; i++) {
 					tbuf[i] = buff[i];
 				}
-				tbuf[BufLen] = 0;
+				tbuf[BufLen-1] = 0;
 				//_DbgTrace(tbuf);
 						
 				if (connections[nClientID].GetConnectionType() == Conn_Invalid) {
