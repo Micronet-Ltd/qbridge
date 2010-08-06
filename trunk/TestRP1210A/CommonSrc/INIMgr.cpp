@@ -27,7 +27,7 @@ INIMgr::~INIMgr(void)
 /*************************/
 CString INIMgr::GetWindowsPath() {
 #ifdef WINCE
-	TCHAR path[] = { _T("\\HardDisk\\BIN") };
+	TCHAR path[] = { _T("\\HardDisk\\BIN\\QBridge") };
 #else 
 	TCHAR path[MAX_PATH];
 
