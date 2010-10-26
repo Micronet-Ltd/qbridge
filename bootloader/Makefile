@@ -7,8 +7,8 @@
 #  Defines  #
 #############
 
-version	        := V0.006
-test_version    := 
+version	        := V0.007
+test_version    :=
 versdash        := -
 
 target	  	:= qbboot
@@ -36,7 +36,7 @@ targettxt       := (ROM image)
 #  Tool Definitions  #
 ######################
 
-CC              := $(COMPILER_PREFIX)gcc
+CC              := $(COMPILER_PREFIX)gcc-4.1.1
 OBJCPY          := $(COMPILER_PREFIX)objcopy
 RM              := rm -rf
 
@@ -90,11 +90,11 @@ $(SDEPENDS): dpn/%.d: src/%.S
 
 $(COBJS): obj/%.o : src/%.c dpn/%.d Makefile
 	@echo -e '\E[32m'"\033[1m$<\033[0m"
-	$(CC) $(DEBUG_FLAGS) $(OPTIMIZE) $(CFLAGS) $(IFLAGS) $(defs) -Wa,-ahld=lst/$*.lst -c -o $@ $< 
+	$(CC) $(DEBUG_FLAGS) $(OPTIMIZE) $(CFLAGS) $(IFLAGS) $(defs) -Wa,-ahld=lst/$*.lst -c -o $@ $<
 
 $(SOBJS): obj/%.o : src/%.S dpn/%.d Makefile
 	@echo -e '\E[32m'"\033[1m$<\033[0m"
-	$(CC) $(DEBUG_FLAGS) $(OPTIMIZE) $(CFLAGS) $(IFLAGS) $(defs) -Wa,-ahld=lst/$*.lst -c -o $@ $< 
+	$(CC) $(DEBUG_FLAGS) $(OPTIMIZE) $(CFLAGS) $(IFLAGS) $(defs) -Wa,-ahld=lst/$*.lst -c -o $@ $<
 
 ##########
 #  Link  #
