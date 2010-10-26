@@ -35,6 +35,7 @@ typedef enum _Commands {
     CANcontrol                  = 'L', //0x4C
     GetInfo                     = 'M', //0x4D
     CANbusErr                   = 'N', //0x4E
+    MiscControl                 = 'O', //0x4f
     InfoReq                     = '*', //0x2A
     RawJ1708                    = '+', //0x2B
     ReqRawPackets               = ',', //0x2C
