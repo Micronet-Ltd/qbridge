@@ -7,8 +7,8 @@
 #  Defines  #
 #############
 
-version	        := V0.006
-test_version    := 
+version	        := V0.007
+test_version    :=
 versdash        := -
 
 target	  	:= qbridge
@@ -36,7 +36,7 @@ targettxt       := (ROM image)
 #  Tool Definitions  #
 ######################
 
-CC              := $(COMPILER_PREFIX)gcc
+CC              := $(COMPILER_PREFIX)gcc-4.1.1
 OBJCPY          := $(COMPILER_PREFIX)objcopy
 RM              := rm -rf
 
@@ -90,29 +90,29 @@ $(SDEPENDS): dpn/%.d: src/%.S
 
 $(COBJS): obj/%.o : src/%.c dpn/%.d	Makefile
 	@echo -e '\E[32m'"\033[1m$<\033[0m"
-	$(CC) $(DEBUG_FLAGS) $(OPTIMIZE) $(CFLAGS) $(IFLAGS) $(defs) -Wa,-ahld=lst/$*.lst -c -o $@ $< 
+	$(CC) $(DEBUG_FLAGS) $(OPTIMIZE) $(CFLAGS) $(IFLAGS) $(defs) -Wa,-ahld=lst/$*.lst -c -o $@ $<
 
 $(SOBJS): obj/%.o : src/%.S dpn/%.d Makefile
 	@echo -e '\E[32m'"\033[1m$<\033[0m"
-	$(CC) $(DEBUG_FLAGS) $(OPTIMIZE) $(CFLAGS) $(IFLAGS) $(defs) -Wa,-ahld=lst/$*.lst -c -o $@ $< 
+	$(CC) $(DEBUG_FLAGS) $(OPTIMIZE) $(CFLAGS) $(IFLAGS) $(defs) -Wa,-ahld=lst/$*.lst -c -o $@ $<
 
 tools/sreccrc: tools/sreccrc.c Makefile
 	@echo -e '\E[34m'"\033[1mBuilding helper tool $@\033[0m"
-	@gcc -o tools/sreccrc tools/sreccrc.c
+	@gcc -m32 -o tools/sreccrc tools/sreccrc.c
 
 tools/crc: tools/crc.c Makefile
 	@echo -e '\E[34m'"\033[1mBuilding helper tool $@\033[0m"
-	@gcc -o tools/crc tools/crc.c
+	@gcc -m32 -o tools/crc tools/crc.c
 
 tools/srec2hex: tools/srec2hex.c Makefile
 	@echo -e '\E[34m'"\033[1mBuilding helper tool $@\033[0m"
-	@gcc -o tools/srec2hex tools/srec2hex.c
+	@gcc -m32 -o tools/srec2hex tools/srec2hex.c
 
 bootloader/qbboot.srec:
 	$(MAKE) -C ./bootloader
 
 .DELETE_ON_ERROR:
-	
+
 
 ##########
 #  Link  #
@@ -132,7 +132,7 @@ $(target).elf: $(OBJS) $(linkscript)
 	$(CC) $(CFLAGS) $(OBJS) -Xlinker -Map -Xlinker $(target).map --warn-common \
 		-T$(linkscript) -nostdlib -static $(LIBPATH) $(LIBINCLUDES) -o $(target).elf
 
-flashimage.srec: bootloader/qbboot.srec $(target).srec 
+flashimage.srec: bootloader/qbboot.srec $(target).srec
 	cat bootloader/qbboot.srec $(target).srec > flashimage.srec
 
 flashimage.hex: flashimage.srec tools/srec2hex
@@ -159,7 +159,7 @@ clean:
 	@echo -e '### Cleaning all generated files'
 	@echo -e '#################################################'"\033[0m"
 	@$(RM) obj/*.o lst/*.lst *.elf *.bin *.map *.srec *.hex TAGS
-	@$(RM) tools/sreccrc tools/crc tools/srec2hex 
+	@$(RM) tools/sreccrc tools/crc tools/srec2hex
 
 realclean: clean
 	@echo '#################################################'
