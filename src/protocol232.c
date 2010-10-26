@@ -539,6 +539,27 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
         case CANcontrol:
             parseCANcontrol( id, data, dataLen );
             break;
+        case MiscControl:
+            if (dataLen != 1) {
+                Send232Ack(ACK_INVALID_DATA, id, NULL, 0);
+                break;
+            }
+            if( data[0] != 0 ){
+                Send232Ack(ACK_INVALID_DATA, id, NULL, 0);
+                break;
+            }
+            // special case -- we need to transmit a reply, then wait for the serial port to go idle and reboot
+            Send232Ack(ACK_OK, id, NULL, 0);
+            while (!IsTxFifoEmpty(hostPort)) { // loop until the serial port transmission buffer is empty
+            }
+            {
+                PCUREGS *p = (PCUREGS *)PCU_REG_BASE;
+                int kk;
+                for( kk=0; kk<10; kk++ ){ //while( 1 ) {
+                    p->pwrcr = 0x8040;
+                }
+            }
+            break;
 #ifdef _DEBUG
         case PJDebug:
             dopjdebug( id, data, dataLen );

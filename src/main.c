@@ -143,6 +143,8 @@ void irq_lockup(void)
 }
 
 void LockProgram();
+//static void InitializeSCIPIO();
+//static void HandleSCIPIO();
 
 
 
@@ -159,6 +161,7 @@ int main(void) {
     StartJ1708BaudGeneratorAndTimer();
     Initialize232Protocol();
     InitializeCAN();
+//    InitializeSCIPIO();
 
 #ifdef _DEBUG
     extern const unsigned char BuildDateStr[];
@@ -176,6 +179,7 @@ int main(void) {
         ProcessCANTransmitQueue();
         ProcessCANRecievePacket();
         detect_CAN_bus_transitions();
+//        HandleSCIPIO();
     }
 
     LockProgram();
@@ -247,3 +251,57 @@ void Reset(UINT32 flag)
     /* Forever loop makes noreturn happy */
     for(;;);
 }
+
+#if 0
+int scipio_state;
+UINT32 scipio_start_time;
+
+/********************/
+/* InitializeSCIPIO */
+/********************/
+static void InitializeSCIPIO(){
+#if !defined(_DEBUG)  //can't use debug comport and scipio gsm reset at same time since they use same pins
+    extern void GPIO_Config(IOPortRegisterMap *ioport, UINT16 pin, Gpio_PinModes md );
+
+    GPIO_Config((IOPortRegisterMap *)IOPORT0_REG_BASE, UART2_Tx_Pin, GPIO_OUT_PP);
+    GPIO_Config((IOPortRegisterMap *)IOPORT0_REG_BASE, UART2_Rx_Pin, GPIO_OUT_PP);
+    GPIO_SET(0,13);
+    GPIO_CLR(0,14);
+    scipio_state = 0;
+#endif
+}
+
+
+
+/****************/
+/* HandleSCIPIO */
+/****************/
+static void HandleSCIPIO(){
+#if !defined(_DEBUG)  //can't use debug comport and scipio gsm reset at same time since they use same pins
+    switch( scipio_state ){
+        case 0:
+            scipio_start_time = GetTime32();
+            scipio_state = 1;
+            break;
+        case 1:
+            if( (UINT32)(GetTime32() - scipio_start_time) > (UINT32) (1*(4*1000000)) ){
+                scipio_state = 2;
+                GPIO_CLR(0,13);
+            }
+            break;
+        case 2:
+            //for debug we will toggle the other signal to see that all is working well
+            GPIO_SET(0,14);
+            scipio_state = 3;
+            break;
+        case 3:
+            GPIO_CLR(0,14);
+            scipio_state = 2;
+            break;
+        default:
+            scipio_state = 2;
+            break;
+    }
+#endif
+}
+#endif
