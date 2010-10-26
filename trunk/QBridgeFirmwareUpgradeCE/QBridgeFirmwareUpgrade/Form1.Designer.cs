@@ -49,14 +49,14 @@ namespace QBridgeFirmwareUpgrade
             // 
             // Filename
             // 
-            this.Filename.Location = new System.Drawing.Point(77, 12);
+            this.Filename.Location = new System.Drawing.Point(75, 12);
             this.Filename.Name = "Filename";
-            this.Filename.Size = new System.Drawing.Size(320, 23);
+            this.Filename.Size = new System.Drawing.Size(302, 23);
             this.Filename.TabIndex = 1;
             // 
             // BrowseBtn
             // 
-            this.BrowseBtn.Location = new System.Drawing.Point(400, 12);
+            this.BrowseBtn.Location = new System.Drawing.Point(383, 12);
             this.BrowseBtn.Name = "BrowseBtn";
             this.BrowseBtn.Size = new System.Drawing.Size(81, 23);
             this.BrowseBtn.TabIndex = 2;
@@ -67,23 +67,23 @@ namespace QBridgeFirmwareUpgrade
             // 
             this.ComPortSerial.Location = new System.Drawing.Point(4, 54);
             this.ComPortSerial.Name = "ComPortSerial";
-            this.ComPortSerial.Size = new System.Drawing.Size(82, 24);
+            this.ComPortSerial.Size = new System.Drawing.Size(74, 24);
             this.ComPortSerial.Text = "Serial port.";
             // 
             // SerialPort
             // 
             this.SerialPort.Items.Add("COM1");
             this.SerialPort.Items.Add("COM2");
-            this.SerialPort.Items.Add("COM3");
-            this.SerialPort.Items.Add("COM4 (internal QBridge)");
-            this.SerialPort.Location = new System.Drawing.Point(77, 54);
+            this.SerialPort.Items.Add("COM3 (internal QBridge)");
+            this.SerialPort.Items.Add("COM4");
+            this.SerialPort.Location = new System.Drawing.Point(75, 54);
             this.SerialPort.Name = "SerialPort";
             this.SerialPort.Size = new System.Drawing.Size(229, 23);
             this.SerialPort.TabIndex = 4;
             // 
             // UpgradeBtn
             // 
-            this.UpgradeBtn.Location = new System.Drawing.Point(400, 54);
+            this.UpgradeBtn.Location = new System.Drawing.Point(383, 54);
             this.UpgradeBtn.Name = "UpgradeBtn";
             this.UpgradeBtn.Size = new System.Drawing.Size(81, 22);
             this.UpgradeBtn.TabIndex = 5;
@@ -92,9 +92,9 @@ namespace QBridgeFirmwareUpgrade
             // 
             // DLProgress
             // 
-            this.DLProgress.Location = new System.Drawing.Point(4, 96);
+            this.DLProgress.Location = new System.Drawing.Point(4, 99);
             this.DLProgress.Name = "DLProgress";
-            this.DLProgress.Size = new System.Drawing.Size(477, 23);
+            this.DLProgress.Size = new System.Drawing.Size(460, 23);
             // 
             // ofd
             // 
@@ -110,7 +110,7 @@ namespace QBridgeFirmwareUpgrade
             this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             this.AutoScroll = true;
-            this.ClientSize = new System.Drawing.Size(491, 132);
+            this.ClientSize = new System.Drawing.Size(478, 135);
             this.Controls.Add(this.DLProgress);
             this.Controls.Add(this.UpgradeBtn);
             this.Controls.Add(this.SerialPort);
@@ -118,7 +118,7 @@ namespace QBridgeFirmwareUpgrade
             this.Controls.Add(this.BrowseBtn);
             this.Controls.Add(this.Filename);
             this.Controls.Add(this.MyLBL);
-            this.Location = new System.Drawing.Point(153, 161);
+            this.Location = new System.Drawing.Point(0, 56);
             this.Name = "UpdateFWForm";
             this.Text = "Update QBridge Firmware";
             this.Load += new System.EventHandler(this.UpdateFWForm_Load);
