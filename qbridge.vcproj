@@ -1,0 +1,307 @@
+<?xml version="1.0" encoding="Windows-1252"?>
+<VisualStudioProject
+	ProjectType="Visual C++"
+	Version="7.10"
+	Name="qbridge"
+	ProjectGUID="{CAC297B3-2480-4F4B-97D9-22C940933D87}"
+	RootNamespace="qbridge"
+	Keyword="Win32Proj">
+	<Platforms>
+		<Platform
+			Name="Win32"/>
+	</Platforms>
+	<Configurations>
+		<Configuration
+			Name="Debug|Win32"
+			OutputDirectory="Debug"
+			IntermediateDirectory="Debug"
+			ConfigurationType="10"
+			CharacterSet="2"
+			DeleteExtensionsOnClean="*.obj;*.ilk;*.pdb;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.bat;$(TargetPath);*.elf">
+			<Tool
+				Name="VCCustomBuildTool"
+				CommandLine="rsh brutus -l simon &quot;make -C qbridge&quot;
+"
+				Outputs="qbridge.elf"/>
+			<Tool
+				Name="VCMIDLTool"/>
+			<Tool
+				Name="VCPostBuildEventTool"
+				CommandLine="rsh brutus -l simon &quot;make -C qbridge rvdebug&quot;
+if exist qbridge.elf goto success
+
+:failure
+echo QBridge.elf file missing
+echo Build:0: error: Errors are present
+exit /B 1
+
+:success
+echo copying qbridge.elf to qbridge.ram.elf
+copy qbridge.elf qbridge.ram.elf &gt;nul
+del qbridge.elf
+echo Success
+exit /B 0
+"/>
+			<Tool
+				Name="VCPreBuildEventTool"/>
+		</Configuration>
+		<Configuration
+			Name="Release|Win32"
+			OutputDirectory="Release"
+			IntermediateDirectory="Release"
+			ConfigurationType="10"
+			CharacterSet="2">
+			<Tool
+				Name="VCCustomBuildTool"/>
+			<Tool
+				Name="VCMIDLTool"/>
+			<Tool
+				Name="VCPostBuildEventTool"
+				CommandLine="rsh brutus -l simon &quot;make -C qbridge&quot;
+if exist qbridge.elf goto success
+
+:failure
+echo QBridge.elf file missing
+echo Build:0: error: Errors are present
+exit /B 1
+
+:success
+echo copying qbridge.elf to qbridge.flash.elf
+copy qbridge.elf qbridge.flash.elf &gt;nul
+del qbridge.elf
+echo Success FLASH VERSION -- NO DEBUG INFO
+exit /B 0
+"/>
+			<Tool
+				Name="VCPreBuildEventTool"
+				CommandLine="rsh brutus -l simon &quot;make -C qbridge clean&quot;"/>
+		</Configuration>
+	</Configurations>
+	<References>
+	</References>
+	<Files>
+		<Filter
+			Name="Source Files"
+			Filter="cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx"
+			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}">
+			<File
+				RelativePath=".\src\build.c">
+				<FileConfiguration
+					Name="Debug|Win32"
+					ExcludedFromBuild="TRUE">
+					<Tool
+						Name="VCCustomBuildTool"/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\src\eic.c">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o rvdebug&quot;
+"
+						Outputs="obj/$(InputName).o"/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+"
+						Outputs="obj/$(InputName).o"/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\src\init_arm.S">
+			</File>
+			<File
+				RelativePath=".\src\J1708.c">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o rvdebug&quot;
+"
+						Outputs="obj/$(InputName).o"/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+"
+						Outputs="obj/$(InputName).o"/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\src\main.c">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o rvdebug&quot;
+"
+						Outputs="obj/$(InputName).o"/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+"
+						Outputs="obj/$(InputName).o"/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\src\protocol232.c">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o rvdebug&quot;
+"
+						Outputs="obj/$(InputName).o"/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+"
+						Outputs="obj/$(InputName).o"/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\src\queue.c">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o rvdebug&quot;
+"
+						Outputs="obj/$(InputName).o"/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+"
+						Outputs="obj/$(InputName).o"/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\src\serial.c">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o rvdebug&quot;
+"
+						Outputs="obj/$(InputName).o"/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+"
+						Outputs="obj/$(InputName).o"/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\src\stubs.c">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o rvdebug&quot;
+"
+						Outputs="obj/$(InputName).o"/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+"
+						Outputs="obj/$(InputName).o"/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\src\timers.c">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o rvdebug&quot;
+"
+						Outputs="obj/$(InputName).o"/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						CommandLine="rsh brutus -l simon &quot;make -C qbridge obj/$(InputName).o&quot;
+"
+						Outputs="obj/$(InputName).o"/>
+				</FileConfiguration>
+			</File>
+		</Filter>
+		<Filter
+			Name="Header Files"
+			Filter="h;hpp;hxx;hm;inl;inc;xsd"
+			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}">
+			<File
+				RelativePath=".\src\basearm.h">
+			</File>
+			<File
+				RelativePath=".\src\common.h">
+			</File>
+			<File
+				RelativePath=".\common\crc.h">
+			</File>
+			<File
+				RelativePath=".\src\eic.h">
+			</File>
+			<File
+				RelativePath=".\src\J1708.h">
+			</File>
+			<File
+				RelativePath=".\src\protocol232.h">
+			</File>
+			<File
+				RelativePath=".\src\queue.h">
+			</File>
+			<File
+				RelativePath=".\src\serial.h">
+			</File>
+			<File
+				RelativePath=".\src\snprintf.h">
+			</File>
+			<File
+				RelativePath=".\src\stddefs.h">
+			</File>
+			<File
+				RelativePath=".\src\str712.h">
+			</File>
+			<File
+				RelativePath=".\src\timers.h">
+			</File>
+		</Filter>
+		<Filter
+			Name="Resource Files"
+			Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx"
+			UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}">
+		</Filter>
+		<File
+			RelativePath=".\Makefile">
+		</File>
+		<File
+			RelativePath=".\qbridge_deb.x">
+		</File>
+	</Files>
+	<Globals>
+	</Globals>
+</VisualStudioProject>
