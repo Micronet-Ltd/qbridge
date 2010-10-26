@@ -153,7 +153,7 @@ namespace QBridgeFirmwareUpgrade
                     {
                         recvCnt = 0;
                     }
-		            if ((recvCnt > 0) && (recv[0] == '\x15')) {
+		            if ((recvCnt > 0) && (recv[0] == 0x15)) {
 			            break;
 		            }
 	            }
@@ -171,6 +171,7 @@ namespace QBridgeFirmwareUpgrade
                 int fileIndex = 0;
                 int recvCnt = 0;
                 byte [] recv = new byte[256];
+                System.Threading.Thread.Sleep(100);
 	            for (int nLines = 0;; nLines++) {
 		            // Get an S-Record line and write it out - with a newline
                     byte[] line;
@@ -181,43 +182,50 @@ namespace QBridgeFirmwareUpgrade
 		            recvCnt = 0;
 		            for (int retryCount = 0; (recvCnt == 0) && (retryCount < 3) ; retryCount++) {
                         serPort.Write(line, 0, line.Length);
+                        System.Threading.Thread.Sleep(2);
             			
 			            // Wait for an ack
-                        for (System.DateTime timeOutTime = System.DateTime.Now.AddMilliseconds(1000); System.DateTime.Now < timeOutTime; ) {
+                        //for (System.DateTime timeOutTime = System.DateTime.Now.AddMilliseconds(1000); System.DateTime.Now < timeOutTime; ) {
+                        for (System.DateTime starttime = System.DateTime.Now; System.DateTime.Now.Subtract(starttime).Milliseconds < 10800; ) {
                             try
                             {
                                 recvCnt = serPort.Read(recv, 0, recv.GetLength(0));
                             }
-                            catch (Exception)
+                            catch (Exception ex)
                             {
+                                //MessageBox.Show(String.Format("exception {1} when writing line {0}.", nLines, ex.Message)); 
                                 recvCnt = 0;
                             }
 				            if (recvCnt > 0) {
 					            int idx;
 					            for (idx = 0; idx < recvCnt; idx++) {
-						            if (recv[idx] != '\x06') {
+						            if (recv[idx] != 0x06) {
 							            //TRACE(_T("Expected ack and received <%02x> (byte %d.  Line %d) - retrying %d!\n"), recv[idx], idx, nLines, retryCount);
-							            recvCnt = 0;
+                                        MessageBox.Show(String.Format("bad bl ack ({1:x} offs={2}, cnt={3}) when writing line {0}.", nLines, recv[idx], idx, recvCnt));
+                                        recvCnt = 0;
 							            goto ContinueLoop;
 						            }
 					            }
 					            // all received bytes were ACKS
 					            break; 
 				            }
-				            System.Threading.Thread.Sleep(1);
+				            System.Threading.Thread.Sleep(2);
 			            }
             ContinueLoop:
 			            ; // NULL statement for the goto
+                        if (recvCnt != 0)
+                            break;
 		            }
 		            if (recvCnt == 0) {
 			            //TRACE (_T("Device did not respond when writing line %d\n"), nLines);
-                        MessageBox.Show(String.Format("Device did not respond when writing line {0}.", nLines));
+                        MessageBox.Show(String.Format("Device did not respond when writing line {0} {1}.", nLines, line.Length));
                         serPort.Close();
                         return;
 		            }
-            		DLProgress.Value = fileIndex;
+            		DLProgress.Value = fileIndex-1;
 		            //Read the result and compare to the string that was transmitted
 	            }
+                MessageBox.Show(String.Format("done.")); 
             }
             serPort.Close();
         }
