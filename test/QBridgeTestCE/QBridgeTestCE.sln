@@ -1,0 +1,38 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QBridgeTestCE", "QBridgeTestCE\QBridgeTestCE.csproj", "{DAB33420-EFAA-460F-ACB0-F15694CDC4B9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FirmwareUpdaterCE", "FirmwareUpdaterCE\FirmwareUpdaterCE.csproj", "{6025D85C-1C24-4B09-B2B5-720A9B950100}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QBridgePowerDown", "QBridgePowerDown\QBridgePowerDown.csproj", "{45DBABDE-B59E-403F-99DC-D17D652348CF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DAB33420-EFAA-460F-ACB0-F15694CDC4B9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DAB33420-EFAA-460F-ACB0-F15694CDC4B9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DAB33420-EFAA-460F-ACB0-F15694CDC4B9}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{DAB33420-EFAA-460F-ACB0-F15694CDC4B9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DAB33420-EFAA-460F-ACB0-F15694CDC4B9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DAB33420-EFAA-460F-ACB0-F15694CDC4B9}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{6025D85C-1C24-4B09-B2B5-720A9B950100}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6025D85C-1C24-4B09-B2B5-720A9B950100}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6025D85C-1C24-4B09-B2B5-720A9B950100}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{6025D85C-1C24-4B09-B2B5-720A9B950100}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6025D85C-1C24-4B09-B2B5-720A9B950100}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6025D85C-1C24-4B09-B2B5-720A9B950100}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{45DBABDE-B59E-403F-99DC-D17D652348CF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{45DBABDE-B59E-403F-99DC-D17D652348CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{45DBABDE-B59E-403F-99DC-D17D652348CF}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{45DBABDE-B59E-403F-99DC-D17D652348CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{45DBABDE-B59E-403F-99DC-D17D652348CF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{45DBABDE-B59E-403F-99DC-D17D652348CF}.Release|Any CPU.Deploy.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
