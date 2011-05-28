@@ -9,11 +9,12 @@ using System.Windows.Forms;
 //using System.ServiceModel;
 #if forWIN32
 #else
-using Microsoft.WindowsCE.Forms;
-using System.Runtime.InteropServices;
+//using Microsoft.WindowsCE.Forms;
+//using System.Runtime.InteropServices;
 #endif
 using System.Windows;
 using qbridge_serial_com;
+
 
 namespace j1708TestCE
 {
@@ -52,6 +53,7 @@ namespace j1708TestCE
                 mainSerial.PortName = x;
                 mainSerial.Open();
                 qbridge.mySerial = mainSerial;
+                timer1.Enabled = true;
             }
             catch (Exception )
             {
@@ -105,7 +107,7 @@ namespace j1708TestCE
 		 	int x = mainSerial.BytesToRead;
             while( x > 0 )
             {
-                int num_to_read = mainq_size - mainqe - 1;
+                int num_to_read = mainq_size - mainqe;// -1;
                 num_to_read = num_to_read > x ? x : num_to_read;
 			    mainSerial.Read(mainq,mainqe,num_to_read);
                 x -= num_to_read;
@@ -116,20 +118,20 @@ namespace j1708TestCE
         }
         private void add_text_to_textbox(TextBox t, String s)
         {
-#if forWIN32
+//#if forWIN32
             t.Text += s;
             t.SelectionLength = 0;
             t.SelectionStart = textBox1.Text.Length;
             t.ScrollToCaret();
-#else
-            if (t.Text.Length + s.Length >= 30000)
-            {
-                t.Text = "";
-            }
+//#else
+            //if (t.Text.Length + s.Length >= 10000)
+            //{
+            //    t.Text = "";
+            //}
      
-            Message msg = Message.Create(t.Handle, 0xc2, IntPtr.Zero, Marshal.StringToBSTR(s));
-            MessageWindow.SendMessage(ref msg);
-#endif
+            //Message msg = Message.Create(t.Handle, 0xc2, IntPtr.Zero, Marshal.StringToBSTR(s));
+            //MessageWindow.SendMessage(ref msg);
+//#endif
         }
 
         private void timer1_Tick(object sender, EventArgs e)
@@ -148,7 +150,7 @@ namespace j1708TestCE
 				        handle_packet();
 			        }
 		        }else{ //skip this stuff until you find a start of message (or end of buffer)
-			        //this->richTextBox1->AppendText("skipping packet due to no STX\n");
+			        add_text_to_textbox(textBox1,"skipping packet due to no STX\n");
 			        for( ; mainqs != mainqe; ){
 				        if( mainq[mainqs] == 0x02 )
 					        break;
@@ -248,19 +250,39 @@ namespace j1708TestCE
             byte[] junk2 = new byte[2];
 	        qbridge.ack(id, ack_enums.ack_ok, ref junk2);
 	        //textBox1.Text += String.Format("Received CAN data (id={0,8:x} data len = {1} ", identifier, l);
-            add_text_to_textbox(textBox1, String.Format("Received CAN data (id={0,8:x} data len = {1} ", identifier, l));
-            if (l > 0)
+            add_text_to_textbox(textBox1, String.Format("Rx CAN (id={0,8:x} data len = {1} ", identifier, l));
+            if (l == 8)
             {
-		        //textBox1.Text += "Data: ";
-                add_text_to_textbox(textBox1, "Data: ");
-                while (l-- > 0)
-                {
-			        //textBox1.Text += String.Format("{0,2:x}", data[start+dptr++]);
-                    add_text_to_textbox(textBox1, String.Format("{0,2:x}", data[start+dptr++]));
-                }
-	        }
+                int cnt;
+                int day, hr, min, sec;
+                
+                cnt = data[start + dptr + 0];
+                cnt |= (data[start + dptr + 1]<<8);
+                cnt |= (data[start + dptr + 2]<<16);
+                cnt |= (data[start + dptr + 3]<<24);
+
+                day = data[start + dptr + 4];
+                hr = data[start + dptr + 5];
+                min = data[start + dptr + 6];
+                sec = data[start + dptr + 7];
+                
+                add_text_to_textbox(textBox1, String.Format("cnt={0} {1}-{2}:{3}:{4}", cnt, day, hr, min, sec));
+            }
+            //if (l > 0)
+            //{
+		    //    //textBox1.Text += "Data: ";
+            //    add_text_to_textbox(textBox1, "Data: ");
+            //    while (l-- > 0)
+            //    {
+			//        //textBox1.Text += String.Format("{0,2:x}", data[start+dptr++]);
+            //        add_text_to_textbox(textBox1, String.Format(" {0,2:x}", data[start+dptr++]));
+            //    }
+	        //}
 	        //textBox1.Text += ")\r\n";
-            add_text_to_textbox(textBox1, ")\r\n");
+            DateTime time = DateTime.Now;        // Use current time
+            string format = "h:mm:ss";    // Use this format
+            add_text_to_textbox(textBox1," T="+time.ToString(format));
+            add_text_to_textbox(textBox1,")\r\n");
         }
         private void do_transmit_confirm( Byte id, ref byte[] data, int start, int datalen )
         {
