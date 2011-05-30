@@ -17,6 +17,8 @@ namespace qbrdge_driver_classlib
             public byte priority = 0;
             public byte sourceAddr = 0;
             public byte destAddr = 0;
+            public byte[] qbCtrlPktData1 = null; //see "CAN Control Packet (command code 'L')
+            public byte[] qbCtrlPktData2 = null; //[1 byte, extended][4 bytes, ext id][4 bytes mask]
         }
         public class ClientIDInfo
         {

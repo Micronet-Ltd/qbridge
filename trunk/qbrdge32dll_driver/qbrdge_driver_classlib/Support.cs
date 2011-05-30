@@ -7,7 +7,7 @@ namespace qbrdge_driver_classlib
 {
     class Support
     {
-        //keep track of reply from comports, if no reply recieved handle appropriately
+        //keep track of reply from comports, if no reply received handle appropriately
         public const int ackReplyLimit = 10000; // milliseconds
         public const int j1708ConfirmLimit = 40000; // 1 minute
 
