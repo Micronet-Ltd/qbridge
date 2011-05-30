@@ -305,10 +305,10 @@ namespace qbrdge_driver_classlib
             verCrc = GetCRC16(pkt);
 
             //Debug.Write("CRC Pkt: ");
-            for (int i = 0; i < pkt.Length; i++)
-            {
+            //for (int i = 0; i < pkt.Length; i++)
+            //{
                 //Debug.Write(pkt[i].ToString() + ",");
-            }
+            //}
             //Debug.WriteLine(" pkt: " + pktCrc[0].ToString() + "," + pktCrc[1].ToString() +
                 //" ver: " + verCrc[0].ToString() + "," + verCrc[1].ToString());
 
@@ -1360,13 +1360,21 @@ namespace qbrdge_driver_classlib
             {
                 if (clientInfo.J1939Filter == false)
                 {
-                    //if client is registered to recieving port then send message
+                    //if client is registered to receiving port then send message
                     Debug.WriteLine("J1939 Client " + client.ToString() + " readmsg sent " + portName);
                     Support.SendClientDataPacket(UDPReplyType.readmessage,
                         client, readMsg);
                 }
-                else
-                {
+                else {
+                    //if no filters set, then return
+                    if (clientInfo.J1939FilterList.Count == 0) {
+                        return;
+                    }
+
+                    //Uncomment next 2 lines when testing filtering moved to QBridge
+                    //Support.SendClientDataPacket(UDPReplyType.readmessage, client, readMsg);
+                    //return;
+
                     byte[] msg_pgn = new byte[3];
                     msg_pgn[0] = readMsg[4];
                     msg_pgn[1] = readMsg[5];
@@ -1403,9 +1411,8 @@ namespace qbrdge_driver_classlib
                             &&
                             ((use_dest && jf.destAddr == msg_dest) || (use_dest == false)) )
                         {
-                            Debug.WriteLine("J1939 Client " + client.ToString() + " readmsg sent " + portName);
-                            Support.SendClientDataPacket(UDPReplyType.readmessage,
-                                client, readMsg);
+                            //Debug.WriteLine("J1939 Client " + client.ToString() + " readmsg sent " + portName);
+                            Support.SendClientDataPacket(UDPReplyType.readmessage, client, readMsg);
                             return;
                         }
                     }
@@ -1469,6 +1476,8 @@ namespace qbrdge_driver_classlib
                     {
                         break;
                     }
+                    Debug.WriteLine("QBTransactionNew.Count: " + serialInfo.QBTransactionNew.Count.ToString());
+                    Debug.WriteLine("QBTransactionSent.Count: " + serialInfo.QBTransactionSent.Count.ToString());
 
                     QBTransaction qbt = serialInfo.QBTransactionNew[i];
 
@@ -1488,19 +1497,18 @@ namespace qbrdge_driver_classlib
 
                     try
                     {
-                        if (qbt.isJ1939)
+                        /*if (qbt.isJ1939)
                         {
-                            if (qbt.j1939transaction.isAddressClaim == false && qbt.j1939transaction.IsDone() == false)
-                            {
-                               // Debug.Write("OUT " + serialInfo.com.PortName + ": ");
-//                                for (int j = 0; j < qbt.lastSentPkt.Length; j++)
-//                                {
-//                                    byte b = (byte)qbt.lastSentPkt[j];
-//                                    Debug.Write(b.ToString("X2") + ",");
-//                                }
-//                                Debug.WriteLine("");
+                            if (qbt.j1939transaction.isAddressClaim == false && qbt.j1939transaction.IsDone() == false) 
+                            {                                
+                                Debug.Write("OUT " + serialInfo.com.PortName + ": ");
+                                for (int j = 0; j < qbt.lastSentPkt.Length; j++) {
+                                    byte b = (byte)qbt.lastSentPkt[j];
+                                    Debug.Write(b.ToString("X2") + ",");
+                                }
+                                Debug.WriteLine("");                                
                             }
-                        }
+                        }*/
                         if (qbt.isJ1939) {
                             if (qbt.j1939transaction.IsDone() == false)
                             {
@@ -1508,7 +1516,7 @@ namespace qbrdge_driver_classlib
                                 qbt.RestartTimer();
                             }
                         }
-                        else
+                        else 
                         {
                             serialInfo.com.Write(qbt.lastSentPkt, 0, qbt.lastSentPkt.Length);
                             qbt.RestartTimer();
@@ -1662,7 +1670,8 @@ namespace qbrdge_driver_classlib
 
             qbt.numRetries = 2;
             qbt.timePeriod = Support.ackReplyLimit;
-            qbt.timeoutReply = UDPReplyType.sendJ1708replytimeout;
+            qbt.timeoutReply = UDPReplyType.sendJ1939replytimeout;
+            //qbt.timeoutReply = UDPReplyType.sendJ1708replytimeout;
 
             //add timestamp to J1939 packet
             byte[] timestamp = Support.Int32ToBytes(Environment.TickCount, true);
@@ -1671,7 +1680,7 @@ namespace qbrdge_driver_classlib
             Support.StringToByteArray(msg).CopyTo(newpkt, 4);
             NewClientsJ1939ReadMessage(newpkt, sinfo.com.PortName, clientId);
 
-            //deley 1939 so that packets to same addr aren't going
+            //delay 1939 so that packets to same addr aren't going
             //at the same time
             if (IsQBTransJ1939Pending(qbt, ClientIdToSerialInfo(clientId)) == true)
             {
@@ -1764,9 +1773,12 @@ namespace qbrdge_driver_classlib
 //                        byte b = (byte)qbt.lastSentPkt[j];
 //                        Debug.Write(b.ToString("X2") + ",");
 //                    }
-//                    Debug.WriteLine("");
+                    //                    Debug.WriteLine("");
 
-                    com.Write(qbt.lastSentPkt, 0, qbt.lastSentPkt.Length);
+                    try {
+                        com.Write(qbt.lastSentPkt, 0, qbt.lastSentPkt.Length);
+                    }
+                    catch (Exception) { }
                     qbt.numRetries--;
                     qbt.RestartTimer();
                 }

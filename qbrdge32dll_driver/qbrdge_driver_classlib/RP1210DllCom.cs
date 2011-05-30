@@ -155,30 +155,22 @@ namespace qbrdge_driver_classlib
             {
                 try
                 {
-                    //_DbgTrace("Udp Listen Receive");
                     data = udpListener.Receive(ref iep);
-                    //Debug.WriteLine("Lock udplisten parseudpp");
                     lock (Support.lockThis)
                     {
-                        //Debug.WriteLine("Lock2 udplisten parseudpp");
                         ParseUdpPacket(data, iep);
-                        //Debug.WriteLine("UnLock udplisten parseudpp");
-
                     }
 
                     QBSerial.checkCloseComports();
 
-                    //                    Debug.WriteLine("Lock udplisten endprog");
                     lock (Support.lockThis)
                     {
-                        //                        Debug.WriteLine("Lock2 udplisten endprog");
                         if (dllPorts.Count == 0)
                         {
                             EndProgram();
                         }
 
                         QBSerial.CheckSendMsgQ();
-                        //                        Debug.WriteLine("UnLock udplisten endprog");
                     }
                 }
                 catch (Exception exp)
@@ -191,10 +183,7 @@ namespace qbrdge_driver_classlib
         public static void ParseUdpPacket(byte[] data, IPEndPoint iep)
         {
             string sdata = Support.ByteArrayToString(data);
-            if (sdata != "ack" & sdata != "hello")
-            {
-                //Debug.WriteLine("parseudp: " + sdata);
-            }
+
             //check if packet from listenPort-1 and send back
             //an assigned port# if it is
             if (iep.Port == (udpCorePort - 1))
@@ -415,6 +404,11 @@ namespace qbrdge_driver_classlib
                     ClientIDManager.clientIds[clientId].J1939Filter = false;
                     ClientIDManager.clientIds[clientId].J1939FilterList.Clear();
 
+                    SerialPortInfo sinfo = Support.ClientToSerialPortInfo(clientId);
+                                        
+                    //set QBridge CAN filters to Off
+                    UpdateQBridgeCANFilters(iep, clientId);
+
                     if (cmdData.Length != 0)
                         UdpSend(((int)RP1210ErrorCodes.ERR_INVALID_COMMAND).ToString(), iep);
                     else
@@ -457,8 +451,66 @@ namespace qbrdge_driver_classlib
                             {   //invalid priority
                                 break;
                             }
+                            if (jf.flag > 0) {
+                                //create data to be sent to the QBridge CAN filter
+                                jf.qbCtrlPktData1 = new byte[9]; //[0x01][id CAN ext][mask]
+                                jf.qbCtrlPktData1[0] = 0x01;
+                                if ((jf.flag & 0x04) != 0) {
+                                    //source address
+                                    jf.qbCtrlPktData1[1] = jf.sourceAddr;
+                                    jf.qbCtrlPktData1[1 + 4] = 0xFF;
+                                }
+                                if ((jf.flag & 0x02) != 0) {
+                                    //priority
+                                    jf.qbCtrlPktData1[4] = (byte)(jf.priority * 2 * 2);
+                                    jf.qbCtrlPktData1[4 + 4] = 0x07 * 2 * 2;
+                                }
+                                if ((jf.flag & 0x08) != 0) {
+                                    //destination address
+                                    jf.qbCtrlPktData2 = new byte[jf.qbCtrlPktData1.Length];
+                                    jf.qbCtrlPktData1.CopyTo(jf.qbCtrlPktData2, 0);
+                                    jf.qbCtrlPktData2[2] = jf.destAddr;
+                                    jf.qbCtrlPktData2[2 + 4] = 0xFF;
+                                }
+                                if ((jf.flag & 0x08) != 0 && (jf.flag & 0x01) == 0) {
+                                    //dest. address, No pgn
+                                    jf.qbCtrlPktData1 = null;
+                                }
+                                if ((jf.flag & 0x01) != 0) {
+                                    //pgn
+                                    jf.qbCtrlPktData1[2] = jf.pgn[0];
+                                    jf.qbCtrlPktData1[3] = jf.pgn[1];
+                                    jf.qbCtrlPktData1[4] = (byte)((jf.qbCtrlPktData1[4] & 0xFE) | (jf.pgn[2] & 0x01));
+                                    jf.qbCtrlPktData1[2 + 4] = 0xFF;
+                                    jf.qbCtrlPktData1[3 + 4] = 0xFF;
+                                    jf.qbCtrlPktData1[4 + 4] = (byte)(jf.qbCtrlPktData1[4 + 4] | 0x01);
+                                }
+
+                            }
                             ClientIDManager.clientIds[clientId].J1939Filter = true;
-                            ClientIDManager.clientIds[clientId].J1939FilterList.Add(jf);
+                            
+                            //check for duplicates
+                            bool isFilterDuplicate = false;
+                            foreach(ClientIDManager.J1939Filter f in
+                                ClientIDManager.clientIds[clientId].J1939FilterList) 
+                            {
+                                if (f.flag.Equals(jf.flag) &&
+                                    f.priority.Equals(jf.priority) &&
+                                    f.sourceAddr.Equals(jf.sourceAddr) &&
+                                    f.destAddr.Equals(jf.destAddr) &&
+                                    f.pgn[0].Equals(jf.pgn[0]) &&
+                                    f.pgn[1].Equals(jf.pgn[1]) &&
+                                    f.pgn[2].Equals(jf.pgn[2]))
+                                {
+                                    isFilterDuplicate = true;
+                                }
+                            }
+
+                            if (isFilterDuplicate == false) {
+                                ClientIDManager.clientIds[clientId].J1939FilterList.Add(jf);
+
+                                UpdateQBridgeCANFilters(iep, clientId);
+                            }
                             returnCode = 0;
                         }
                         UdpSend(returnCode.ToString(), iep);
@@ -591,6 +643,26 @@ namespace qbrdge_driver_classlib
                     ClientIDManager.clientIds[clientId].J1708MIDList = new byte[0];
                     ClientIDManager.clientIds[clientId].J1939Filter = true;
                     ClientIDManager.clientIds[clientId].J1939FilterList.Clear();
+
+                    // If all J1939 filters are on and all the filter lists are empty, then 
+                    //enable QBridge CAN filtering
+                    bool allListsEmpty = true;
+                    bool allFiltersOn = true;
+                    foreach (ClientIDManager.ClientIDInfo cInfo in ClientIDManager.clientIds) {
+                        if (cInfo.J1939Filter == false) {
+                            allFiltersOn = false;
+                            break;
+                        }
+                        if (cInfo.J1939FilterList.Count > 0) {
+                            allListsEmpty = false;
+                            break;
+                        }
+                    }
+                    if (allListsEmpty && allFiltersOn) {
+                        //set QBridge CAN filters to On
+                        UpdateQBridgeCANFilters(iep, clientId);
+                    }
+
                     if (cmdData.Length != 0)
                         UdpSend(((int)RP1210ErrorCodes.ERR_INVALID_COMMAND).ToString(), iep);
                     else
@@ -729,6 +801,129 @@ namespace qbrdge_driver_classlib
             }
         }
 
+        private static void UpdateQBridgeCANFilters(IPEndPoint iep, int clientId)
+        {
+            try {
+
+                //count CAN filters for QBridge, if > 25, then disable filters & return
+                int qbFilterCount = 0;
+                bool clientJ1939FilterOff = false;
+                foreach (ClientIDManager.ClientIDInfo cInfo in ClientIDManager.clientIds) {
+                    if (cInfo.J1939Filter == false) {
+                        clientJ1939FilterOff = true;
+                    }
+                    else {
+                        foreach (ClientIDManager.J1939Filter filter in cInfo.J1939FilterList) {
+                            if (filter.qbCtrlPktData1 != null) {
+                                qbFilterCount++;
+                            }
+                            if (filter.qbCtrlPktData2 != null) {
+                                qbFilterCount++;
+                            }
+                        }
+                    }
+                }
+
+                SerialPortInfo sinfo = ClientIDManager.clientIds[clientId].serialInfo;
+                QBTransaction qbt = new QBTransaction();
+                byte[] pktData = new byte[2];
+
+                if (qbFilterCount > 25 || clientJ1939FilterOff) {
+                    //send CAN filter off
+                    qbt.clientId = clientId;
+                    pktData[0] = 0x65; //'e'
+                    pktData[1] = 0x00;
+                    qbt.pktData = pktData;
+                    qbt.dllInPort = iep.Port;
+                    qbt.cmdType = PacketCmdCodes.PKT_CMD_CAN_CONTROL;
+                    qbt.numRetries = 2;
+                    qbt.timePeriod = 100;
+                    qbt.isNotify = true;
+                    qbt.timeoutReply = "";
+                    qbt.lastSentPkt = QBSerial.MakeQBridgePacket(qbt.cmdType, qbt.pktData, ref qbt.pktId);
+                    sinfo.com.Write(qbt.lastSentPkt, 0, qbt.lastSentPkt.Length);
+                    return;
+                }
+
+                //transmit filters to QBridge
+
+                //send CAN filter on
+                qbt.clientId = clientId;
+                pktData[0] = 0x65; //'e'
+                pktData[1] = 0x01;
+                qbt.pktData = pktData;
+                qbt.dllInPort = iep.Port;
+                qbt.cmdType = PacketCmdCodes.PKT_CMD_CAN_CONTROL;
+                qbt.numRetries = 2;
+                qbt.timePeriod = 100;
+                qbt.isNotify = true;
+                qbt.timeoutReply = "";
+                qbt.lastSentPkt = QBSerial.MakeQBridgePacket(qbt.cmdType, qbt.pktData, ref qbt.pktId);                
+                sinfo.com.Write(qbt.lastSentPkt, 0, qbt.lastSentPkt.Length);
+                
+                //send CAN filter reset to defaults, disables transmit confirm
+                qbt = new QBTransaction();
+                qbt.clientId = clientId;
+                pktData = new byte[2];
+                pktData[0] = 0x72; //'r'
+                pktData[1] = 0x02; //reset all defaults
+                qbt.pktData = pktData;
+                qbt.dllInPort = iep.Port;
+                qbt.cmdType = PacketCmdCodes.PKT_CMD_CAN_CONTROL;
+                qbt.numRetries = 2;
+                qbt.timePeriod = 100;
+                qbt.isNotify = true;
+                qbt.timeoutReply = "";
+                qbt.lastSentPkt = QBSerial.MakeQBridgePacket(qbt.cmdType, qbt.pktData, ref qbt.pktId);                
+                sinfo.com.Write(qbt.lastSentPkt, 0, qbt.lastSentPkt.Length);
+
+                //send CAN filter setup
+                qbt = new QBTransaction();
+                qbt.clientId = clientId;
+                pktData = new byte[300];
+                int idx = 0;
+                pktData[0] = 0x66; //'f'
+                pktData[1] = 0x01; //enable filters
+                idx += 2;
+                foreach (ClientIDManager.ClientIDInfo cInfo in ClientIDManager.clientIds) {
+                    foreach (ClientIDManager.J1939Filter filter in cInfo.J1939FilterList) {
+                        if (filter.qbCtrlPktData1 != null) {
+                            filter.qbCtrlPktData1.CopyTo(pktData, idx);
+                            idx += filter.qbCtrlPktData1.Length;
+                        }
+                        if (filter.qbCtrlPktData2 != null) {
+                            filter.qbCtrlPktData2.CopyTo(pktData, idx);
+                            idx += filter.qbCtrlPktData2.Length; 
+                        }
+                    }
+                }
+                byte[] tmp = new byte[idx];
+                Array.Copy(pktData, tmp, tmp.Length);
+                pktData = tmp;
+                qbt.pktData = pktData;
+                qbt.dllInPort = iep.Port;
+                qbt.cmdType = PacketCmdCodes.PKT_CMD_CAN_CONTROL;
+                qbt.numRetries = 2;
+                qbt.timePeriod = 100;
+                qbt.isNotify = true;
+                qbt.timeoutReply = "";
+                qbt.lastSentPkt = QBSerial.MakeQBridgePacket(qbt.cmdType, qbt.pktData, ref qbt.pktId);
+                sinfo.com.Write(qbt.lastSentPkt, 0, qbt.lastSentPkt.Length);
+
+                //*very important* Re-Enable Transmit Confirm
+                byte[] pData = new byte[1];
+                pData[0] = 0x01;
+                qbt.pktData = pData;
+                qbt.cmdType = PacketCmdCodes.PKT_CMD_ENABLE_J1708_CONFIRM;
+                qbt.numRetries = 2;
+                qbt.timePeriod = 100;
+                qbt.timeoutReply = "";
+                qbt.lastSentPkt = QBSerial.MakeQBridgePacket(qbt.cmdType, qbt.pktData, ref qbt.pktId);
+                sinfo.com.Write(qbt.lastSentPkt, 0, qbt.lastSentPkt.Length);
+            }
+            catch (Exception) { }
+        }
+
         public static void AddAddressClaimMsg(byte claimAddr, byte[] addrName, int clientId, bool isNotify,
             int msgId, ref QBTransaction qbt)
         {
@@ -773,13 +968,11 @@ namespace qbrdge_driver_classlib
 
         public void DllHelloTimeOut(Object stateInfo)
         {
-            //Debug.WriteLine("dllhellotimeout");
             IPEndPoint iep = new IPEndPoint(0, 0);
             dllPortInfo dllPort = new dllPortInfo();
-            //            Debug.WriteLine("Lock DllHelloTimeOut");
+
             lock (Support.lockThis)
             {
-                //                Debug.WriteLine("Lock2 DllHelloTimeOut");
                 if (dllPorts.Count > 0)
                 {
                     dllHelloPortIdx++;
@@ -797,7 +990,6 @@ namespace qbrdge_driver_classlib
                     return;
                 }
                 StartHelloTimer();
-                //                Debug.WriteLine("UnLock DllHelloTimeOut");
             }
         }
 
@@ -833,10 +1025,8 @@ namespace qbrdge_driver_classlib
 
         private void DllHelloReplyTimeOut(Object obj)
         {
-            //            Debug.WriteLine("Lock DllHelloReplyTimeOut");
             lock (Support.lockThis)
             {
-                //                Debug.WriteLine("Lock2 DllHelloReplyTimeOut");
                 dllPortInfo dllPort = (dllPortInfo)obj;
 
                 for (int i = 0; i < dllPorts.Count; i++)
@@ -858,7 +1048,6 @@ namespace qbrdge_driver_classlib
                 {
                     StartHelloTimer();
                 }
-                //                Debug.WriteLine("UnLock DllHelloReplyTimeOut");
             }
         }
     }
