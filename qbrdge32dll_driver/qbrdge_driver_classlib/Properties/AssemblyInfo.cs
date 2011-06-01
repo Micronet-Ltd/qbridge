@@ -8,9 +8,9 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("qbrdge_driver_classlib")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("QSI")]
+[assembly: AssemblyCompany("Beijer Electronics Inc")]
 [assembly: AssemblyProduct("qbrdge_driver_classlib")]
-[assembly: AssemblyCopyright("Copyright © QSI 2006")]
+[assembly: AssemblyCopyright("Copyright © Beijer Electronics Inc 2011")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
