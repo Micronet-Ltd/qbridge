@@ -77,6 +77,16 @@ public:
 		connType = connectionType;
 		transactions.clear();
 	}
+
+    void PopSetReadEvent()
+    {
+        if (recvMsgEvents.size() != 0) {
+            HANDLE &blocked = recvMsgEvents.front();
+            ::SetEvent(blocked);
+            recvMsgEvents.pop_front();
+        }
+    }
+
 	void Clear() {
 		// send reply to pending transactions
 		typedef list<Transaction>::iterator transIter;
@@ -118,9 +128,7 @@ public:
 		comPort = 0;
 		//loop and unblock all read functions
 		while (recvMsgEvents.size() != 0) {
-			HANDLE &blocked = recvMsgEvents.front();
-			::SetEvent(blocked);
-			recvMsgEvents.pop_front();
+            PopSetReadEvent();
 		}
 		recvMsgQueue.clear();
 	}
@@ -266,6 +274,7 @@ public:
 			return ERR_INVALID_CLIENT_ID;
 		}
 		if (recvMsgQueue.size() == 0) {
+            PopSetReadEvent();
 			return ERR_RECV_OPERATION_TIMEOUT;
 		}
 		RecvMsg &rm = recvMsgQueue.front();
@@ -284,9 +293,7 @@ public:
 		recvMsgQueue.push_back(RecvMsg(msg, msgLen));
 		if (recvMsgEvents.size() != 0) {
 			TRACE(_T("SETREADEVENT\r\n"));
-			HANDLE &blocked = recvMsgEvents.front();
-			::SetEvent(blocked);
-			recvMsgEvents.pop_front();
+            PopSetReadEvent();
 		}
 		else if (hwnd != 0) {
 			// send notification
