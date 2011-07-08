@@ -150,6 +150,7 @@ void ToUnicode(char *buf, TCHAR *unicodeBuf, int size);
 
 // QSI Protocol related stuff
 #define QBRIDGE_COM1								1		
+#define QBRIDGE_COM3								(QBRIDGE_COM1+2)
 #define QBRIDGE_COM4								(QBRIDGE_COM1+3)
 #define QBRIDGE_COM5								(QBRIDGE_COM4+1)
 #define QBRIDGE_COM6								(QBRIDGE_COM5+1)
