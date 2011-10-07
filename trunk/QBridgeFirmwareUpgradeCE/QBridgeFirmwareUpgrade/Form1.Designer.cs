@@ -72,10 +72,16 @@ namespace QBridgeFirmwareUpgrade
             // 
             // SerialPort
             // 
+            this.SerialPort.Items.Add("COM0");
             this.SerialPort.Items.Add("COM1");
             this.SerialPort.Items.Add("COM2");
-            this.SerialPort.Items.Add("COM3 (internal QBridge)");
+            this.SerialPort.Items.Add("COM3 (M4x internal QBridge)");
             this.SerialPort.Items.Add("COM4");
+            this.SerialPort.Items.Add("COM5");
+            this.SerialPort.Items.Add("COM6");
+            this.SerialPort.Items.Add("COM7 (VM internal QBridge)");
+            this.SerialPort.Items.Add("COM8");
+            this.SerialPort.Items.Add("COM9");
             this.SerialPort.Location = new System.Drawing.Point(75, 54);
             this.SerialPort.Name = "SerialPort";
             this.SerialPort.Size = new System.Drawing.Size(229, 23);
