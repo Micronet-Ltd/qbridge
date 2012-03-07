@@ -143,9 +143,10 @@ void irq_lockup(void)
 }
 
 void LockProgram();
-//static void InitializeSCIPIO();
-//static void HandleSCIPIO();
-
+#ifdef MODEM_RESET
+static void InitializeSCIPIO();
+static void HandleSCIPIO();
+#endif
 
 
 /********/
@@ -161,7 +162,9 @@ int main(void) {
     StartJ1708BaudGeneratorAndTimer();
     Initialize232Protocol();
     InitializeCAN();
-//    InitializeSCIPIO();
+#ifdef MODEM_RESET
+    InitializeSCIPIO();
+#endif
 
 #ifdef _DEBUG
     extern const unsigned char BuildDateStr[];
@@ -179,7 +182,9 @@ int main(void) {
         ProcessCANTransmitQueue();
         ProcessCANRecievePacket();
         detect_CAN_bus_transitions();
-//        HandleSCIPIO();
+#ifdef MODEM_RESET		
+        HandleSCIPIO();
+#endif		
     }
 
     LockProgram();
@@ -252,7 +257,7 @@ void Reset(UINT32 flag)
     for(;;);
 }
 
-#if 0
+#ifdef MODEM_RESET
 int scipio_state;
 UINT32 scipio_start_time;
 
@@ -265,13 +270,11 @@ static void InitializeSCIPIO(){
 
     GPIO_Config((IOPortRegisterMap *)IOPORT0_REG_BASE, UART2_Tx_Pin, GPIO_OUT_PP);
     GPIO_Config((IOPortRegisterMap *)IOPORT0_REG_BASE, UART2_Rx_Pin, GPIO_OUT_PP);
-    GPIO_SET(0,13);
-    GPIO_CLR(0,14);
+    GPIO_SET(0,13); //ignition OFF -- setting puts a low on the pin of the gsm device
+    GPIO_SET(0,14); //emergency OFF --- setting puts a low on the pin of the gsm device
     scipio_state = 0;
 #endif
 }
-
-
 
 /****************/
 /* HandleSCIPIO */
@@ -279,29 +282,26 @@ static void InitializeSCIPIO(){
 static void HandleSCIPIO(){
 #if !defined(_DEBUG)  //can't use debug comport and scipio gsm reset at same time since they use same pins
     switch( scipio_state ){
-        case 0:
+        case 0:  // Init
             scipio_start_time = GetTime32();
             scipio_state = 1;
             break;
         case 1:
-            if( (UINT32)(GetTime32() - scipio_start_time) > (UINT32) (1*(4*1000000)) ){
+            if( (UINT32)(GetTime32() - scipio_start_time) > (UINT32) (40*(4*1000)) ){
                 scipio_state = 2;
-                GPIO_CLR(0,13);
+                scipio_start_time= GetTime32();
+                GPIO_CLR(0,14); // emergency OFF
             }
             break;
         case 2:
-            //for debug we will toggle the other signal to see that all is working well
-            GPIO_SET(0,14);
-            scipio_state = 3;
-            break;
-        case 3:
-            GPIO_CLR(0,14);
-            scipio_state = 2;
+            if( (UINT32)(GetTime32() - scipio_start_time) > (UINT32) (500*(4*1000)) ){
+                scipio_state = 3;
+                GPIO_CLR(0,13); // ignition OFF
+            }
             break;
         default:
-            scipio_state = 2;
             break;
     }
 #endif
 }
-#endif
+#endif // MODEM_RESET
