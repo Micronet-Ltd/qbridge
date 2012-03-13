@@ -78,6 +78,14 @@ rvdebug: defs += -DRVDEBUG
 rvdebug: targettxt := (RVDEBUG image)
 rvdebug: doecho $(target).bin
 
+##########################################
+# TARGET WITH MODEM RESET (see QCO #796) #
+##########################################
+
+modemreset: defs += -DMODEM_RESET
+modemreset: targettxt := (MODEMRESET image)
+modemreset: doecho objdir lstdir $(target).bin
+
 ###################
 #  Pattern Rules  #
 ###################
