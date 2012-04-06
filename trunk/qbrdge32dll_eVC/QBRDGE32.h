@@ -154,6 +154,9 @@ void ToUnicode(char *buf, TCHAR *unicodeBuf, int size);
 #define QBRIDGE_COM4								(QBRIDGE_COM1+3)
 #define QBRIDGE_COM5								(QBRIDGE_COM4+1)
 #define QBRIDGE_COM6								(QBRIDGE_COM5+1)
+#define QBRIDGE_COM7								(QBRIDGE_COM6+1)
+#define QBRIDGE_COM8								(QBRIDGE_COM7+1)
+#define QBRIDGE_COM9								(QBRIDGE_COM8+1)
 #define QBRIDGE_J1708_PROTOCOL				"J1708"
 #define QBRIDGE_J1939_PROTOCOL				"J1939"
 
