@@ -1,20 +1,28 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 10.00
 # Visual Studio 2008
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "qbrdge32dll", "qbrdge32dll\qbrdge32dll.vcproj", "{FDD21BED-57F8-4D07-8087-D56C2EC7C488}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "qbrdge32", "qbrdge32dll\qbrdge32dll.vcproj", "{FDD21BED-57F8-4D07-8087-D56C2EC7C488}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|TREQ-M4 (ARMV4I) = Debug|TREQ-M4 (ARMV4I)
+		Debug|TREQ-VM (ARMV4I) = Debug|TREQ-VM (ARMV4I)
 		Release|TREQ-M4 (ARMV4I) = Release|TREQ-M4 (ARMV4I)
+		Release|TREQ-VM (ARMV4I) = Release|TREQ-VM (ARMV4I)
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{FDD21BED-57F8-4D07-8087-D56C2EC7C488}.Debug|TREQ-M4 (ARMV4I).ActiveCfg = Debug|TREQ-M4 (ARMV4I)
 		{FDD21BED-57F8-4D07-8087-D56C2EC7C488}.Debug|TREQ-M4 (ARMV4I).Build.0 = Debug|TREQ-M4 (ARMV4I)
 		{FDD21BED-57F8-4D07-8087-D56C2EC7C488}.Debug|TREQ-M4 (ARMV4I).Deploy.0 = Debug|TREQ-M4 (ARMV4I)
+		{FDD21BED-57F8-4D07-8087-D56C2EC7C488}.Debug|TREQ-VM (ARMV4I).ActiveCfg = Debug|TREQ-VM (ARMV4I)
+		{FDD21BED-57F8-4D07-8087-D56C2EC7C488}.Debug|TREQ-VM (ARMV4I).Build.0 = Debug|TREQ-VM (ARMV4I)
+		{FDD21BED-57F8-4D07-8087-D56C2EC7C488}.Debug|TREQ-VM (ARMV4I).Deploy.0 = Debug|TREQ-VM (ARMV4I)
 		{FDD21BED-57F8-4D07-8087-D56C2EC7C488}.Release|TREQ-M4 (ARMV4I).ActiveCfg = Release|TREQ-M4 (ARMV4I)
 		{FDD21BED-57F8-4D07-8087-D56C2EC7C488}.Release|TREQ-M4 (ARMV4I).Build.0 = Release|TREQ-M4 (ARMV4I)
 		{FDD21BED-57F8-4D07-8087-D56C2EC7C488}.Release|TREQ-M4 (ARMV4I).Deploy.0 = Release|TREQ-M4 (ARMV4I)
+		{FDD21BED-57F8-4D07-8087-D56C2EC7C488}.Release|TREQ-VM (ARMV4I).ActiveCfg = Release|TREQ-VM (ARMV4I)
+		{FDD21BED-57F8-4D07-8087-D56C2EC7C488}.Release|TREQ-VM (ARMV4I).Build.0 = Release|TREQ-VM (ARMV4I)
+		{FDD21BED-57F8-4D07-8087-D56C2EC7C488}.Release|TREQ-VM (ARMV4I).Deploy.0 = Release|TREQ-VM (ARMV4I)
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
