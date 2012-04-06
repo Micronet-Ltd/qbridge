@@ -119,7 +119,7 @@ RP1210A_API RP1210AReturnType WINAPI RP1210_ClientConnect (HWND hwndClient, shor
 		_DbgTrace(_T("ConnectToDriverApp RP1210_ClientConnect failed"));
 		return ERR_MISC_COMMUNICATION;
 	}
-	if ((nDeviceID >= QBRIDGE_COM1) && (nDeviceID <= QBRIDGE_COM6)) {
+	if ((nDeviceID >= QBRIDGE_COM1) && (nDeviceID <= QBRIDGE_COM9)) {
 		int comPort = nDeviceID;
 
 		if (strcmp(fpchProtocol, QBRIDGE_J1708_PROTOCOL) == 0) {
