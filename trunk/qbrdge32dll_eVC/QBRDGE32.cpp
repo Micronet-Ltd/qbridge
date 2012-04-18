@@ -217,7 +217,7 @@ RP1210A_API void WINAPI RP1210_ReadVersion (char far* fpchDLLMajorVersion,	char 
 	fpchDLLMajorVersion[0] = 0x31;
 	fpchDLLMinorVersion[0] = 0x32;
 	fpchAPIMajorVersion[0] = '2';
-	fpchAPIMinorVersion[0] = '0';
+	fpchAPIMinorVersion[0] = '1';
 }
 
 /*****************************/
