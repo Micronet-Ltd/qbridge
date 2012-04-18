@@ -44,6 +44,9 @@ namespace qbrdge_driver_classlib
             public QBTransaction claimQBT = null;
             //needed for multi-frame RTS/CTS recieve or send messages
 
+            //once this is set to try address claiming is enforced on SendMessages.
+            public bool usingClaimAddr = false;
+
             //delay availability of claimAddress to allow
             //responses from other devices
             public void claimAddrDelayTimer(QBTransaction qt)
