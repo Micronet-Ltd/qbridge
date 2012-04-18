@@ -723,7 +723,8 @@ namespace qbrdge_driver_classlib
                         return;
                     }
 
-                    client.claimAddress = cmdDataBytes[0];
+                    client.usingClaimAddr = true;
+                    client.claimAddress = cmdDataBytes[0];                    
                     byte[] addrName = new byte[8];
                     for (int i = 0; i < addrName.Length; i++)
                     {
