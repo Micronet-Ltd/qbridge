@@ -10,6 +10,7 @@ namespace qbrdge_driver_classlib
         //keep track of reply from comports, if no reply received handle appropriately
         public const int ackReplyLimit = 10000; // milliseconds
         public const int j1708ConfirmLimit = 40000; // 1 minute
+        public const int portLostLimit = 2000; // milliseconds
 
         public static System.Object lockThis = new Object();
 
@@ -165,6 +166,7 @@ namespace qbrdge_driver_classlib
         public const string sendJ1939success = "sendJ1708success";
         public const string sendJ1939addresslost = "sendJ1939addresslost";
         public const string sendJ1939RTSCTStimeout = "sendJ1939RTSCTStimeout";
+        public const string sendJ1939invalidpacket = "sendJ1939invalidpacket"; // sent to DLL when send called with invalid packet format
     }
 
     enum PacketRecvType

@@ -1120,6 +1120,10 @@ void ProcessDataPacket(char* data, SOCKET RecvSocket, sockaddr_in RecvAddr)
 			connections[clientid].UpdateTransaction(isnotify, transid, ERR_INVALID_DEVICE);
 			//_DbgTrace(_T("sendJ1708commerr"));
 		}
+		else if (strcmp(pktType, "sendJ1939invalidpacket") == 0) {
+			CritSection cs;
+			connections[clientid].UpdateTransaction(isnotify, transid, ERR_INVALID_MSG_PACKET);
+		}
 		else if (strcmp(pktType, "sendJ1708replytimeout") == 0) {
 			CritSection cs;
 			connections[clientid].UpdateTransaction(isnotify, transid, ERR_HARDWARE_NOT_RESPONDING);

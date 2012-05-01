@@ -23,6 +23,7 @@ namespace qbrdge_driver_classlib
         public byte DA = 0x00;
         private byte how_priority = 0x00;
 
+        //update J1939Transaction class variables from data in RP1210 function call
         public void UpdateJ1939Data(string data) {
             isComplete = false;
             isDone = false;
@@ -134,7 +135,6 @@ namespace qbrdge_driver_classlib
 
         private void AddTPDTCanPackets(byte DA, byte SA, string data, byte tot_pkts)
         {
-            Debug.WriteLine("length: " + data.Length.ToString());
             for (int i = 0; i < tot_pkts; i++)
             {
                 //send TP.DT pkts
@@ -170,10 +170,10 @@ namespace qbrdge_driver_classlib
             }
         }
 
-        List<byte[]> PendingCAN;
-        int PendingIDX = 0;
+        private List<byte[]> PendingCAN;
+        private int PendingIDX = 0;
 
-        int IDXMax = 0; //used for RTS/CTS only
+        private int IDXMax = 0; //used for RTS/CTS only
 
         public byte[] GetCANPacket() {
             if (isDone)
@@ -422,22 +422,11 @@ namespace qbrdge_driver_classlib
             byte[] outData = QBSerial.MakeQBridgePacket(PacketCmdCodes.PKT_CMD_SEND_CAN, 
                 can_pkt, ref pktId);
 
-            Debug.Write("OUT CTS " + port_info.com.PortName + ": ");
-            for (int j = 0; j < outData.Length; j++)
-            {
-                byte b = (byte)outData[j];
-                Debug.Write(b.ToString() + ",");
-            }
-            Debug.WriteLine("");
-
             try
             {
                 port_info.com.Write(outData, 0, outData.Length);
             }
-            catch (Exception exp)
-            {
-                Debug.WriteLine("SendCTSPacket: "+exp.ToString());
-            }
+            catch (Exception) { }
         }
         private void SendEndOfMsgAck()
         {
@@ -473,22 +462,11 @@ namespace qbrdge_driver_classlib
             byte[] outData = QBSerial.MakeQBridgePacket(PacketCmdCodes.PKT_CMD_SEND_CAN,
                 can_pkt, ref pktId);
 
-            Debug.Write("OUT EMA " + port_info.com.PortName + ": ");
-            for (int j = 0; j < outData.Length; j++)
-            {
-                byte b = (byte)outData[j];
-                Debug.Write(b.ToString() + ",");
-            }
-            Debug.WriteLine("");
-
             try
             {
                 port_info.com.Write(outData, 0, outData.Length);
             }
-            catch (Exception exp)
-            {
-                Debug.WriteLine("SendCTSPacket: " + exp.ToString());
-            }
+            catch (Exception) { }
         }
 
         //if the class has timed out, then it is marked as invalid
@@ -522,12 +500,6 @@ namespace qbrdge_driver_classlib
             }
 
             Debug.WriteLine("CURRSEQ: " + seqNum.ToString() + " HX: "+seqNum.ToString("X2"));
-         //   Debug.Write("SEQDATA: ");
-//            for (int i = 0; i < data.Length; i++)
-//            {
-//                Debug.Write(data[i].ToString() + ",");
-//            }
-//            Debug.WriteLine("");
 
             if (seqNum > main_status.Length || data.Length != 7)
             {
