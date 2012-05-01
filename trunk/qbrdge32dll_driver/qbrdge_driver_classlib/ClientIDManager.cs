@@ -35,6 +35,7 @@ namespace qbrdge_driver_classlib
             public bool J1939Filter = true;
             public List<J1939Filter> J1939FilterList = new List<J1939Filter>();
 
+            //used for RP1210 SC_SET_MSG_RECEIVE command
             public bool allowReceive = true;
 
             //see j1939-81 for info. on address claiming
@@ -86,7 +87,6 @@ namespace qbrdge_driver_classlib
                     //send addr claim fail
                     Support.SendClientDataPacket((string)errorStr, claimQBT);
                 }
-                claimQBT.numRetries = 0;
                 claimQBT.StopTimer();
                 claimQBT = null;
             }
@@ -113,8 +113,6 @@ namespace qbrdge_driver_classlib
         //add new client id, return new client id or error code < 0
         public static void AddNewClientID(IPEndPoint iep, int comNum, bool isJ1939Client)
         {
-            Debug.WriteLine("AddNewClientID isj1939: "+isJ1939Client.ToString());
-
             int clientId = -1;
             for (int i = 0; i < clientIds.Length; i++)
             {
@@ -136,13 +134,12 @@ namespace qbrdge_driver_classlib
             }
             if (clientId == -1)
             {
-                Debug.WriteLine("No Clients Avail");
+                //no clients available return error code
                 RP1210DllCom.UdpSend("-1", iep);
                 return;
             }
 
-            Debug.WriteLine("New Client: " + clientId.ToString());
-
+            //creating new client
             string comNumStr = "COM";
             comNumStr = comNumStr.Insert(comNumStr.Length, comNum.ToString());
 
@@ -165,7 +162,6 @@ namespace qbrdge_driver_classlib
             else
             {
                 clientIds[clientId].dllInPort = iep.Port;
-                Debug.WriteLine("RegSerialPort cid: iepport2: " + iep.Port.ToString());
                 // attempt to open serial port, start sequence of msgs to qbridge
                 QBSerial.RegisterSerialPort(comNumStr, clientId, iep);
             }
@@ -185,15 +181,12 @@ namespace qbrdge_driver_classlib
 
         public static void RemoveClientID(int cid)
         {
-            Debug.WriteLine("RemoveClientID " + cid.ToString());
             int port = clientIds[cid].dllInPort;
             RemoveClientID(cid, port);
         }
 
         public static void RemoveClientID(int cid, int port)
         {
-            Debug.Write("RemoveClientID "+cid.ToString() + " " +port.ToString());
-            Debug.WriteLine(cid);
             if (clientIds[cid].dllInPort == port)
             {
                 SerialPortInfo sinfo = clientIds[cid].serialInfo;
@@ -202,7 +195,6 @@ namespace qbrdge_driver_classlib
                 clientIds[cid].serialInfo = null;
 
                 // remove j1708 message for that client id
-
                 for (int i = 0; i < clientIds.Length; i++)
                 {
                     if (clientIds[i].available == false && clientIds[i].serialInfo != null)

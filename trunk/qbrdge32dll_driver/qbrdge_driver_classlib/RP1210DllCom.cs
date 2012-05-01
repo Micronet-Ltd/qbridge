@@ -390,7 +390,6 @@ namespace qbrdge_driver_classlib
                     byte[] pktData = new byte[0];
                     qbt.pktData = pktData;
                     qbt.dllInPort = iep.Port;
-                    qbt.numRetries = 2;
                     qbt.timePeriod = Support.ackReplyLimit;
                     qbt.sendCmdType = RP1210SendCommandType.SC_RESET_DEVICE;
                     sinfo.QBTransactionNew.Add(qbt);
@@ -407,7 +406,7 @@ namespace qbrdge_driver_classlib
                     SerialPortInfo sinfo = Support.ClientToSerialPortInfo(clientId);
                                         
                     //set QBridge CAN filters to Off
-                    UpdateQBridgeCANFilters(iep, clientId);
+                    UpdateQBridgeCANFilters(clientId);
 
                     if (cmdData.Length != 0)
                         UdpSend(((int)RP1210ErrorCodes.ERR_INVALID_COMMAND).ToString(), iep);
@@ -509,7 +508,7 @@ namespace qbrdge_driver_classlib
                             if (isFilterDuplicate == false) {
                                 ClientIDManager.clientIds[clientId].J1939FilterList.Add(jf);
 
-                                UpdateQBridgeCANFilters(iep, clientId);
+                                UpdateQBridgeCANFilters(clientId);
                             }
                             returnCode = 0;
                         }
@@ -548,6 +547,8 @@ namespace qbrdge_driver_classlib
                     }
                     ClientIDManager.clientIds[clientId].J1708MIDList = Support.StringToByteArray(newFilter);
                     UdpSend("0", iep);
+
+                    UpdateQBridgeJ1708Filters(clientId);
                 }
                 else if (cmdNum == (int)RP1210SendCommandType.SC_GENERIC_DRIVER_CMD)
                 {
@@ -624,7 +625,6 @@ namespace qbrdge_driver_classlib
                         pktData[0] = 0x00;
                     }
                     qbt.dllInPort = iep.Port;
-                    qbt.numRetries = 2;
                     qbt.timePeriod = Support.ackReplyLimit;
                     qbt.sendCmdType = RP1210SendCommandType.SC_SET_J1708_MODE;
                     sinfo.QBTransactionNew.Add(qbt);
@@ -660,7 +660,7 @@ namespace qbrdge_driver_classlib
                     }
                     if (allListsEmpty && allFiltersOn) {
                         //set QBridge CAN filters to On
-                        UpdateQBridgeCANFilters(iep, clientId);
+                        UpdateQBridgeCANFilters(clientId);
                     }
 
                     if (cmdData.Length != 0)
@@ -789,7 +789,6 @@ namespace qbrdge_driver_classlib
                     byte[] pktData = new byte[0];
                     qbt.pktData = pktData;
                     qbt.dllInPort = iep.Port;
-                    qbt.numRetries = 2;
                     qbt.timePeriod = Support.ackReplyLimit;
                     qbt.sendCmdType = RP1210SendCommandType.SC_UPGRADE_FIRMWARE;
                     qbt.extraData = cmdData;
@@ -802,10 +801,81 @@ namespace qbrdge_driver_classlib
             }
         }
 
-        private static void UpdateQBridgeCANFilters(IPEndPoint iep, int clientId)
+        public static void UpdateQBridgeJ1708Filters(int clientId)
         {
             try {
+                //look up every client ID, combine all filter information
+                bool midFilter = true;
+                byte[] midList = new byte[0];
+                foreach (ClientIDManager.ClientIDInfo cInfo in ClientIDManager.clientIds) {
+                    if (cInfo.J1708MIDFilter == false && cInfo.available == false) {
+                        midFilter = false;
+                        break;
+                    }
+                }
+                if (midFilter == true) {
+                    foreach (ClientIDManager.ClientIDInfo cInfo in ClientIDManager.clientIds) {
+                        if (cInfo.available == false) {
+                            byte[] tmpList = new byte[midList.Length + cInfo.J1708MIDList.Length];
+                            midList.CopyTo(tmpList, 0);
+                            cInfo.J1708MIDList.CopyTo(tmpList, midList.Length);
+                            midList = tmpList;
+                        }
+                    }
+                }
 
+                //send combined MID filter information to the QBridge
+                SerialPortInfo sinfo = ClientIDManager.clientIds[clientId].serialInfo;
+                byte[] pktData = new byte[0];
+                PacketCmdCodes cmdType;
+                byte[] outPkt = new byte[0];
+                byte pktId = 0;
+
+                if (midFilter == false) {
+                    //disable MID filtering
+                    pktData = new byte[1];
+                    pktData[0] = 0x00;
+                    cmdType = PacketCmdCodes.PKT_CMD_MID_FILTER;
+                    outPkt = QBSerial.MakeQBridgePacket(cmdType, pktData, ref pktId);
+                    sinfo.com.Write(outPkt, 0, outPkt.Length);
+                    return;
+                }
+
+                //enable MID filtering
+                pktData = new byte[1];
+                pktData[0] = 0x01;
+                cmdType = PacketCmdCodes.PKT_CMD_MID_FILTER;
+                outPkt = QBSerial.MakeQBridgePacket(cmdType, pktData, ref pktId);
+                sinfo.com.Write(outPkt, 0, outPkt.Length);
+
+                //clear MID filters
+                pktData = new byte[3];
+                pktData[0] = 0x00;
+                pktData[1] = 0xFF;
+                pktData[2] = 0xFF;
+                cmdType = PacketCmdCodes.PKT_CMD_SET_MID;
+                outPkt = QBSerial.MakeQBridgePacket(cmdType, pktData, ref pktId);
+                sinfo.com.Write(outPkt, 0, outPkt.Length);
+
+                //set MID's on
+                pktData = new byte[(midList.Length * 2) + 1];
+                pktData[0] = 0x01;
+                int i = pktData.Length - 1;
+                for (int j = 0; j < midList.Length; j++) {
+                    pktData[i] = 0;
+                    pktData[i - 1] = midList[j];
+                    i -= 2;
+                }
+                cmdType = PacketCmdCodes.PKT_CMD_SET_MID;
+                outPkt = QBSerial.MakeQBridgePacket(cmdType, pktData, ref pktId);
+                sinfo.com.Write(outPkt, 0, outPkt.Length);
+            }
+            catch (Exception) { }
+        }
+
+        public static void UpdateQBridgeCANFilters(int clientId)
+        {
+            try {
                 //count CAN filters for QBridge, if > 25, then disable filters & return
                 int qbFilterCount = 0;
                 bool clientJ1939FilterOff = false;
@@ -826,61 +896,42 @@ namespace qbrdge_driver_classlib
                 }
 
                 SerialPortInfo sinfo = ClientIDManager.clientIds[clientId].serialInfo;
-                QBTransaction qbt = new QBTransaction();
                 byte[] pktData = new byte[2];
+                byte pktId = 0;
+                PacketCmdCodes cmdType;
+                byte[] outPkt;
 
                 if (qbFilterCount > 25 || clientJ1939FilterOff) {
                     //send CAN filter off
-                    qbt.clientId = clientId;
+                    pktData = new byte[2];
                     pktData[0] = 0x65; //'e'
                     pktData[1] = 0x00;
-                    qbt.pktData = pktData;
-                    qbt.dllInPort = iep.Port;
-                    qbt.cmdType = PacketCmdCodes.PKT_CMD_CAN_CONTROL;
-                    qbt.numRetries = 2;
-                    qbt.timePeriod = 100;
-                    qbt.isNotify = true;
-                    qbt.timeoutReply = "";
-                    qbt.lastSentPkt = QBSerial.MakeQBridgePacket(qbt.cmdType, qbt.pktData, ref qbt.pktId);
-                    sinfo.com.Write(qbt.lastSentPkt, 0, qbt.lastSentPkt.Length);
+                    cmdType = PacketCmdCodes.PKT_CMD_CAN_CONTROL;
+                    outPkt = QBSerial.MakeQBridgePacket(cmdType, pktData, ref pktId);
+                    sinfo.com.Write(outPkt, 0, outPkt.Length);
+
+                    UpdateQBridgeJ1708Filters(clientId);
                     return;
                 }
 
                 //transmit filters to QBridge
 
                 //send CAN filter on
-                qbt.clientId = clientId;
                 pktData[0] = 0x65; //'e'
                 pktData[1] = 0x01;
-                qbt.pktData = pktData;
-                qbt.dllInPort = iep.Port;
-                qbt.cmdType = PacketCmdCodes.PKT_CMD_CAN_CONTROL;
-                qbt.numRetries = 2;
-                qbt.timePeriod = 100;
-                qbt.isNotify = true;
-                qbt.timeoutReply = "";
-                qbt.lastSentPkt = QBSerial.MakeQBridgePacket(qbt.cmdType, qbt.pktData, ref qbt.pktId);                
-                sinfo.com.Write(qbt.lastSentPkt, 0, qbt.lastSentPkt.Length);
+                cmdType = PacketCmdCodes.PKT_CMD_CAN_CONTROL;
+                outPkt = QBSerial.MakeQBridgePacket(cmdType, pktData, ref pktId);                
+                sinfo.com.Write(outPkt, 0, outPkt.Length);
                 
                 //send CAN filter reset to defaults, disables transmit confirm
-                qbt = new QBTransaction();
-                qbt.clientId = clientId;
                 pktData = new byte[2];
                 pktData[0] = 0x72; //'r'
                 pktData[1] = 0x02; //reset all defaults
-                qbt.pktData = pktData;
-                qbt.dllInPort = iep.Port;
-                qbt.cmdType = PacketCmdCodes.PKT_CMD_CAN_CONTROL;
-                qbt.numRetries = 2;
-                qbt.timePeriod = 100;
-                qbt.isNotify = true;
-                qbt.timeoutReply = "";
-                qbt.lastSentPkt = QBSerial.MakeQBridgePacket(qbt.cmdType, qbt.pktData, ref qbt.pktId);                
-                sinfo.com.Write(qbt.lastSentPkt, 0, qbt.lastSentPkt.Length);
+                cmdType = PacketCmdCodes.PKT_CMD_CAN_CONTROL;
+                outPkt = QBSerial.MakeQBridgePacket(cmdType, pktData, ref pktId);                
+                sinfo.com.Write(outPkt, 0, outPkt.Length);
 
                 //send CAN filter setup
-                qbt = new QBTransaction();
-                qbt.clientId = clientId;
                 pktData = new byte[300];
                 int idx = 0;
                 pktData[0] = 0x66; //'f'
@@ -901,26 +952,18 @@ namespace qbrdge_driver_classlib
                 byte[] tmp = new byte[idx];
                 Array.Copy(pktData, tmp, tmp.Length);
                 pktData = tmp;
-                qbt.pktData = pktData;
-                qbt.dllInPort = iep.Port;
-                qbt.cmdType = PacketCmdCodes.PKT_CMD_CAN_CONTROL;
-                qbt.numRetries = 2;
-                qbt.timePeriod = 100;
-                qbt.isNotify = true;
-                qbt.timeoutReply = "";
-                qbt.lastSentPkt = QBSerial.MakeQBridgePacket(qbt.cmdType, qbt.pktData, ref qbt.pktId);
-                sinfo.com.Write(qbt.lastSentPkt, 0, qbt.lastSentPkt.Length);
+                cmdType = PacketCmdCodes.PKT_CMD_CAN_CONTROL;
+                outPkt = QBSerial.MakeQBridgePacket(cmdType, pktData, ref pktId);
+                sinfo.com.Write(outPkt, 0, outPkt.Length);
 
                 //*very important* Re-Enable Transmit Confirm
                 byte[] pData = new byte[1];
                 pData[0] = 0x01;
-                qbt.pktData = pData;
-                qbt.cmdType = PacketCmdCodes.PKT_CMD_ENABLE_J1708_CONFIRM;
-                qbt.numRetries = 2;
-                qbt.timePeriod = 100;
-                qbt.timeoutReply = "";
-                qbt.lastSentPkt = QBSerial.MakeQBridgePacket(qbt.cmdType, qbt.pktData, ref qbt.pktId);
-                sinfo.com.Write(qbt.lastSentPkt, 0, qbt.lastSentPkt.Length);
+                cmdType = PacketCmdCodes.PKT_CMD_ENABLE_J1708_CONFIRM;
+                outPkt = QBSerial.MakeQBridgePacket(cmdType, pktData, ref pktId);
+                sinfo.com.Write(outPkt, 0, outPkt.Length);
+
+                UpdateQBridgeJ1708Filters(clientId);
             }
             catch (Exception) { }
         }
@@ -952,7 +995,6 @@ namespace qbrdge_driver_classlib
             qbt.j1939transaction.UpdateJ1939Data(Support.ByteArrayToString(msg)); //add message, process
             qbt.pktData = qbt.j1939transaction.GetCANPacket(); //get packet for current state.
 
-            qbt.numRetries = 2;
             qbt.timePeriod = Support.ackReplyLimit;
             qbt.timeoutReply = UDPReplyType.sendJ1708replytimeout;
             QBSerial.ClientIdToSerialInfo(clientId).QBTransactionNew.Add(qbt);     
