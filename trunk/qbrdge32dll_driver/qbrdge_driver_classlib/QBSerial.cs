@@ -52,8 +52,12 @@ namespace qbrdge_driver_classlib
 
         public void RestartTimer()
         {
-            StopTimer();
-            StartTimer();
+            try
+            {
+                StopTimer();
+                StartTimer();
+            }
+            catch (Exception) { }
         }
 
         //this timer will be used to detect a lost QBridge
@@ -83,16 +87,24 @@ namespace qbrdge_driver_classlib
 
         private void StartTimer()
         {
-            TimerCallback timerDelegate = new TimerCallback(TimeOut);
-            recvTimer = new Timer(timerDelegate, this, Convert.ToInt32(Support.portLostLimit), Timeout.Infinite);
+            if (recvTimer == null)
+            {
+                TimerCallback timerDelegate = new TimerCallback(TimeOut);
+                recvTimer = new Timer(timerDelegate, this, Timeout.Infinite, Timeout.Infinite);
+            }
+
+            recvTimer.Change(Convert.ToInt32(Support.portLostLimit), Timeout.Infinite);
         }
 
         public void StopTimer()
         {
-            if (recvTimer == null) { return; }
-            try {
-                recvTimer.Dispose();
-                recvTimer = null;
+            try
+            {
+                // Stop timer if it is running
+                if (this.recvTimer != null)
+                {
+                    this.recvTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                }
             }
             catch (Exception) { }
         }       
@@ -240,7 +252,7 @@ namespace qbrdge_driver_classlib
                     }
                 }
             }
-            catch (TimeoutException exp)
+            catch (TimeoutException)
             {
                 return false;
             }
@@ -852,7 +864,7 @@ namespace qbrdge_driver_classlib
                                 return;
                             }
                         }
-                        catch (Exception exp)
+                        catch (Exception)
                         {
                             RP1210DllCom.UdpSend(
                                 ((int)RP1210ErrorCodes.ERR_FW_UPGRADE).ToString(), qbt.dllInPort);
@@ -982,7 +994,7 @@ namespace qbrdge_driver_classlib
                     qbt.StartTimer();
                 }
             }
-            catch (Exception exp)
+            catch (Exception)
             {
                 RP1210DllCom.UdpSend(
                     ((int)RP1210ErrorCodes.ERR_FW_UPGRADE).ToString(), qbt.dllInPort);
@@ -1453,14 +1465,14 @@ namespace qbrdge_driver_classlib
         // this function should always be called in a synchronized thread
         public static void CheckSendMsgQ()
         {
-            foreach(SerialPortInfo serialInfo in comPorts) 
+            foreach(SerialPortInfo serialInfo in comPorts)
             {
                 for (int i = 0; i < serialInfo.QBTransactionNew.Count; i++) 
                 {
                     if (serialInfo.GetReplyPending())
                     {
                         break;
-                    }                     
+                    }
 
                     QBTransaction qbt = serialInfo.QBTransactionNew[i];
 
@@ -1478,7 +1490,7 @@ namespace qbrdge_driver_classlib
                     }
                     if (i >= serialInfo.QBTransactionNew.Count)
                         break;
-
+                    
                     qbt.lastSentPkt = MakeQBridgePacket(qbt.cmdType, qbt.pktData, ref qbt.pktId);
 
                     try
@@ -1969,10 +1981,6 @@ namespace qbrdge_driver_classlib
     {
         public QBTransaction()
         {
-            //initialize timer
-            TimerCallback timerDelegate = new TimerCallback(QBSerial.ComReplyTimeOut);
-            replyTimer = new Timer(timerDelegate, (new Object()), Timeout.Infinite, 0);
-
             sendCmdType = RP1210SendCommandType.SC_UNDEFINED;
             timeoutReply = UDPReplyType.sendJ1939replytimeout;
         }
@@ -2011,11 +2019,27 @@ namespace qbrdge_driver_classlib
 
         public void StartTimer()
         {
-            TimerCallback timerDelegate = new TimerCallback(QBSerial.ComReplyTimeOut);
-            replyTimer = new Timer(timerDelegate, this, timePeriod, Timeout.Infinite);  
+            try
+            {
+                if (replyTimer == null)
+                {
+                    TimerCallback timerDelegate = new TimerCallback(QBSerial.ComReplyTimeOut);
+                    replyTimer = new Timer(timerDelegate, this, Timeout.Infinite, Timeout.Infinite);
+                }
+                replyTimer.Change(timePeriod, Timeout.Infinite);
+            }
+            catch (Exception) { }
         }
-        public void StopTimer() {            
-            replyTimer.Dispose();
+        public void StopTimer() {
+            // Stop timer if it is running
+            try
+            {
+                if (replyTimer != null)
+                {
+                    replyTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                }
+            }
+            catch (Exception) { }
         }
         public void RestartTimer() {
             StopTimer();
