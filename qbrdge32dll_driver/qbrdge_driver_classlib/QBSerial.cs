@@ -1310,7 +1310,8 @@ namespace qbrdge_driver_classlib
                                 {
                                     //loose claim on address
                                     AbortClientRTSCTS(client.serialInfo, (byte)client.claimAddress);
-                                    client.claimAddress = -1;
+                                    client.lostClaimAddress = client.claimAddress;
+                                    client.claimAddress = -1;                                    
                                 }
                             }
                         }
@@ -1662,8 +1663,10 @@ namespace qbrdge_driver_classlib
                 return -(int)RP1210ErrorCodes.ERR_ADDRESS_NEVER_CLAIMED;
             }
 
-            if (clientInfo.usingClaimAddr && qbt.j1939transaction.SA != clientInfo.claimAddress)
+            if (qbt.j1939transaction.SA != clientInfo.claimAddress
+                && qbt.j1939transaction.SA == clientInfo.lostClaimAddress)
             {
+                clientInfo.lostClaimAddress = -1;
                 return -(int)RP1210ErrorCodes.ERR_ADDRESS_LOST;
             }
 
