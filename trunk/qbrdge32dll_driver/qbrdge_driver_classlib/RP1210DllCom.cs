@@ -718,12 +718,13 @@ namespace qbrdge_driver_classlib
                     if (cmdDataBytes[0] == 255)
                     {
                         //global address, clear
+                        client.lostClaimAddress = client.claimAddress;
                         client.claimAddress = -1;
                         UdpSend("-4", iep);
                         return;
                     }
 
-                    client.usingClaimAddr = true;
+                    client.lostClaimAddress = client.claimAddress;
                     client.claimAddress = cmdDataBytes[0];                    
                     byte[] addrName = new byte[8];
                     for (int i = 0; i < addrName.Length; i++)

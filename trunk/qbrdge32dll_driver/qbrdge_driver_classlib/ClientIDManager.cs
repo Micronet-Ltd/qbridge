@@ -40,13 +40,11 @@ namespace qbrdge_driver_classlib
 
             //see j1939-81 for info. on address claiming
             public int claimAddress = -1; // -1 for not address claimed
+            public int lostClaimAddress = -1; //last last claimed address
             public byte[] claimAddressName = new byte[8];
             public bool claimAddrAvailable = true;
             public QBTransaction claimQBT = null;
             //needed for multi-frame RTS/CTS recieve or send messages
-
-            //once this is set to try address claiming is enforced on SendMessages.
-            public bool usingClaimAddr = false;
 
             //delay availability of claimAddress to allow
             //responses from other devices
@@ -121,6 +119,7 @@ namespace qbrdge_driver_classlib
                     clientIds[i].available = false;
                     clientIds[i].dllInPort = iep.Port;
                     clientIds[i].claimAddress = -1;
+                    clientIds[i].lostClaimAddress = -1;
                     clientIds[i].claimAddressName = new byte[8];
                     clientIds[i].J1708MIDFilter = true;
                     clientIds[i].J1708MIDList = new byte[0];

@@ -265,16 +265,19 @@ namespace qbrdge_driver_classlib
         //the bampacket recieve has timed out
         public void TimeOut(Object state)
         {
-            if (isDone == false)
+            lock (Support.lockThis)
             {
-                isDone = true;
-                isComplete = false;
-                if (useRTSCTS == false)
+                if (isDone == false)
                 {
-                    isComplete = true;
+                    isDone = true;
+                    isComplete = false;
+                    if (useRTSCTS == false)
+                    {
+                        isComplete = true;
+                    }
                 }
+                QBSerial.CheckForCompleteJ1939();
             }
-            QBSerial.CheckForCompleteJ1939();
         }
 
         Timer myTimer;
@@ -283,22 +286,32 @@ namespace qbrdge_driver_classlib
         private void StartTimer()
         {
             StopTimer();
-            TimerCallback timerDelegate = new TimerCallback(TimeOut);
-            if (useRTSCTS)
+            try
             {
-                myTimer = new Timer(timerDelegate, this, 120000, Timeout.Infinite);
+                int timeInt = 10000;
+                if (useRTSCTS)
+                {
+                    timeInt = 120000;
+                }
+                if (myTimer == null)
+                {
+                    TimerCallback timerDelegate = new TimerCallback(TimeOut);
+                    myTimer = new Timer(timerDelegate, this, timeInt, Timeout.Infinite);
+                }
+                myTimer.Change(timeInt, Timeout.Infinite);
             }
-            else
-            {
-                myTimer = new Timer(timerDelegate, this, 10000, Timeout.Infinite);
-            }
+            catch (Exception) { }
         }
         private void StopTimer()
         {
-            if (myTimer != null)
+            try
             {
-                myTimer.Dispose();
+                if (myTimer != null)
+                {
+                    myTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                }
             }
+            catch (Exception) { }
         }
     }
 
