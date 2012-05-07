@@ -170,7 +170,7 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 		if (ctype == Conn_J1939 && nMessageSize < 6) {
 			return ERR_INVALID_MSG_PACKET;
 		}	
-		if (ctype == Conn_J1708 && fpchClientMessage[0] > 0x07) {
+		if (ctype == Conn_J1708 && fpchClientMessage[0] > 0x08) {
 			return ERR_INVALID_MSG_PACKET;
 		}
 
