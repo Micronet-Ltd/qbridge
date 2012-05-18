@@ -530,22 +530,23 @@ namespace qbrdge_driver_classlib
                     string newFilter = cmdData;
                     string oldFilter = Support.ByteArrayToString(
                         ClientIDManager.clientIds[clientId].J1708MIDList);
-                    for (int a = 0; a < oldFilter.Length; a++)
+                    for (int a = 0; a < newFilter.Length; a++)
                     {
-                        bool dup = false;
-                        for (int b = 0; b < newFilter.Length; b++)
+                        char f1 = newFilter[a];
+                        bool isFound = false;
+                        for (int b = 0; b < oldFilter.Length; b++)
                         {
-                            if (newFilter[b] == oldFilter[a])
+                            char f2 = oldFilter[b];
+                            if (f1 == f2)
                             {
-                                dup = true;
+                                isFound = true;
                             }
                         }
-                        if (dup == false)
-                        {
-                            newFilter = newFilter.Insert(0, oldFilter.Substring(a, 1));
+                        if (isFound == false) {
+                            oldFilter = oldFilter.PadRight(oldFilter.Length+1, f1);
                         }
                     }
-                    ClientIDManager.clientIds[clientId].J1708MIDList = Support.StringToByteArray(newFilter);
+                    ClientIDManager.clientIds[clientId].J1708MIDList = Support.StringToByteArray(oldFilter);
                     UdpSend("0", iep);
 
                     UpdateQBridgeJ1708Filters(clientId);
@@ -762,7 +763,6 @@ namespace qbrdge_driver_classlib
                     //send message to all clients on com, except sender
                     ClientIDManager.ClientIDInfo sendClientInfo = ClientIDManager.clientIds[clientId];
                     QBSerial.J1939PktRecv(sendClientInfo.serialInfo, qbt.pktData, clientId);
-
                     UdpSend(msgId.ToString(), iep);
                     return;
                 }

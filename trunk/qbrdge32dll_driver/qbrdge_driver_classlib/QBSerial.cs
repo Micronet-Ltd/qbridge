@@ -482,16 +482,6 @@ namespace qbrdge_driver_classlib
             {
                 DataReceived(sender);
 
-                //start or stop recv timer in SInfo
-                foreach (SerialPortInfo serialInfo in comPorts) {
-                    if (serialInfo.QBTransactionNew.Count == 0) {
-                        serialInfo.RestartTimer();
-                    }
-                    else {
-                        serialInfo.StopTimer();
-                    }
-                }
-
                 CheckSendMsgQ();
             }
         }
@@ -500,6 +490,23 @@ namespace qbrdge_driver_classlib
         {
             SerialPort com = (SerialPort)sender;
             SerialPortInfo portInfo = null;
+            
+            //start or stop recv timer in SInfo
+            foreach (SerialPortInfo serialInfo in comPorts)
+            {
+                if (serialInfo.com.PortName.Equals(com.PortName))
+                {
+                    if (serialInfo.QBTransactionNew.Count == 0)
+                    {
+                        serialInfo.RestartTimer();
+                    }
+                    else
+                    {
+                        serialInfo.StopTimer();
+                    }
+                }
+            }
+
             try
             {
                 int rxSize = (com.BytesToRead * 2) + 200;
@@ -702,11 +709,13 @@ namespace qbrdge_driver_classlib
                         else
                         {
                             if (pktData[0] == 0x00)
-                            { //j1708 transmit confirm failed, unable to be transmitted, fail
+                            { 
+                                //j1708 transmit confirm failed, unable to be transmitted, fail
                                 Support.SendClientDataPacket(UDPReplyType.sendJ1708confirmfail, qt);
                             }
                             else if (pktData[0] == 0x01)
-                            { //j1708 transmit confirm, success
+                            {
+                                //j1708 transmit confirm, success
                                 Support.SendClientDataPacket(UDPReplyType.sendJ1708success, qt);
                             }
                             portInfo.QBTransactionSent.RemoveAt(i);
@@ -1056,12 +1065,16 @@ namespace qbrdge_driver_classlib
         //see EIA-232 serial protocol to QBridge
         public static void J1939PktRecv(SerialPortInfo portInfo, byte[] pktData, int ignoreClientId)
         {
-            string portName = portInfo.com.PortName;
             if (pktData[0] == 0x00)
             {
                 //standard CAN 
                 return;
             }
+            if (portInfo == null)
+            {
+                return;
+            }
+            string portName = portInfo.com.PortName;
 
             //add timestamp to J1939 packet
             byte[] timestamp = Support.Int32ToBytes(Environment.TickCount, true);
@@ -1088,7 +1101,6 @@ namespace qbrdge_driver_classlib
             }
             pgn[2] = (byte)(P_R_DP & 0x03);
             how_priority = (byte)(((byte)P_R_DP / 2 / 2) & 0x07);
-            
             //Check if it is a new BAM or RTS/CTStransfer
             if ((pktData.Length - 5) == 8) {
                 if (pgn[1] == 0xEC && pgn[2] == 0x00 && pktData[5] == 32)
@@ -1121,14 +1133,17 @@ namespace qbrdge_driver_classlib
                     for (int i = 0; i < ClientIDManager.clientIds.Length; i++)
                     {
                         ClientIDManager.ClientIDInfo client = ClientIDManager.clientIds[i];
-                        if (client.serialInfo != null)
+                        if (client != null)
                         {
-                            if (portInfo.com == client.serialInfo.com)
+                            if (client.serialInfo != null)
                             {
-                                if (client.claimAddress == DA && client.claimAddrAvailable)
+                                if (portInfo.com == client.serialInfo.com)
                                 {
-                                    addrFound = true;
-                                    clientIdx = i;
+                                    if (client.claimAddress == DA && client.claimAddrAvailable)
+                                    {
+                                        addrFound = true;
+                                        clientIdx = i;
+                                    }
                                 }
                             }
                         }
@@ -1224,6 +1239,7 @@ namespace qbrdge_driver_classlib
                     {
                         temp[j] = pktData[6 + j];
                     }
+
                     //check each RTS/CTS pending transaction, traverse all QBTransactions
                     for (int i = 0; i < (portInfo.QBTransactionNew.Count + portInfo.QBTransactionSent.Count); i++)
                     {
@@ -1247,9 +1263,13 @@ namespace qbrdge_driver_classlib
                         if (qt.j1939transaction.IsDone())
                         {
                             if (qt.j1939transaction.IsComplete())
+                            {
                                 Support.SendClientDataPacket(UDPReplyType.sendJ1939success, qt);
+                            }
                             else
+                            {
                                 Support.SendClientDataPacket(UDPReplyType.sendJ1939replytimeout, qt);
+                            }
                             if (i < portInfo.QBTransactionNew.Count)
                             {
                                 portInfo.QBTransactionNew.RemoveAt(i);
@@ -1282,7 +1302,11 @@ namespace qbrdge_driver_classlib
                     for (int i = 0; i < ClientIDManager.clientIds.Length; i++)
                     {
                         ClientIDManager.ClientIDInfo client = ClientIDManager.clientIds[i];
-                        if (client.serialInfo == null)
+                        if (client == null)
+                        {
+                            //do nothing
+                        }
+                        else if (client.serialInfo == null)
                         {
                             //do nothing
                         }
@@ -1336,7 +1360,6 @@ namespace qbrdge_driver_classlib
             }
             Debug.WriteLine("");
              */
-
             NewClientsJ1939ReadMessage(newpkt, portName, ignoreClientId);
         }
 
@@ -1474,19 +1497,16 @@ namespace qbrdge_driver_classlib
                     {
                         break;
                     }
-
                     QBTransaction qbt = serialInfo.QBTransactionNew[i];
 
-                    //skip empty send CAN packets
+                    //skip empty send CAN packets, pkData will be updated later by CheckJ1939Pending
                     while (qbt.cmdType == PacketCmdCodes.PKT_CMD_SEND_CAN &&
                         qbt.pktData.Length == 0)
                     {
-                        //notify RP1210 DLL that invalid packet was not sent
-                        Support.SendClientDataPacket(UDPReplyType.sendJ1939invalidpacket, qbt);
-
                         i++;
                         if (i >= serialInfo.QBTransactionNew.Count)
                             break;
+
                         qbt = serialInfo.QBTransactionNew[i];
                     }
                     if (i >= serialInfo.QBTransactionNew.Count)
@@ -1497,7 +1517,8 @@ namespace qbrdge_driver_classlib
                     try
                     {
                         if (qbt.isJ1939) {
-                            if (qbt.j1939transaction.IsDone() == false) {
+                            if (qbt.j1939transaction.IsDone() == false)
+                            {
                                 serialInfo.com.Write(qbt.lastSentPkt, 0, qbt.lastSentPkt.Length);
                                 qbt.RestartTimer();
                             }
@@ -1520,7 +1541,21 @@ namespace qbrdge_driver_classlib
             }
         }
 
-        private static void SendClientErrorPacket(QBTransaction qbt)
+        public static void SendClientErrorPacketAlt(QBTransaction qbt)
+        {
+            if (qbt.cmdType == PacketCmdCodes.PKT_CMD_SEND_J1708 ||
+                qbt.cmdType == PacketCmdCodes.PKT_CMD_RAW_J1708 ||
+                qbt.cmdType == PacketCmdCodes.PKT_CMD_SEND_CAN)
+            {
+                Support.SendClientDataPacket(qbt.timeoutReply, qbt);
+            }
+            else
+            {
+                QBSerial.SendClientErrorPacket(qbt);
+            }
+        }
+
+        public static void SendClientErrorPacket(QBTransaction qbt)
         {
             if (qbt.sendCmdType != RP1210SendCommandType.SC_UNDEFINED) {
                 RP1210DllCom.UdpSend(
@@ -1546,7 +1581,7 @@ namespace qbrdge_driver_classlib
                 QBTransaction qbt = serialInfo.QBTransactionNew[i];
 
                 //send appropriate error response to DLL that QB is not responding
-                SendClientErrorPacket(qbt);
+                QBSerial.SendClientErrorPacketAlt(qbt);
 
                 serialInfo.QBTransactionNew.RemoveAt(i);
                 i--;
@@ -1613,7 +1648,7 @@ namespace qbrdge_driver_classlib
 
         //returns msgQID
         public static int AddSendJ1939Msg(int clientId, string msg, bool isNotify, bool isBlocking)
-        {
+        {            
             int msgId;
             if (isNotify)
             {
@@ -1757,10 +1792,10 @@ namespace qbrdge_driver_classlib
             lock (Support.lockThis) 
             {
                 QBTransaction qbt = (QBTransaction)stateInfo;
-
                 //timeout, assume QB removed an re-initialize
                 SerialPortInfo sInfo = Support.ClientToSerialPortInfo(qbt.clientId);
                 qbt.StopTimer();
+
                 if (qbt.sendCmdType != RP1210SendCommandType.SC_UNDEFINED) {
                     RP1210DllCom.UdpSend(
                        ((int)RP1210ErrorCodes.ERR_HARDWARE_NOT_RESPONDING).ToString(), qbt.dllInPort);
@@ -1779,11 +1814,12 @@ namespace qbrdge_driver_classlib
                 else if (qbt.cmdType == PacketCmdCodes.PKT_CMD_INIT ||
                     qbt.cmdType == PacketCmdCodes.PKT_CMD_ENABLE_J1708_CONFIRM ||
                     qbt.cmdType == PacketCmdCodes.PKT_CMD_MID_FILTER) {
-                    RP1210DllCom.UdpSend("-3", qbt.dllInPort);
-                    RemoveSentQBTransaction(qbt);
-                    if (sInfo.qbInitNeeded) {
-                        ClientIDManager.RemoveClientID(qbt.clientId);
-                    }
+                        RP1210DllCom.UdpSend("-3", qbt.dllInPort);
+                        RemoveSentQBTransaction(qbt);
+                        if (sInfo != null && sInfo.qbInitNeeded)
+                        {
+                            ClientIDManager.RemoveClientID(qbt.clientId);
+                        }
                 }
                 else if (qbt.cmdType == PacketCmdCodes.PKT_CMD_INFO_REQ) {
                     RemoveSentQBTransaction(qbt);
@@ -1791,8 +1827,11 @@ namespace qbrdge_driver_classlib
 
                 //QB not responding. Clear all pending transactions for clients 
                 //using that serial prort and re-initialize.
-                ClearQBTransactionNew(sInfo);
-                ReInitSerialPort(ref sInfo, qbt.clientId);
+                if (sInfo != null)
+                {
+                    ClearQBTransactionNew(sInfo);
+                    ReInitSerialPort(ref sInfo, qbt.clientId);
+                }
                 CheckSendMsgQ();
             }
         }
@@ -2018,7 +2057,7 @@ namespace qbrdge_driver_classlib
 
         //j1939 info.
         public bool isJ1939 = false;
-        public J1939Transaction j1939transaction;
+        public J1939Transaction j1939transaction = new J1939Transaction();
 
         public void StartTimer()
         {
@@ -2033,7 +2072,8 @@ namespace qbrdge_driver_classlib
             }
             catch (Exception) { }
         }
-        public void StopTimer() {
+        public void StopTimer() 
+        {
             // Stop timer if it is running
             try
             {
