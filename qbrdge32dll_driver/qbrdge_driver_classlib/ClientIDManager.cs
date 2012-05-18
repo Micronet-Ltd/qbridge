@@ -85,6 +85,15 @@ namespace qbrdge_driver_classlib
                     //send addr claim fail
                     Support.SendClientDataPacket((string)errorStr, claimQBT);
                 }
+                SerialPortInfo sinfo = Support.ClientToSerialPortInfo(claimQBT.clientId);
+                for (int i = 0; i < sinfo.QBTransactionSent.Count; i++)
+                {
+                    if (claimQBT.Equals(sinfo.QBTransactionSent[i]))
+                    {
+                        sinfo.QBTransactionSent.RemoveAt(i);
+                        i--;
+                    }
+                }
                 claimQBT.StopTimer();
                 claimQBT = null;
             }
@@ -189,6 +198,31 @@ namespace qbrdge_driver_classlib
             if (clientIds[cid].dllInPort == port)
             {
                 SerialPortInfo sinfo = clientIds[cid].serialInfo;
+
+                //clean up pending QB messages from QBTransactionNew and QBTransactionSent
+                for (int i = 0; i < sinfo.QBTransactionNew.Count; i++)
+                {
+                    QBTransaction qbt = sinfo.QBTransactionNew[i];
+                    if (qbt.clientId == cid)
+                    {
+                        QBSerial.SendClientErrorPacketAlt(qbt);
+                        sinfo.QBTransactionNew.RemoveAt(i);
+                        i--;
+                        QBSerial.CheckJ1939Pending(sinfo);
+                    }
+                }
+                //clean up pending QB messages from QBTransactionNew and QBTransactionSent
+                for (int i = 0; i < sinfo.QBTransactionSent.Count; i++)
+                {
+                    QBTransaction qbt = sinfo.QBTransactionSent[i];
+                    if (qbt.clientId == cid)
+                    {
+                        QBSerial.SendClientErrorPacketAlt(qbt);
+                        sinfo.QBTransactionSent.RemoveAt(i);
+                        i--;
+                    }
+                }
+
                 clientIds[cid].available = true;
                 clientIds[cid].dllInPort = -1;
                 clientIds[cid].serialInfo = null;
