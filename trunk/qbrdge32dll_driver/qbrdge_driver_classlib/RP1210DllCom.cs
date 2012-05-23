@@ -997,7 +997,7 @@ namespace qbrdge_driver_classlib
             qbt.j1939transaction.UpdateJ1939Data(Support.ByteArrayToString(msg)); //add message, process
             qbt.pktData = qbt.j1939transaction.GetCANPacket(); //get packet for current state.
 
-            qbt.timePeriod = Support.ackReplyLimit;
+            qbt.timePeriod = Support.j1708ConfirmLimit;
             qbt.timeoutReply = UDPReplyType.sendJ1708replytimeout;
             QBSerial.ClientIdToSerialInfo(clientId).QBTransactionNew.Add(qbt);     
         }
