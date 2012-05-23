@@ -1711,7 +1711,7 @@ namespace qbrdge_driver_classlib
                 return -(int)RP1210ErrorCodes.ERR_INVALID_MSG_PACKET;
             }
 
-            qbt.timePeriod = Support.ackReplyLimit;
+            qbt.timePeriod = Support.j1708ConfirmLimit;
             qbt.timeoutReply = UDPReplyType.sendJ1939replytimeout;
             //qbt.timeoutReply = UDPReplyType.sendJ1708replytimeout;
 
