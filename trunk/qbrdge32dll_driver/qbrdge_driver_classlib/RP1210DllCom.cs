@@ -991,6 +991,7 @@ namespace qbrdge_driver_classlib
             qbt.isJ1939 = true;
             qbt.j1939transaction = new J1939Transaction();
             qbt.j1939transaction.isAddressClaim = true;
+            qbt.numRetries = 3;
             qbt.cmdType = PacketCmdCodes.PKT_CMD_SEND_CAN;
 
             qbt.j1939transaction.UpdateJ1939Data(Support.ByteArrayToString(msg)); //add message, process
