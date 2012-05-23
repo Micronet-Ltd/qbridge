@@ -5,6 +5,7 @@
 
 static UINT WM_RP1210_ERROR_MESSAGE = 0;
 static UINT WM_RP1210_MESSAGE_MESSAGE = 0;
+static int BLOCK_TIMEOUT = 60000;
 
 class CritSection {
 public:
