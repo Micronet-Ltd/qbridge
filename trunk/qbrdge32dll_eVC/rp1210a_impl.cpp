@@ -129,118 +129,117 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
 	}
 
 	ConnectionType ctype = connections[nClientID].GetConnectionType();
-	if (ctype == Conn_J1708 || ctype == Conn_J1939) {
-		//J1708, J1939
-		if (nMessageSize > 21 && ctype == Conn_J1708) {
-			return ERR_MESSAGE_TOO_LONG;
-		}
-		if (nMessageSize > 1791 && ctype == Conn_J1939) {
-			return ERR_MESSAGE_TOO_LONG;
-		}
+	if (ctype != Conn_J1708 && ctype != Conn_J1939) {		
+		return ERR_MESSAGE_NOT_SENT;
+	}
 
-		PACKET_TYPE queryType;
-		if (nBlockOnSend) {
-			if (ctype == Conn_J1708) {
-				queryType = QUERY_J1708MSG_BLOCK_PKT;
-			}
-			else if (ctype == Conn_J1939) {
-				queryType = QUERY_J1939MSG_BLOCK_PKT;
-			}
-		}
-		else if (nNotifyStatusOnTx) {
-			if (ctype == Conn_J1708) {
-				queryType = QUERY_J1708MSG_NOTIFY_PKT;
-			}
-			else if (ctype == Conn_J1939) {
-				queryType = QUERY_J1939MSG_NOTIFY_PKT;
-			}
-		}
-		else {
-			if (ctype == Conn_J1708) {
-				queryType = QUERY_J1708MSG_PKT;
-			}
-			else if (ctype == Conn_J1939) {
-				queryType = QUERY_J1939MSG_PKT;
-			}
-		}
+	//J1708, J1939
+	if (nMessageSize > 21 && ctype == Conn_J1708) {
+		return ERR_MESSAGE_TOO_LONG;
+	}
+	if (nMessageSize > 1791 && ctype == Conn_J1939) {
+		return ERR_MESSAGE_TOO_LONG;
+	}
 
-		if (ctype == Conn_J1708 && nMessageSize < 2) {
-			return ERR_INVALID_MSG_PACKET;
+	PACKET_TYPE queryType;
+	if (nBlockOnSend) {
+		if (ctype == Conn_J1708) {
+			queryType = QUERY_J1708MSG_BLOCK_PKT;
 		}
-		if (ctype == Conn_J1939 && nMessageSize < 6) {
-			return ERR_INVALID_MSG_PACKET;
-		}	
-		if (ctype == Conn_J1708 && fpchClientMessage[0] > 0x08) {
-			return ERR_INVALID_MSG_PACKET;
-		}
-
-		//send j1708 message to driver app.
-		int cid = (int) nClientID;
-		//_DbgTrace(_T("before query driver app send\n"));
-		if (QueryDriverApp(queryType, GetAssignPort(), cid, fpchClientMessage, nMessageSize, 0) == true) {
-			int msgId = cid;
-			if (msgId > 127 && nNotifyStatusOnTx) {
-				return msgId; // error code returned
-			}
-			if (msgId < 0) { // error code
-				return -msgId;
-			}
-			if (nBlockOnSend || (nNotifyStatusOnTx && cid != 0)) {
-				connections[nClientID].AddTransaction(nNotifyStatusOnTx, msgId);
-			}
-			if (nBlockOnSend) {
-				//wait for signal here
-				HANDLE hEvent = connections[nClientID].GetTransEvent(nNotifyStatusOnTx, msgId);
-
-				int BufLen = 80;
-				char buff[80];				
-				BufLen = _snprintf(buff, 80, 
-					"Wait event %p, client %d, msgid %d\n", hEvent, nClientID, msgId);				
-				TCHAR tbuf[80];
-				for (int i = 0; i < 80; i++) {
-					tbuf[i] = buff[i];
-				}
-				tbuf[BufLen-1] = 0;
-				//_DbgTrace(tbuf);
-						
-				if (connections[nClientID].GetConnectionType() == Conn_Invalid) {
-					return ERR_CLIENT_DISCONNECTED;
-				}
-				cs.Pause();
-				::WaitForSingleObject(hEvent, 200000); //SetEvent for release?
-				cs.Unpause();
-				::CloseHandle(hEvent);
-
-				int returnCode = connections[nClientID].GetReturnCode(nNotifyStatusOnTx, msgId);
-				connections[nClientID].RemoveTransaction(nNotifyStatusOnTx, msgId);
-
-				if (connections[nClientID].GetConnectionType() == Conn_Invalid) {
-					return ERR_CLIENT_DISCONNECTED;
-				}
-				return returnCode;
-			} 
-			else if (nNotifyStatusOnTx) {
-				if (cid == 0) {
-					//message queue 1-127 full
-					//_DbgTrace(_T("after query driver app send 2\n"));
-					return ERR_MAX_NOTIFY_EXCEEDED;
-				}
-				else {
-					TRACE (_T("Sent packet to qbridge, notify mode.  PacketID=%d\n"), cid);
-					return cid;
-				}
-			} else {
-				//_DbgTrace(_T("after query driver app send 3\n"));
-				// message sent to QBridge -- no notify or blockign requested
-				return 0;
-			}
-		} else {
-			//_DbgTrace(_T("after query driver app send 4\n"));
-			return ERR_HARDWARE_NOT_RESPONDING;
+		else if (ctype == Conn_J1939) {
+			queryType = QUERY_J1939MSG_BLOCK_PKT;
 		}
 	}
-				//_DbgTrace(_T("after query driver app send 5\n"));
-	return ERR_MESSAGE_NOT_SENT;
+	else if (nNotifyStatusOnTx) {
+		if (ctype == Conn_J1708) {
+			queryType = QUERY_J1708MSG_NOTIFY_PKT;
+		}
+		else if (ctype == Conn_J1939) {
+			queryType = QUERY_J1939MSG_NOTIFY_PKT;
+		}
+	}
+	else {
+		if (ctype == Conn_J1708) {
+			queryType = QUERY_J1708MSG_PKT;
+		}
+		else if (ctype == Conn_J1939) {
+			queryType = QUERY_J1939MSG_PKT;
+		}
+	}
+
+	if (ctype == Conn_J1708 && nMessageSize < 2) {
+		return ERR_INVALID_MSG_PACKET;
+	}
+	if (ctype == Conn_J1939 && nMessageSize < 6) {
+		return ERR_INVALID_MSG_PACKET;
+	}	
+	if (ctype == Conn_J1708 && fpchClientMessage[0] > 0x08) {
+		return ERR_INVALID_MSG_PACKET;
+	}
+
+    //send j1708 message to driver app.    
+    int cid = (int) nClientID;
+    if (QueryDriverApp(queryType, GetAssignPort(), cid, fpchClientMessage, nMessageSize, 0) == true) 
+    {
+        int msgId = cid;
+        if (msgId > 127 && nNotifyStatusOnTx) {
+            return msgId; // error code returned
+        }
+        if (msgId < 0) { // error code
+            return -msgId;
+        }
+        if (nBlockOnSend || (nNotifyStatusOnTx && cid != 0)) {
+            connections[nClientID].AddTransaction(nNotifyStatusOnTx, msgId);
+        }
+        if (nBlockOnSend) {
+            //wait for signal here
+            HANDLE hEvent = connections[nClientID].GetTransEvent(nNotifyStatusOnTx, msgId);
+
+            int BufLen = 80;
+            char buff[80];				
+            BufLen = _snprintf(buff, 80, 
+                "Wait event %p, client %d, msgid %d\n", hEvent, nClientID, msgId);				
+            TCHAR tbuf[80];
+            for (int i = 0; i < 80; i++) {
+                tbuf[i] = buff[i];
+            }
+            tbuf[BufLen-1] = 0;
+            //_DbgTrace(tbuf);
+
+            if (connections[nClientID].GetConnectionType() == Conn_Invalid) {
+                return ERR_CLIENT_DISCONNECTED;
+            }
+            cs.Pause();
+            ::WaitForSingleObject(hEvent, BLOCK_TIMEOUT); //SetEvent for release?
+            cs.Unpause();
+            ::CloseHandle(hEvent);
+
+            int returnCode = connections[nClientID].GetReturnCode(nNotifyStatusOnTx, msgId);
+            connections[nClientID].RemoveTransaction(nNotifyStatusOnTx, msgId);
+
+            if (connections[nClientID].GetConnectionType() == Conn_Invalid) {
+                return ERR_CLIENT_DISCONNECTED;
+            }
+            return returnCode;
+        } 
+        else if (nNotifyStatusOnTx) {
+            if (cid == 0) {
+                //message queue 1-127 full
+                return ERR_MAX_NOTIFY_EXCEEDED;
+            }
+            else {
+                TRACE (_T("Sent packet to qbridge, notify mode.  PacketID=%d\n"), cid);
+                return cid;
+            }
+        } 
+        else {
+            // message sent to QBridge -- no notify or blockign requested
+            return 0;
+        }
+    } 
+    else {
+        return ERR_HARDWARE_NOT_RESPONDING;
+    }
 }
 
 /**********************/
@@ -261,7 +260,7 @@ RP1210AReturnType ReadRP1210Message (short nClientID, char far* fpchAPIMessage, 
 			HANDLE hEvent = GetReadEvent();
 			connections[nClientID].recvMsgEvents.push_back(hEvent);
 			TRACE(_T("PUSH EVENT & READ WAIT\r\n"));
-			::WaitForSingleObject(hEvent, 90000); //SetEvent for release?
+			::WaitForSingleObject(hEvent, BLOCK_TIMEOUT); //SetEvent for release?
 			cs.Unpause();
 			::CloseHandle(hEvent);
 			if (connections[nClientID].GetConnectionType() == Conn_Invalid) {
