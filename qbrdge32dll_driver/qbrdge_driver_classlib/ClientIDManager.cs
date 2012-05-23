@@ -46,6 +46,28 @@ namespace qbrdge_driver_classlib
             public QBTransaction claimQBT = null;
             //needed for multi-frame RTS/CTS recieve or send messages
 
+            public void ResetDefaults()
+            {
+                dllInPort = 0;
+                available = true;
+                serialInfo = null; // serial port assigned to client id
+                isJ1939Client = false;
+                J1708MIDFilter = true;
+                J1708MIDList = new byte[0];         
+                J1939Filter = true;
+                J1939FilterList = new List<J1939Filter>();
+                allowReceive = true;
+                claimAddress = -1;
+                lostClaimAddress = -1;
+                claimAddressName = new byte[8];
+                claimAddrAvailable = true;
+                if (claimQBT != null)
+                {
+                    claimQBT.StopTimer();
+                    claimQBT = null;
+                }
+            }
+
             //delay availability of claimAddress to allow
             //responses from other devices
             public void claimAddrDelayTimer(QBTransaction qt)
@@ -222,12 +244,21 @@ namespace qbrdge_driver_classlib
                         i--;
                     }
                 }
+                //clean up J1939 pending
+                for (int i = 0; i < sinfo.QBTransJ1939Pending.Count; i++)
+                {
+                    QBTransaction qbt = sinfo.QBTransJ1939Pending[i];
+                    if (qbt.clientId == cid)
+                    {
+                        QBSerial.SendClientErrorPacketAlt(qbt);
+                        sinfo.QBTransactionSent.RemoveAt(i);
+                        i--;
+                    }
+                }
 
-                clientIds[cid].available = true;
-                clientIds[cid].dllInPort = -1;
-                clientIds[cid].serialInfo = null;
+                clientIds[cid].ResetDefaults();
 
-                // remove j1708 message for that client id
+                //check if serial port used by other client ids
                 for (int i = 0; i < clientIds.Length; i++)
                 {
                     if (clientIds[i].available == false && clientIds[i].serialInfo != null)
