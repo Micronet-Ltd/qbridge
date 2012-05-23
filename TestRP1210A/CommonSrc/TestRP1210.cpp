@@ -227,6 +227,7 @@ void TestRP1210::Test (const set<CString> &testList, vector<INIMgr::Devices> &de
 // This block controls the second thread
 #if 1
 	secondaryClient = VerifyConnect(api2, devs[idx2], "J1708"); //api2->pRP1210_ClientConnect(NULL, devs[idx2].deviceID, "J1708", 0, 0, 0);
+	TRACE(_T("secondaryClient %d: %d "), devs[idx2], secondaryClient);
 	if (!IsValid(secondaryClient)) {
 		secondaryClient = -1;
 		goto end;
@@ -336,8 +337,10 @@ void TestRP1210::TestMulticonnect(vector<INIMgr::Devices> &devs, int idx1) {
 #else
 	size_t targetCount = 4;
 #endif
-	for (size_t i = 0; i < targetCount; i++) {
-		int result = api1->pRP1210_ClientConnect(NULL, devs[idx1].deviceID, INIMgr::ToAnsi(devs[idx1].protocolStrings[0]), 0, 0, 0);
+	for (size_t i = 0; i < targetCount; i++) {		
+		TRACE(_T("Connect %d: "), devs[idx1].deviceID);
+		int result = api1->pRP1210_ClientConnect(NULL, devs[idx1].deviceID, INIMgr::ToAnsi(devs[idx1].protocolStrings[0]), 0, 0, 0);		
+		TRACE(_T(", %d"), result);
 		if ((result >= 0) && (result < 128)) {
 			ids.push_back(result);
 		} else {
@@ -351,8 +354,10 @@ void TestRP1210::TestMulticonnect(vector<INIMgr::Devices> &devs, int idx1) {
 	} else {
 		log.LogText (_T("    Failed"), Log::Red);
 	}
-	for (size_t i = 0; i < ids.size(); i++) {
-		int result = api1->pRP1210_ClientDisconnect(ids[i]);
+	for (size_t i = 0; i < ids.size(); i++) {		
+		TRACE(_T("\r\nDisconnect %d: "), ids[i]);
+		int result = api1->pRP1210_ClientDisconnect(ids[i]);			
+		TRACE(_T(", %d"), result);
 		if (result != 0) {
 			LogError (*api1, result);
 		}
@@ -1076,7 +1081,7 @@ void TestRP1210::TestFilterStatesOnOffMessagePassOnOff(INIMgr::Devices &dev, int
 	}
 
 	VerifyDisconnect (api1, clientDiscardAll);
-	VerifyDisconnect (api1, clientAcceptAll);
+	VerifyDisconnect (api1, clientAcceptAll);	
 }
 
 /****************************/
@@ -1414,6 +1419,12 @@ void TestRP1210::Test1939Filters(INIMgr::Devices dev1, INIMgr::Devices dev2) {
 			log.LogText(msg, Log::Black);
 		}
 	}
+	
+	VerifyDisconnect(api1, cljunk);
+	VerifyDisconnect(api1, cl1a);
+	VerifyDisconnect(api1, cl1b);
+	VerifyDisconnect(api1, cl2a);
+	VerifyDisconnect(api1, cl2b);
 }
 
 /*************************************/
@@ -1520,6 +1531,9 @@ CString ArrayAsHex(const char *buf, int len) {
 /* TestRP1210::VerifiedSend */
 /***************************/
 bool TestRP1210::VerifiedSend (RP1210API *api, int clientID, char *txBuf, int txLen, bool block, int expectedResult, TCHAR * desc) {
+	if (block) {
+		TRACE(_T("block"));
+	}
 	int result = api->pRP1210_SendMessage(clientID, txBuf, txLen, 0, block);
 	TRACE (_T("Sending %d byte message %s. (%s).  Result=%d (time=%0.3f)\n"), txLen, ArrayAsHex(txBuf, txLen), desc, result, GetTickCount() / 1000.0);
 	if (result == 0) {
@@ -1650,7 +1664,12 @@ TRACE (_T("        Rx %d byte pkt\n"), result);
 				}
 			} else {
 				TRACE (_T("Received bad PGN.  PGN=%06x\n"), p.GetPGN());
-				TRACE (_T("    Dissect=%s\n"), p.Dissect1939());
+				if (result <= 0) {
+					TRACE(_T("J1939 Read Error"));
+				}
+				else {
+					TRACE (_T("    Dissect=%s\n"), p.Dissect1939());
+				}
 			}
 			Sleep(100);
 		}
@@ -1937,6 +1956,7 @@ void TestRP1210::DestroyThread(CWinThread *&thread) {
 /* TestRP1210::SecondaryDeviceTXThread */
 /**************************************/
 UINT __cdecl TestRP1210::SecondaryDeviceTXThread( LPVOID pParam ) {
+	TRACE(_T("TestRP1210::SecondaryDeviceTXThread"));
 	TestRP1210 *thisObj = (TestRP1210*)pParam;
 	int count = 0;
 
@@ -1950,9 +1970,10 @@ UINT __cdecl TestRP1210::SecondaryDeviceTXThread( LPVOID pParam ) {
 			basicJ1708TxBuf[1] = SecondaryPeriodicTX;
 			char strBuf[24];
 			sprintf (strBuf, "%05d", count++);
-			memcpy(basicJ1708TxBuf + 14, strBuf+strlen(strBuf)-4, 4);
+			memcpy(basicJ1708TxBuf + 14, strBuf+strlen(strBuf)-4, 4);			
 			int result = thisObj->api2->pRP1210_SendMessage(thisObj->secondaryClient, basicJ1708TxBuf, sizeof(basicJ1708TxBuf), false, true);
 			if (!IsValid(result)) {
+				TRACE(_T("pRP1210_SendMessage FAIL"));
 				thisObj->LogError (*(thisObj->api2), result);
 			}
 
