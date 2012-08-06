@@ -1,0 +1,23 @@
+v1107 Release Candidate, May 23, 2012
+- Updated the clean-up code when closing J1939 client connections.
+- Fixed an instance I found in testing where sending a CAN packet was not getting a confirm
+
+v1106 BETA, May 17, 2012
+- Fixed a bug with setting J1708 filters multiple times
+- Fixed a random crash that I found while running the old address claiming validation test.
+- Fixed a bug where it was returning an invalid packet error by mistake with J1939
+
+v1105 BETA, May 10, 2012
+- Fixed a problem with cleanup of pending transactions on serial ports when closing client connections.
+
+v1104 BETA, May 4, 2012
+- Updated Address claim to adhere to RP1210 protocol.  Will return ERR_ADDRESS_LOST one time if address lost
+
+v1103 BETA, May 2, 2012
+- Fixed an issue where the first J1939 packet sent to the QBridge was timimg out after 40 seconds
+- Changed the timers to use the "Change" functions instead of "Dispose" to restart
+
+v1102 BETA, May 1, 2012
+- If using Address Claim, calls to RP1210_SendMessage will return an error message for an un-claimed Source Address (SA).
+- J1708 MID filtering has been moved to the QBridge layer and will be filter by the QBridge hardware before being received.
+- Periodic queries will be sent to the QBridge if there is inactivity to determine if the TREQ-VMx has been un-docked so the QBridge can be re-initialized when re-docked. 
