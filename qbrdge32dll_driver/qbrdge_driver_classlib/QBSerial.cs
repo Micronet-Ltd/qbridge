@@ -65,6 +65,7 @@ namespace qbrdge_driver_classlib
 
         public void TimeOut(Object stateInfo)
         {
+            Thread.CurrentThread.Priority = RP1210DllCom.sysThreadPriority;
             lock (Support.lockThis) 
             {
                 if (QBTransactionSent.Count == 0) {
@@ -210,6 +211,7 @@ namespace qbrdge_driver_classlib
 
         public static void ReInitSerialPort(ref SerialPortInfo sinfo, int clientId)
         {
+            Support._DbgTrace("ReInitSerialPort");
             //no udp reply send, create msg packet
             QBTransaction qbt = new QBTransaction();
             qbt.clientId = clientId;
@@ -248,6 +250,7 @@ namespace qbrdge_driver_classlib
                     }
                     else if (ptype == PacketRecvType.PKT_INVALID)
                     {
+                        Support._DbgTrace("WaitForValidComReply func, PKT_INVALID");
                         return false;
                     }
                 }
@@ -438,9 +441,6 @@ namespace qbrdge_driver_classlib
             for (i = 0; i < data.Length; i++)
             {
                 p1 = data[i];
-                //crc16 = (UInt16)crc16Tbl[((crc16 >> 8) ^ p1) & 0x00ff] ^ (crc16 << 8);
-
-
                 ushort tmp1 = (ushort)((uint)crc16 >> 8);
                 tmp1 = (ushort)((uint)tmp1 ^ (uint)p1);
                 tmp1 = (ushort)((uint)tmp1 & 0x00ff);
@@ -478,6 +478,8 @@ namespace qbrdge_driver_classlib
 
         private static void port_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
+            Support._DbgTrace("DataRecvTread: " + Thread.CurrentThread.Priority.ToString());
+            Thread.CurrentThread.Priority = RP1210DllCom.sysThreadPriority;
             lock (Support.lockThis)
             {
                 DataReceived(sender);
@@ -578,6 +580,7 @@ namespace qbrdge_driver_classlib
                     break;
                 }
                 else if (recvType == PacketRecvType.PKT_INVALID) {
+                    Support._DbgTrace("Invalid Packet, sending NACK");
                     SendACKPacket(PacketAckCodes.PKT_ACK_INVALID_PACKET, pktId, portInfo.com);
                     break;
                 }
@@ -890,7 +893,8 @@ namespace qbrdge_driver_classlib
                 }
             }
             else {
-                Debug.Write("Undefined Data Recieved: ");
+                Support._DbgTrace("Undefined Data Received");
+                Debug.Write("Undefined Data Received: ");
             }
         }
 
@@ -1557,6 +1561,7 @@ namespace qbrdge_driver_classlib
 
         public static void SendClientErrorPacket(QBTransaction qbt)
         {
+            Support._DbgTrace("SendClientErrorPacket, " + qbt.cmdType.ToString());
             if (qbt.sendCmdType != RP1210SendCommandType.SC_UNDEFINED) {
                 RP1210DllCom.UdpSend(
                     RP1210ErrorCodes.ERR_HARDWARE_NOT_RESPONDING.ToString(), qbt.dllInPort);
@@ -1790,12 +1795,14 @@ namespace qbrdge_driver_classlib
 
         public static void ComReplyTimeOut(Object stateInfo)
         {
+            Thread.CurrentThread.Priority = RP1210DllCom.sysThreadPriority;
             lock (Support.lockThis) 
             {
                 QBTransaction qbt = (QBTransaction)stateInfo;
 
                 if (qbt.numRetries > 0 && ClientIDManager.clientIds[qbt.clientId].available == false)
                 {
+                    Support._DbgTrace("ComReplyTimeout, " + qbt.cmdType.ToString());
                     if (qbt.isJ1939)
                     {
                         if (qbt.j1939transaction.IsDone())
@@ -1826,6 +1833,7 @@ namespace qbrdge_driver_classlib
                 }
                 else
                 {
+                    Support._DbgTrace("Comm Timeout, Re-Intitialize Sequence Started");
                     //timeout, assume QB removed an re-initialize
                     SerialPortInfo sInfo = Support.ClientToSerialPortInfo(qbt.clientId);
                     qbt.StopTimer();

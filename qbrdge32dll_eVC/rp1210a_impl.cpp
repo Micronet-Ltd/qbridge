@@ -8,6 +8,8 @@ Connection connections[maxClientID+1];
 Thread udpThread;
 int assignPort;
 
+int Thread::threadPriority = THREAD_PRIORITY_NORMAL;
+
 /******************/
 /* InitializeDLL */
 /****************/
@@ -423,6 +425,20 @@ bool ConnectToDriverApp(){
 	if (GetAssignPort() > 0) {
 		return true;
 	}
+    //read RP1210 thread priority
+    HKEY hKey;
+    DWORD dwDisp = 0;
+    LPDWORD lpdwDisp = &dwDisp;
+    DWORD dwVal;
+    LONG lRes = RegOpenKeyExW(HKEY_LOCAL_MACHINE, _T("SOFTWARE\\RP1210"), 0, KEY_READ, &hKey);
+    if (lRes == ERROR_SUCCESS) {
+        unsigned long type=REG_DWORD, size=1024;
+        lRes == RegQueryValueEx(hKey, _T("Priority"), NULL, &type, (LPBYTE)&dwVal, &size);
+        if (lRes == ERROR_SUCCESS) {
+            Thread::threadPriority = dwVal;
+        }
+    }
+
 	TRACE(_T("Starting ConnectToDriverApp %d\n"), GetTickCount());
 	// start mutex
 	HANDLE hMutex = ::CreateMutex(NULL, FALSE, _T("qbridgeDLLMutex"));

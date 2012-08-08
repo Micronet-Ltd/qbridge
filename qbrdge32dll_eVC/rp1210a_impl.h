@@ -366,6 +366,11 @@ private:
 class Thread
 {
 public:
+    static int threadPriority;
+    //see "windows ce: guide to setting thread priorities"
+    static const int THREADPRIORITYMAX = 255;
+    static const int THREADPRIORITYMIN = 249;
+
 	Thread() : valid(false) {}
 	bool SetupThread ( DWORD (WINAPI * pFun) (void* arg), void* pArg)
     {
@@ -380,6 +385,17 @@ public:
             pArg,
             CREATE_SUSPENDED,
             &_tid);
+
+        if (threadPriority != THREAD_PRIORITY_NORMAL) {
+            if (threadPriority < THREADPRIORITYMIN) {
+                threadPriority = THREADPRIORITYMIN;
+            }
+            if (threadPriority > THREADPRIORITYMAX) {
+                threadPriority = THREADPRIORITYMAX;
+            }
+            CeSetThreadPriority(_handle, threadPriority);
+        }
+
 		return true;
     }
 	~Thread () { } //CloseHandle (_handle);

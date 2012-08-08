@@ -265,6 +265,7 @@ namespace qbrdge_driver_classlib
         //the bampacket recieve has timed out
         public void TimeOut(Object state)
         {
+            Thread.CurrentThread.Priority = RP1210DllCom.sysThreadPriority;
             lock (Support.lockThis)
             {
                 if (isDone == false)
@@ -556,6 +557,7 @@ namespace qbrdge_driver_classlib
         //the packet recieve has timed out
         public void TimeOut(Object state)
         {
+            Thread.CurrentThread.Priority = RP1210DllCom.sysThreadPriority;
             if (iscomplete)
             {
                 return;

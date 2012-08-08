@@ -1,3 +1,6 @@
+v1108 BETA
+- Changed UDP timers to use "Change" functions instead of "Dispose" to restart
+
 v1107 Release Candidate, May 23, 2012
 - Updated the clean-up code when closing J1939 client connections.
 - Fixed an instance I found in testing where sending a CAN packet was not getting a confirm

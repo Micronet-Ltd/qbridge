@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Collections;
 using System.Net.Sockets;
 using System.Collections.Generic;
+using Microsoft.Win32;
 
 namespace qbrdge_driver_classlib
 {
@@ -27,8 +28,13 @@ namespace qbrdge_driver_classlib
     }
 
     //Class will manage communcation to RP1210 DLL
-   public class RP1210DllCom
+    public class RP1210DllCom
     {
+        public const int THREAD_PRIORITY_NORMAL = 251;
+        public const int THREADPRIORITYMAX = 253;
+        public const int THREADPRIORITYMIN = 249;
+        public static int threadPriority = THREAD_PRIORITY_NORMAL;
+        public static ThreadPriority sysThreadPriority = ThreadPriority.Normal;
         private static Thread aliveThread; //thread to keep application alive
         private static Thread udpListenThread; //thread that's going to listen for UDP data
         private static UdpClient udpListener;
@@ -63,14 +69,18 @@ namespace qbrdge_driver_classlib
             //QBSerial.UpgradeFirmware();
             mainRP1210Com = this;
 
+            LoadThreadPriority();
+            Thread.CurrentThread.Priority = sysThreadPriority;
+
             aliveThread = new Thread(new ThreadStart(KeepProgramAlive));
             aliveThread.Priority = ThreadPriority.BelowNormal;
             aliveThread.Start();
-            _DbgTrace("aliveThread started");
+            Support._DbgTrace("aliveThread started, thread priority: " + threadPriority.ToString());
 
             udpListenThread = new Thread(new ThreadStart(UdpListen));
+            udpListenThread.Priority = sysThreadPriority;
             udpListenThread.Start();
-            _DbgTrace("udpListenThread started");
+            Support._DbgTrace("udpListenThread started");
 
             for (int i = 0; i < dllPortAvailable.Length; i++)
             {
@@ -107,35 +117,74 @@ namespace qbrdge_driver_classlib
         {
             while (true)
             {
-                _DbgTrace("AliveThread Loop");
+                Support._DbgTrace("AliveThread Loop");
                 Thread.CurrentThread.Join();
             }
         }
 
-       public static void EndProgram()
-       {
-           _DbgTrace("end program");
-           Debug.WriteLine("end program");
-           udpListener.Close();
-           try
-           {
-               aliveThread.Abort();
-           }
-           catch (Exception exp)
-           {
-               Debug.WriteLine(exp.ToString());
-           }
-           try
-           {
-               udpListenThread.Abort();
-           }
-           catch (Exception exp)
-           {
-               Debug.WriteLine(exp.ToString());
-           }
+        public static void EndProgram()
+        {
+            Support._DbgTrace("end program");
+            Debug.WriteLine("end program");
+            udpListener.Close();
+            try
+            {
+                aliveThread.Abort();
+            }
+            catch (Exception exp)
+            {
+                Debug.WriteLine(exp.ToString());
+            }
+            try
+            {
+                udpListenThread.Abort();
+            }
+            catch (Exception exp)
+            {
+                Debug.WriteLine(exp.ToString());
+            }
 
-           icoMgr.HideIcon();
-       } 
+            icoMgr.HideIcon();
+        }
+
+        public static void LoadThreadPriority()
+        {
+            //read thread priority
+            RegistryKey subKey = Registry.LocalMachine.OpenSubKey("SOFTWARE\\RP1210", false);
+            threadPriority = (int)subKey.GetValue("Priority");
+            subKey.Close();
+            if (threadPriority > THREADPRIORITYMAX)
+            {
+                threadPriority = THREADPRIORITYMAX;
+            }
+            if (threadPriority < THREADPRIORITYMIN)
+            {
+                threadPriority = THREADPRIORITYMIN;
+            }
+
+            switch (threadPriority)
+            {
+                case 249:
+                    sysThreadPriority = ThreadPriority.Highest;
+                    break;
+                case 250:
+                    sysThreadPriority = ThreadPriority.AboveNormal;
+                    break;
+                case 251:
+                    sysThreadPriority = ThreadPriority.Normal;
+                    break;
+                case 252:
+                    sysThreadPriority = ThreadPriority.BelowNormal;
+                    break;
+                case 253:
+                    sysThreadPriority = ThreadPriority.Lowest;
+                    break;
+                default:
+                    sysThreadPriority = ThreadPriority.Normal;
+                    break;
+            }
+            Support._DbgTrace("ThreadPriority: " + sysThreadPriority.ToString() + ", " + threadPriority.ToString());
+        }
  
         public static void UdpListen()
         {
@@ -145,10 +194,7 @@ namespace qbrdge_driver_classlib
             IPEndPoint iep = new IPEndPoint(IPAddress.Any, 0);
 
             //periodically send hello to udp connections.
-            TimerCallback timerDelegate = new TimerCallback(mainRP1210Com.DllHelloReplyTimeOut);
-            dllHelloReplyTimer = new Timer(timerDelegate, iep, Timeout.Infinite, 0);
-            timerDelegate = new TimerCallback(mainRP1210Com.DllHelloTimeOut);
-            dllHelloTimer = new Timer(timerDelegate, iep, dllHelloReplyTimeLimit, Timeout.Infinite);
+            StartHelloTimer();
 
             byte[] data;
             while (true)
@@ -218,8 +264,8 @@ namespace qbrdge_driver_classlib
                 }
                 else if (sdata == "ack")
                 {
-                    dllHelloReplyTimer.Dispose();
-                    StartHelloTimer();
+                    StopHelloReplyTimer();
+                    RestartHelloTimer();
                 }
                 else if (sdata == "hello")
                 {
@@ -1000,19 +1046,12 @@ namespace qbrdge_driver_classlib
             qbt.timePeriod = Support.j1708ConfirmLimit;
             qbt.timeoutReply = UDPReplyType.sendJ1708replytimeout;
             QBSerial.ClientIdToSerialInfo(clientId).QBTransactionNew.Add(qbt);     
-        }
-
-        //send message to debug port
-        public static void _DbgTrace(string outString)
-        {
-            UdpClient uc = new UdpClient();
-            byte[] outb = Support.StringToByteArray(outString);
-            IPEndPoint iep = new IPEndPoint(IPAddress.Loopback, UDP_DEBUG_PORT);
-            uc.Send(outb, outb.Length, iep);
-        }
+        }        
 
         public void DllHelloTimeOut(Object stateInfo)
         {
+            Thread.CurrentThread.Priority = RP1210DllCom.sysThreadPriority;
+
             IPEndPoint iep = new IPEndPoint(0, 0);
             dllPortInfo dllPort = new dllPortInfo();
 
@@ -1031,10 +1070,10 @@ namespace qbrdge_driver_classlib
                 if (iep.Port > 0 && dllPort.dllOutPortReady)
                 {
                     UdpSend("hello", iep); //send hello
-                    StartHelloReplyTimer(dllPort);
+                    RestartHelloReplyTimer(dllPort);
                     return;
                 }
-                StartHelloTimer();
+                RestartHelloTimer();
             }
         }
 
@@ -1056,23 +1095,86 @@ namespace qbrdge_driver_classlib
 
         private static void StartHelloTimer()
         {
-            dllHelloTimer.Dispose();
-            TimerCallback timerDelegate = new TimerCallback(mainRP1210Com.DllHelloTimeOut);
-            dllHelloTimer = new Timer(timerDelegate, 0, dllHelloTimePeriod, Timeout.Infinite);
+            try
+            {
+                if (dllHelloTimer == null)
+                {
+                    TimerCallback timerDelegate = new TimerCallback(mainRP1210Com.DllHelloTimeOut);
+                    dllHelloTimer = new Timer(timerDelegate, null, Timeout.Infinite, Timeout.Infinite);
+                }
+                dllHelloTimer.Change(dllHelloReplyTimeLimit, Timeout.Infinite);
+            }
+            catch (Exception) {}
+        }
+        private static void StopHelloTimer()
+        {
+            try
+            {
+                if (dllHelloTimer != null)
+                {
+                    dllHelloTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                }
+            }
+            catch (Exception) { }
+        }
+        private static void RestartHelloTimer()
+        {
+            StopHelloTimer();
+            StartHelloTimer();
         }
 
+        private static dllPortInfo helloReplyDllPort;
         private static void StartHelloReplyTimer(dllPortInfo dllPort)
         {
-            dllHelloReplyTimer.Dispose();
-            TimerCallback timerDelegate = new TimerCallback(mainRP1210Com.DllHelloReplyTimeOut);
-            dllHelloReplyTimer = new Timer(timerDelegate, dllPort, dllHelloReplyTimeLimit, Timeout.Infinite);
+            helloReplyDllPort = dllPort;
+            try {
+                if (dllHelloReplyTimer == null) 
+                {
+                    TimerCallback timerDelegate = new TimerCallback(mainRP1210Com.DllHelloReplyTimeOut);
+                    dllHelloReplyTimer = new Timer(timerDelegate, dllPort, Timeout.Infinite, Timeout.Infinite);
+                }
+                dllHelloReplyTimer.Change(dllHelloReplyTimeLimit, Timeout.Infinite);
+
+            }
+            catch (Exception) { }
         }
+        private static void StopHelloReplyTimer()
+        {
+            try {
+                if (dllHelloReplyTimer != null) {
+                    dllHelloReplyTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                }
+            }
+            catch (Exception) { }
+        }
+        private static void RestartHelloReplyTimer(dllPortInfo dllPort) 
+        {
+            StopHelloReplyTimer();
+            StartHelloReplyTimer(dllPort);
+        }
+
+       //TODO erase this
+        //private static void SOLDtartHelloTimer()
+        //{
+        //    dllHelloTimer.Dispose();
+        //    TimerCallback timerDelegate = new TimerCallback(mainRP1210Com.DllHelloTimeOut);
+        //    dllHelloTimer = new Timer(timerDelegate, 0, dllHelloTimePeriod, Timeout.Infinite);
+        //}
+        //private static void SOLDtartHelloReplyTimer(dllPortInfo dllPort)
+        //{
+        //    dllHelloReplyTimer.Dispose();
+        //    TimerCallback timerDelegate = new TimerCallback(mainRP1210Com.DllHelloReplyTimeOut);
+        //    dllHelloReplyTimer = new Timer(timerDelegate, dllPort, dllHelloReplyTimeLimit, Timeout.Infinite);
+        //}
 
         private void DllHelloReplyTimeOut(Object obj)
         {
+            Thread.CurrentThread.Priority = RP1210DllCom.sysThreadPriority;
+
+            Support._DbgTrace("DllHelloReplyTimeOut");
             lock (Support.lockThis)
             {
-                dllPortInfo dllPort = (dllPortInfo)obj;
+                dllPortInfo dllPort = helloReplyDllPort;
 
                 for (int i = 0; i < dllPorts.Count; i++)
                 {
@@ -1091,7 +1193,7 @@ namespace qbrdge_driver_classlib
                 }
                 else
                 {
-                    StartHelloTimer();
+                    RestartHelloTimer();
                 }
             }
         }
