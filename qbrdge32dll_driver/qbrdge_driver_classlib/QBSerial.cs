@@ -1335,14 +1335,6 @@ namespace qbrdge_driver_classlib
             newpkt[8] = SA;
             newpkt[9] = DA;
 
-            /*
-            //Debug.Write("READ PKT: ");
-            for (int i = 0; i < newpkt.Length; i++)
-            {
-                //Debug.Write(newpkt[i].ToString() + ",");
-            }
-            //Debug.WriteLine("");
-             */
             NewClientsJ1939ReadMessage(newpkt, portName, ignoreClientId);
         }
 
@@ -1697,7 +1689,6 @@ namespace qbrdge_driver_classlib
 
             qbt.timePeriod = Support.j1708ConfirmLimit;
             qbt.timeoutReply = UDPReplyType.sendJ1939replytimeout;
-            //qbt.timeoutReply = UDPReplyType.sendJ1708replytimeout;
 
             //add timestamp to J1939 packet
             byte[] timestamp = Support.Int32ToBytes(Environment.TickCount, true);
@@ -1967,15 +1958,6 @@ namespace qbrdge_driver_classlib
                     break;
                 }
                 outData = Support.StringToByteArray(fileData.Substring(idx1, idx2 - idx1 + 1));
-
-              //  //Debug.Write("OUT " + com.PortName + ": ");
-//                for (int j = 0; j < outData.Length; j++)
-//                {
-//                    byte b = (byte)outData[j];
-//                    //Debug.Write(b.ToString("X2") + ",");
-//                }
-//                //Debug.WriteLine("");
-
                 com.Write(outData, 0, outData.Length);
                 try
                 {

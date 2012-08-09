@@ -155,8 +155,7 @@ namespace qbrdge_driver_classlib
         //send message to debug port
         private static SerialPort dbgSPort = null;
         public static void _DbgTrace(string outString)
-        {
-            //TODO, comment out
+        {            
             /*UdpClient uc = new UdpClient();
             byte[] outb = Support.StringToByteArray(outString);
             IPEndPoint iep = new IPEndPoint(IPAddress.Loopback, UDP_DEBUG_PORT);

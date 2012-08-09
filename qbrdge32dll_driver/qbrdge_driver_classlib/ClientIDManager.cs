@@ -20,6 +20,7 @@ namespace qbrdge_driver_classlib
             public byte[] qbCtrlPktData1 = null; //see "CAN Control Packet (command code 'L')
             public byte[] qbCtrlPktData2 = null; //[1 byte, extended][4 bytes, ext id][4 bytes mask]
         }
+
         public class ClientIDInfo
         {
             public int dllInPort = 0; // udp port of dll app.
@@ -82,10 +83,9 @@ namespace qbrdge_driver_classlib
                 claimQBT = qt;
                 if (myTimer != null)
                 {
-                    //send address claim fail msg.
-
                     myTimer.Dispose();
                 }
+                //send address claim fail msg.
                 TimerCallback timerDelegate = new TimerCallback(TimeOut);
                 myTimer = new Timer(timerDelegate, UDPReplyType.sendJ1939addresslost, 1000, Timeout.Infinite);
             }

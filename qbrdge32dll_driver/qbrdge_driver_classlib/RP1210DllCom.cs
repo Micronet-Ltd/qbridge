@@ -46,7 +46,6 @@ namespace qbrdge_driver_classlib
         private static Timer dllHelloReplyTimer; //timer for timing out if no response from dll
         const int dllHelloTimePeriod = 1000; //how often to send hello to dll
         const int dllHelloReplyTimeLimit = 10000; //time limit for response from dll
-        //const int dllHelloReplyTimeLimit = 1000; 
 
         const int maxClients = 128; //maximum number of clients allowed from dll's
 
@@ -125,7 +124,6 @@ namespace qbrdge_driver_classlib
         public static void EndProgram()
         {
             Support._DbgTrace("end program");
-            //Debug.WriteLine("end program");
             udpListener.Close();
             try
             {
@@ -1166,20 +1164,6 @@ namespace qbrdge_driver_classlib
             StopHelloReplyTimer();
             StartHelloReplyTimer(dllPort);
         }
-
-       //TODO erase this
-        //private static void SOLDtartHelloTimer()
-        //{
-        //    dllHelloTimer.Dispose();
-        //    TimerCallback timerDelegate = new TimerCallback(mainRP1210Com.DllHelloTimeOut);
-        //    dllHelloTimer = new Timer(timerDelegate, 0, dllHelloTimePeriod, Timeout.Infinite);
-        //}
-        //private static void SOLDtartHelloReplyTimer(dllPortInfo dllPort)
-        //{
-        //    dllHelloReplyTimer.Dispose();
-        //    TimerCallback timerDelegate = new TimerCallback(mainRP1210Com.DllHelloReplyTimeOut);
-        //    dllHelloReplyTimer = new Timer(timerDelegate, dllPort, dllHelloReplyTimeLimit, Timeout.Infinite);
-        //}
 
         private void DllHelloReplyTimeOut(Object obj)
         {
