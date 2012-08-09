@@ -1,4 +1,5 @@
 v1524 Release Candidate, Aug 9, 2012
+- updating version number to sync with RP1210 ReadVersion API.
 - Changed UDP timers to use "Change" functions instead of "Dispose" to restart
 - Changing a DWORD key "Priority" under LOCAL_MACHINE "SOFTWARE\\RP1210" to a value between 249-252 will change the priority of some threads in RP1210, but not all.
 - Added Enable Advanced Receive mode to init sequence of RP1210
