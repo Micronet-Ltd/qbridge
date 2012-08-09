@@ -95,16 +95,12 @@ public:
 		for (transIter it = transactions.begin(); it != transactions.end(); it++) {
 			Transaction &t = *it;			
 			if (t.isNotify) {				
-				//	wchar_t buff[100];
-//					swprintf(buff, 100, L"Send FreeMsgId2: %d\n", t.transId);
-//					_DbgTrace(buff);
 				// send freeMsgId	
 				char sendBuf[40];
 				int len = _snprintf(sendBuf, 40, "%d,freeMsgId;", t.transId);				
 				SendUDPPacket(inet_addr("127.0.0.1"), DRIVER_LISTEN_PORT, GetAssignPort(), sendBuf, len);
 			}
 			if (t.isNotify && hwnd != 0) {
-				//_DbgTrace(_T("POST error client disconnect\n"));
 				::PostMessage(GetHwnd(), WM_RP1210_ERROR_MESSAGE, ERR_CLIENT_DISCONNECTED, t.transId+128);				
 				toErase.push_back(it);
 			}
@@ -164,9 +160,9 @@ public:
 			t.returnCode = ERR_NOT_ADDED_TO_BUS;
 		}
 		else {
-			//wchar_t buff[100];
-//			swprintf(buff, 100, L"Notify ID2: %d\n", transId);
-//			_DbgTrace(buff);
+            //wchar_t buff[100];
+            //swprintf(buff, 100, L"Notify ID2: %d\n", transId);
+            //_DbgTrace(buff);
 		}
 		transactions.push_back(t);
 	}
@@ -234,7 +230,6 @@ public:
 						tbuf[i] = buff[i];
 					}
 					tbuf[BufLen] = 0;
-					//_DbgTrace(tbuf);
 
 					t.returnCode = returnCode;	
 					for (int j = 0; j < 40; j++) {
@@ -257,8 +252,9 @@ public:
 			if (t.transId == transId && t.isNotify == isNotify) {
 				if (t.isNotify) {					
 					//wchar_t buff[100];
-//					swprintf(buff, 100, L"Send FreeMsgId1: %d\n", transId);
-//					_DbgTrace(buff);
+                    //swprintf(buff, 100, L"Send FreeMsgId1: %d\n", transId);
+                    //_DbgTrace(buff);
+
 					// send freeMsgId	
 					char sendBuf[40];
 					int len = _snprintf(sendBuf, 40, "%d,freeMsgId;", t.transId);				
@@ -290,16 +286,15 @@ public:
 	}
 
 	void AddReadMsg(char *msg, int msgLen) {
-		TRACE(_T("ADDREADMSG to recvQ\r\n"));
+		//_DbgTrace(_T("ADDREADMSG to recvQ\r\n"));
 		recvMsgQueue.push_back(RecvMsg(msg, msgLen));
 		if (recvMsgEvents.size() != 0) {
-			TRACE(_T("SETREADEVENT\r\n"));
+			//_DbgTrace(_T("SETREADEVENT\r\n"));
             PopSetReadEvent();
 		}
 		else if (hwnd != 0) {
 			// send notification
-			//_DbgTrace(_T("POST notify\n"));	
-			TRACE(_T("POSTREAD Notify\r\n"));
+			//_DbgTrace(_T("POSTREAD notify\n"));
 			::PostMessage(GetHwnd(), WM_RP1210_MESSAGE_MESSAGE, 0, 0);
 		}
 	}
@@ -352,7 +347,7 @@ private:
 	int rxQueueMax;
 	ConnectionType connType;
 	struct Transaction {
-		//inital info
+		//initial info
 		short isNotify;
 		int transId;
 		HANDLE transEvent;
@@ -379,20 +374,14 @@ public:
 		}
 		valid = true;
         _handle = CreateThread (
-            NULL, // Security attributes
-            0, // Stack size
+            NULL,   // Security attributes
+            0,      // Stack size
             pFun,
             pArg,
             CREATE_SUSPENDED,
             &_tid);
 
         if (threadPriority != THREAD_PRIORITY_NORMAL) {
-            if (threadPriority < THREADPRIORITYMIN) {
-                threadPriority = THREADPRIORITYMIN;
-            }
-            if (threadPriority > THREADPRIORITYMAX) {
-                threadPriority = THREADPRIORITYMAX;
-            }
             CeSetThreadPriority(_handle, threadPriority);
         }
 

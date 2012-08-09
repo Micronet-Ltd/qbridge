@@ -161,6 +161,7 @@ namespace qbrdge_driver_classlib
             byte[] outb = Support.StringToByteArray(outString);
             IPEndPoint iep = new IPEndPoint(IPAddress.Loopback, UDP_DEBUG_PORT);
             uc.Send(outb, outb.Length, iep);*/
+            /*
             if (dbgSPort == null)
             {
                 dbgSPort = new SerialPort("COM2");
@@ -168,6 +169,7 @@ namespace qbrdge_driver_classlib
                 dbgSPort.Open();
             }
             dbgSPort.WriteLine(outString);
+             */
             return;
         }
     }
@@ -221,7 +223,8 @@ namespace qbrdge_driver_classlib
         PKT_CMD_J1708_ECHO = 0x2D,
         PKT_CMD_SEND_CAN = 0x4A,
         PKT_CMD_RECV_CAN = 0x4B,
-        PKT_CMD_CAN_CONTROL = 0x4C
+        PKT_CMD_CAN_CONTROL = 0x4C,
+        PKT_CMD_ENABLE_ADV_RCV = 0x4F
     }
 
     enum RP1210ErrorCodes : int

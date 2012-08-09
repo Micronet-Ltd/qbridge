@@ -125,7 +125,7 @@ namespace qbrdge_driver_classlib
         public static void EndProgram()
         {
             Support._DbgTrace("end program");
-            Debug.WriteLine("end program");
+            //Debug.WriteLine("end program");
             udpListener.Close();
             try
             {
@@ -133,7 +133,7 @@ namespace qbrdge_driver_classlib
             }
             catch (Exception exp)
             {
-                Debug.WriteLine(exp.ToString());
+                //Debug.WriteLine(exp.ToString());
             }
             try
             {
@@ -141,7 +141,7 @@ namespace qbrdge_driver_classlib
             }
             catch (Exception exp)
             {
-                Debug.WriteLine(exp.ToString());
+                //Debug.WriteLine(exp.ToString());
             }
 
             icoMgr.HideIcon();
@@ -150,9 +150,17 @@ namespace qbrdge_driver_classlib
         public static void LoadThreadPriority()
         {
             //read thread priority
-            RegistryKey subKey = Registry.LocalMachine.OpenSubKey("SOFTWARE\\RP1210", false);
-            threadPriority = (int)subKey.GetValue("Priority");
-            subKey.Close();
+            RegistryKey subKey = null;
+            try
+            {
+                subKey = Registry.LocalMachine.OpenSubKey("SOFTWARE\\RP1210", false);
+                threadPriority = (int)subKey.GetValue("Priority");
+                subKey.Close();
+            }
+            catch (Exception) 
+            { 
+                threadPriority = THREAD_PRIORITY_NORMAL;
+            }
             if (threadPriority > THREADPRIORITYMAX)
             {
                 threadPriority = THREADPRIORITYMAX;
@@ -221,7 +229,7 @@ namespace qbrdge_driver_classlib
                 }
                 catch (Exception exp)
                 {
-                    Debug.WriteLine("udplisten "+exp.ToString());
+                    //Debug.WriteLine("udplisten "+exp.ToString());
                 }
             }
         }
@@ -317,7 +325,7 @@ namespace qbrdge_driver_classlib
 
             if (cmd == "disconnect")
             {
-                Debug.WriteLine("DISCONNECT CLIENT: " + intNum1.ToString());
+                //Debug.WriteLine("DISCONNECT CLIENT: " + intNum1.ToString());
                 ClientIDManager.RemoveClientID(intNum1, iep.Port);
                 SerialPortInfo sinfo = Support.ClientToSerialPortInfo(intNum1);
                 if (sinfo != null)
@@ -371,7 +379,7 @@ namespace qbrdge_driver_classlib
             else if (cmd == "newJ1708clientid" || cmd == "newJ1939clientid")
             {
                 // Assign Client ID: port, comNum
-                Debug.WriteLine("NEWCLIENT: "+cmd + " com" + intNum1.ToString());
+                //Debug.WriteLine("NEWCLIENT: "+cmd + " com" + intNum1.ToString());
                 SerialPortInfo sinfo = QBSerial.ComNumToSerialPortInfo(intNum1);
                 if (sinfo != null)
                 {
@@ -1011,6 +1019,12 @@ namespace qbrdge_driver_classlib
                 sinfo.com.Write(outPkt, 0, outPkt.Length);
 
                 UpdateQBridgeJ1708Filters(clientId);
+
+                //Enabled Advanced Receive Mode
+                pData[0] = 0x01;
+                cmdType = PacketCmdCodes.PKT_CMD_ENABLE_ADV_RCV;
+                outPkt = QBSerial.MakeQBridgePacket(cmdType, pktData, ref pktId);
+                sinfo.com.Write(outPkt, 0, outPkt.Length);
             }
             catch (Exception) { }
         }
@@ -1100,7 +1114,7 @@ namespace qbrdge_driver_classlib
                 if (dllHelloTimer == null)
                 {
                     TimerCallback timerDelegate = new TimerCallback(mainRP1210Com.DllHelloTimeOut);
-                    dllHelloTimer = new Timer(timerDelegate, null, Timeout.Infinite, Timeout.Infinite);
+                    dllHelloTimer = new Timer(timerDelegate, null, Timeout.Infinite, Timeout.Infinite);                    
                 }
                 dllHelloTimer.Change(dllHelloReplyTimeLimit, Timeout.Infinite);
             }

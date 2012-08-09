@@ -230,7 +230,7 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
                 return ERR_MAX_NOTIFY_EXCEEDED;
             }
             else {
-                TRACE (_T("Sent packet to qbridge, notify mode.  PacketID=%d\n"), cid);
+                //TRACE (_T("Sent packet to qbridge, notify mode.  PacketID=%d\n"), cid);
                 return cid;
             }
         } 
@@ -261,7 +261,7 @@ RP1210AReturnType ReadRP1210Message (short nClientID, char far* fpchAPIMessage, 
 			//listen for event
 			HANDLE hEvent = GetReadEvent();
 			connections[nClientID].recvMsgEvents.push_back(hEvent);
-			TRACE(_T("PUSH EVENT & READ WAIT\r\n"));
+			//TRACE(_T("PUSH EVENT & READ WAIT\r\n"));
 			::WaitForSingleObject(hEvent, BLOCK_TIMEOUT); //SetEvent for release?
 			cs.Unpause();
 			::CloseHandle(hEvent);
@@ -277,10 +277,10 @@ RP1210AReturnType ReadRP1210Message (short nClientID, char far* fpchAPIMessage, 
 	int errId = connections[nClientID].GetReadMsg(fpchAPIMessage, nBufferSize, msgLen);
 	
 	if (errId != 0) {
-		TRACE(_T("READ ERROR no MSG FOUND\r\n"));
+		//TRACE(_T("READ ERROR no MSG FOUND\r\n"));
 		return -errId;
 	}
-		TRACE(_T("READ SUCCESS\r\n"));
+		//TRACE(_T("READ SUCCESS\r\n"));
 	return msgLen;
 }
 
@@ -359,7 +359,7 @@ RP1210AReturnType SendCommand (short nCommandNumber, short nClientID, char far* 
 					return ERR_MAX_NOTIFY_EXCEEDED;
 				}
 				else {
-					TRACE (_T("Sent packet to qbridge, notify mode.  PacketID=%d\n"), cid);
+					//TRACE (_T("Sent packet to qbridge, notify mode.  PacketID=%d\n"), cid);
 					return cid;
 				}
 			} else {
@@ -435,29 +435,35 @@ bool ConnectToDriverApp(){
         unsigned long type=REG_DWORD, size=1024;
         lRes == RegQueryValueEx(hKey, _T("Priority"), NULL, &type, (LPBYTE)&dwVal, &size);
         if (lRes == ERROR_SUCCESS) {
+            if (dwVal < Thread::THREADPRIORITYMIN) {
+                dwVal = Thread::THREADPRIORITYMIN;
+            }
+            if (dwVal > Thread::THREADPRIORITYMAX) {
+                dwVal = Thread::THREADPRIORITYMAX;
+            }
             Thread::threadPriority = dwVal;
         }
     }
 
-	TRACE(_T("Starting ConnectToDriverApp %d\n"), GetTickCount());
+	//TRACE(_T("Starting ConnectToDriverApp %d\n"), GetTickCount());
 	// start mutex
 	HANDLE hMutex = ::CreateMutex(NULL, FALSE, _T("qbridgeDLLMutex"));
 	if (hMutex == NULL)
 		return false;
 	if(WAIT_OBJECT_0 == ::WaitForSingleObject(hMutex, 10000))
 	{
-		TRACE(_T("After WaitForSingleObject %d\n"), GetTickCount());
+		//TRACE(_T("After WaitForSingleObject %d\n"), GetTickCount());
 		int dmy;
 		bool appon = false;
 		if (QueryDriverApp(QUERY_NEWPORT_PKT, DRIVER_LISTEN_PORT-1, dmy, NULL, 0, 0) == false) {
 			
-			TRACE(_T("After First QueryDriverApp %d\n"), GetTickCount());
+			//TRACE(_T("After First QueryDriverApp %d\n"), GetTickCount());
 			if (OpenDriverApp() == false) {
 				//_DbgTrace(_T("Error opening driver app.\n"));
 				::ReleaseMutex(hMutex);
 				return false;
 			}
-			TRACE(_T("After OpenDriverApp %d\n"), GetTickCount());
+			//TRACE(_T("After OpenDriverApp %d\n"), GetTickCount());
 			int i;
 			for (i = 0; i < 10; i++)
 			{
@@ -466,18 +472,18 @@ bool ConnectToDriverApp(){
 					appon = true;
 					break;
 				}
-				TRACE(_T("QueryDriverApp%d %d\n"), i, GetTickCount());
+				//TRACE(_T("QueryDriverApp%d %d\n"), i, GetTickCount());
 			}
 			if (appon == false) {
 				//_DbgTrace(_T("Error retrieving assigned port from driver application\n"));
 				::ReleaseMutex(hMutex);
 				return false;
 			}
-			TRACE(_T("QueryDriverApp PROCID %d\n"), i, GetTickCount());
+			//TRACE(_T("QueryDriverApp PROCID %d\n"), i, GetTickCount());
 			if (QueryDriverApp(QUERY_PROCID_PKT, GetAssignPort(), dmy, NULL, 0, 0) == false) {
 				//_DbgTrace(_T("Error retrieving Process ID from driver application\n"));
 				::ReleaseMutex(hMutex);
-				TRACE(_T("QueryDriverApp PROCID done %d\n"), i, GetTickCount());
+				//TRACE(_T("QueryDriverApp PROCID done %d\n"), i, GetTickCount());
 				return false;
 			}
 		}
@@ -757,10 +763,6 @@ bool QueryDriverApp(PACKET_TYPE queryId, int localPort,
 /****************/
 bool OpenDriverApp() {	
 	//_DbgTrace(_T("\nOpenDriverApp()\n"));
-	//LPTSTR szCmdline=_tcsdup(TEXT("WindowsApplication1.exe"));
-	//LPPROCESS_INFORMATION procInfo;
-	//CreateProcess(szCmdline, NULL, NULL, NULL, false, CREATE_NEW_CONSOLE, NULL, NULL, NULL, procInfo);
-
 	TCHAR buf[MAX_PATH];
 	extern HANDLE myDLLHandle;
 	GetModuleFileName((HMODULE)myDLLHandle, buf, MAX_PATH);
@@ -787,7 +789,7 @@ bool OpenDriverApp() {
 	execInfo.lpDirectory = 0;
 	execInfo.nShow = SW_SHOW;
 	execInfo.hInstApp = 0;
-TRACE (_T("Loading %s\n"), buf);
+    //TRACE (_T("Loading %s\n"), buf);
 	if (ShellExecuteEx(&execInfo) == FALSE) {
 		::MessageBox(NULL, buf, _T(""), MB_OK);
 		return false;
@@ -804,69 +806,68 @@ TRACE (_T("Loading %s\n"), buf);
 void SendUDPClosePacket() {
 	if (assignPort <= 0) {
 		return;
-	}
-  //_DbgTrace(_T("SendUDPClosePacket()\n"));
-
-  char sendBuf[] = "close";
-  int bufLen = 5;
-  SendUDPPacket(inet_addr("127.0.0.1"), DRIVER_LISTEN_PORT, assignPort, sendBuf, bufLen);
-  assignPort = -1;
+	}   
+        
+    //_DbgTrace(_T("SendUDPClosePacket()\n"));    
+    char sendBuf[] = "close";
+    int bufLen = 5;
+    SendUDPPacket(inet_addr("127.0.0.1"), DRIVER_LISTEN_PORT, assignPort, sendBuf, bufLen);
+    assignPort = -1;
 }
 
 /******************/
 /* SendUDPPacket */
 /****************/
 void SendUDPPacket(unsigned long toIPAddr, int toPort, int fromPort, const char* buf, int bufLen) {
-	
-  	//trans udp here
-  WSADATA wsaData;
-  SOCKET SendSocket;
-  sockaddr_in ReplyAddr;
-  sockaddr_in ToAddr;
+    //trans udp here
+    WSADATA wsaData;
+    SOCKET SendSocket;
+    sockaddr_in ReplyAddr;
+    sockaddr_in ToAddr;
 
-  //---------------------------------------------
-  // Initialize Winsock
-  if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
-	  return;
-  }
+    //---------------------------------------------
+    // Initialize Winsock
+    if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
+        return;
+    }
 
-  //---------------------------------------------
-  // Create a socket for sending data
-  SendSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    
-  // Bind the socket to any address and the specified port.
-  if (fromPort > 0) {
-	  ReplyAddr.sin_family = AF_INET;
-	  ReplyAddr.sin_port = htons(fromPort);
-	  //ReplyAddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	  ReplyAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-	  bind(SendSocket, (SOCKADDR *) &ReplyAddr, sizeof(ReplyAddr));
-  }
+    //---------------------------------------------
+    // Create a socket for sending data
+    SendSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
-  //---------------------------------------------
-  // Set up the RecvAddr structure with the IP address of
-  // the receiver (in this example case "123.456.789.1")
-  // and the specified port number.
-  ToAddr.sin_family = AF_INET;
-  ToAddr.sin_port = htons(toPort);
-  ToAddr.sin_addr.s_addr = toIPAddr;
+    // Bind the socket to any address and the specified port.
+    if (fromPort > 0) {
+        ReplyAddr.sin_family = AF_INET;
+        ReplyAddr.sin_port = htons(fromPort);
+        //ReplyAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+        ReplyAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+        bind(SendSocket, (SOCKADDR *) &ReplyAddr, sizeof(ReplyAddr));
+    }
 
-  //---------------------------------------------
-  // Send a datagram to the receiver
-  sendto(SendSocket, 
-    buf, 
-    bufLen, 
-    0, 
-    (SOCKADDR *) &ToAddr, 
-    sizeof(ToAddr));
+    //---------------------------------------------
+    // Set up the RecvAddr structure with the IP address of
+    // the receiver (in this example case "123.456.789.1")
+    // and the specified port number.
+    ToAddr.sin_family = AF_INET;
+    ToAddr.sin_port = htons(toPort);
+    ToAddr.sin_addr.s_addr = toIPAddr;
 
-  //---------------------------------------------
-  // When the application is finished sending, close the socket.
-  closesocket(SendSocket);
+    //---------------------------------------------
+    // Send a datagram to the receiver
+    sendto(SendSocket, 
+        buf, 
+        bufLen, 
+        0, 
+        (SOCKADDR *) &ToAddr, 
+        sizeof(ToAddr));
 
-  //---------------------------------------------
-  // Clean up and quit.
-  WSACleanup();
+    //---------------------------------------------
+    // When the application is finished sending, close the socket.
+    closesocket(SendSocket);
+
+    //---------------------------------------------
+    // Clean up and quit.
+    WSACleanup();
 }
 
 /******************/
@@ -1154,13 +1155,7 @@ void ProcessDataPacket(char* data, SOCKET RecvSocket, sockaddr_in RecvAddr)
 			//_DbgTrace(_T("sendJ1708confirmfail"));
 		}
 		else if (strcmp(pktType, "sendJ1708success") == 0) {
-			CritSection cs;
-			/*for (int i = 0; i < 80; i++) {
-				if (connections[clientid].UpdateTransaction(isnotify, transid, 0)) {
-					break;
-				}
-				::Sleep(10);
-			}*/
+			CritSection cs;			
 			if (connections[clientid].UpdateTransaction(isnotify, transid, 0) == FALSE) {
 				//_DbgTrace(_T("sendj1708succes EARLY :(\n"));
 			}

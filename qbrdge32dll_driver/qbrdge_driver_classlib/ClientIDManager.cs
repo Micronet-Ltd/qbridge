@@ -176,7 +176,7 @@ namespace qbrdge_driver_classlib
             SerialPortInfo sinfo = new SerialPortInfo();
             if (QBSerial.GetSerialPortInfo(comNumStr, ref sinfo))
             {
-                Debug.WriteLine("GetSerialPortInfo OK");
+                //Debug.WriteLine("GetSerialPortInfo OK");
                 clientIds[clientId].serialInfo = sinfo;
 
                 if (sinfo.qbInitNeeded)

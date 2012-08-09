@@ -238,7 +238,7 @@ namespace qbrdge_driver_classlib
             {
                 PendingIDX = data[1];
                 IDXMax = PendingIDX + data[0];
-                Debug.WriteLine("RECV CTS: " + PendingIDX.ToString() + " -> " + IDXMax.ToString());
+                //Debug.WriteLine("RECV CTS: " + PendingIDX.ToString() + " -> " + IDXMax.ToString());
                 if (isDone == false)
                     StartTimer();
             }
@@ -513,7 +513,7 @@ namespace qbrdge_driver_classlib
                 return iscomplete;
             }
 
-            Debug.WriteLine("CURRSEQ: " + seqNum.ToString() + " HX: "+seqNum.ToString("X2"));
+            //Debug.WriteLine("CURRSEQ: " + seqNum.ToString() + " HX: "+seqNum.ToString("X2"));
 
             if (seqNum > main_status.Length || data.Length != 7)
             {
@@ -565,7 +565,7 @@ namespace qbrdge_driver_classlib
             if (num_retries > 0)
             {
                 num_retries--;
-                Debug.WriteLine("TIMEOUT RESEND CTS "+port_info.com.PortName);
+                //Debug.WriteLine("TIMEOUT RESEND CTS "+port_info.com.PortName);
                 SendCTSPacket(true);
                 StartTimer();
             }
@@ -683,13 +683,13 @@ namespace qbrdge_driver_classlib
                 return iscomplete;
             }
 
-            Debug.WriteLine("SEQNUM: " + seqNum.ToString());
-            Debug.Write("SEQDATA: ");
+            //Debug.WriteLine("SEQNUM: " + seqNum.ToString());
+            //Debug.Write("SEQDATA: ");
             for (int i = 0; i < data.Length; i++)
             {
-                Debug.Write(data[i].ToString() + ",");
+                //Debug.Write(data[i].ToString() + ",");
             }
-            Debug.WriteLine("");
+            //Debug.WriteLine("");
 
             //add data to main_data
             byte[] new_data = new byte[main_data.Length + data.Length];

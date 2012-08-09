@@ -19,21 +19,70 @@ namespace qbrdge_driver_classlib
         {
         }
 
-        public SerialPort com;
+        public SerialPort com = null;
+        public void StartRead()
+        {
+            com.ReadTimeout = 200;
+            readThread = new Thread(new ThreadStart(ThreadRead));
+            readThread.IsBackground = true;
+            readThread.Priority = RP1210DllCom.sysThreadPriority;
+            readThread.Start();
+        }
 
         public int lastRecvPktId = 0;
 
-        public byte[] inBuff = new byte[10000];
+        private const int MAX_BUFFSIZE = 10000;
+        public byte[] inBuff = new byte[MAX_BUFFSIZE];
         public int inBuffLen = 0;
 
         public List<QBTransaction> QBTransactionNew = new List<QBTransaction>();
         public List<QBTransaction> QBTransactionSent = new List<QBTransaction>();
-
         public List<QBTransaction> QBTransJ1939Pending = new List<QBTransaction>();
 
         public bool qbInitNeeded = true;
-
         public bool requestRawMode = false;
+        public Thread readThread = null;
+
+        public void ThreadRead()
+        {
+            Support._DbgTrace("ReadThread Priority: " + Thread.CurrentThread.Priority.ToString());
+            while (true)
+            {
+                try
+                {
+                    int inDataLen = com.Read(inBuff, inBuffLen, inBuff.Length - inBuffLen);
+                    lock (Support.lockThis)
+                    {
+                        inBuffLen = inBuffLen + inDataLen;
+                        if (inBuffLen > 0)
+                        {
+                            QBSerial.DataReceived(this);
+
+                            QBSerial.CheckSendMsgQ();
+                        }
+                        if (inBuffLen > (MAX_BUFFSIZE - 1000)) { inBuffLen = 0; }
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    //the specified port is not open
+                    return;
+                }
+                catch (Exception) { }
+                try
+                {
+                    if (com == null) {
+                        return;
+                    }
+                    if (com.IsOpen == false)
+                    {
+                        return;
+                    }
+                }
+                catch (Exception) { }
+            }
+        }
+
         public bool GetReplyPending()
         {
 #if IS_STOP_WAIT
@@ -188,18 +237,15 @@ namespace qbrdge_driver_classlib
                 }
                 catch (Exception exp)
                 {
-                    Debug.WriteLine(exp.ToString());
+                    //Debug.WriteLine(exp.ToString());
                     RP1210DllCom.UdpSend("-4", iep);
                     return;
                 }
             }
 
-
-            // Attach a method to be called when there is data waiting in the port's buffer
-            
-            com.DataReceived += new SerialDataReceivedEventHandler(port_DataReceived);
-
+            //com is opened, ready to use, attach to serialinfo where reading will take place
             newcom.com = com;
+            newcom.StartRead();
 
             ReInitSerialPort(ref newcom, clientId);
 
@@ -311,7 +357,7 @@ namespace qbrdge_driver_classlib
                     }
                     catch (Exception e)
                     {
-                        Debug.WriteLine(e.ToString());
+                        //Debug.WriteLine(e.ToString());
                     }
                     return;
                 }
@@ -476,82 +522,15 @@ namespace qbrdge_driver_classlib
             }
         }
 
-        private static void port_DataReceived(object sender, SerialDataReceivedEventArgs e)
+        public static void DataReceived(SerialPortInfo portInfo)
         {
-            Support._DbgTrace("DataRecvTread: " + Thread.CurrentThread.Priority.ToString());
-            Thread.CurrentThread.Priority = RP1210DllCom.sysThreadPriority;
-            lock (Support.lockThis)
+            if (portInfo.QBTransactionNew.Count == 0)
             {
-                DataReceived(sender);
-
-                CheckSendMsgQ();
+                portInfo.RestartTimer();
             }
-        }
-
-        private static void DataReceived(object sender)
-        {
-            SerialPort com = (SerialPort)sender;
-            SerialPortInfo portInfo = null;
-            
-            //start or stop recv timer in SInfo
-            foreach (SerialPortInfo serialInfo in comPorts)
+            else
             {
-                if (serialInfo.com.PortName.Equals(com.PortName))
-                {
-                    if (serialInfo.QBTransactionNew.Count == 0)
-                    {
-                        serialInfo.RestartTimer();
-                    }
-                    else
-                    {
-                        serialInfo.StopTimer();
-                    }
-                }
-            }
-
-            try
-            {
-                int rxSize = (com.BytesToRead * 2) + 200;
-                byte[] inData = new byte[rxSize];
-                com.ReadTimeout = 200;
-                if (com.BytesToRead == 0)
-                {
-                    return;
-                }
-                int inDataLen = com.Read(inData, 0, rxSize);
-                
-                // Show all the incoming data in the port's buffer
-                Debug.Write(com.PortName + " Data: ");
-                for (int i = 0; i < inDataLen; i++)
-                {
-                    byte b = (byte)inData[i];
-                    Debug.Write(b.ToString("X2") + ",");
-                }
-                Debug.WriteLine("");
-
-                // get port info object
-                for (int i = 0; i < comPorts.Count; i++)
-                {
-                    if (comPorts[i].com.PortName == com.PortName)
-                    {
-                        portInfo = comPorts[i];
-                        break;
-                    }
-                }
-                
-                Array.Copy(inData, 0, portInfo.inBuff, portInfo.inBuffLen, inDataLen);
-                portInfo.inBuffLen = portInfo.inBuffLen + inDataLen;
-            }
-            catch (System.TimeoutException texp)
-            {
-                texp.ToString();
-                //TimeOut Exception OK
-                return;
-            }
-            catch (Exception)
-            { 
-                // this shouldn't happen
-                return;
+                portInfo.StopTimer();
             }
 
             if (portInfo.fwUpgrade)
@@ -894,7 +873,7 @@ namespace qbrdge_driver_classlib
             }
             else {
                 Support._DbgTrace("Undefined Data Received");
-                Debug.Write("Undefined Data Received: ");
+                //Debug.Write("Undefined Data Received: ");
             }
         }
 
@@ -1110,7 +1089,7 @@ namespace qbrdge_driver_classlib
                 if (pgn[1] == 0xEC && pgn[2] == 0x00 && pktData[5] == 32)
                 {
                     //TP.CAM_BAM packet
-                    Debug.WriteLine("BAM PKT "+portInfo.com.PortName);
+                    //Debug.WriteLine("BAM PKT "+portInfo.com.PortName);
                     byte[] data_pgn = new byte[3];
                     data_pgn[0] = pktData[5+5];
                     data_pgn[1] = pktData[5+6];
@@ -1129,7 +1108,7 @@ namespace qbrdge_driver_classlib
                 else if (pgn[1] == 0xEC && pktData[5] == 16)
                 {
                     //TP.CM_RTS
-                    Debug.WriteLine("TP.CM_RTS PKT "+portInfo.com.PortName);
+                    //Debug.WriteLine("TP.CM_RTS PKT "+portInfo.com.PortName);
 
                     //verify claimed address of a client matches destination address (DA)
                     int clientIdx = -1;
@@ -1175,7 +1154,7 @@ namespace qbrdge_driver_classlib
                 else if (pgn[1] == 0xEB && pgn[2] == 0x00)
                 {
                     //TP.DT packet
-                    Debug.WriteLine("TP.DT PKT " + portInfo.com.PortName);
+                    //Debug.WriteLine("TP.DT PKT " + portInfo.com.PortName);
                     //check each BAM receiver
                     for (int i = 0; i < BAMRecvList.Count; i++)
                     {
@@ -1232,11 +1211,11 @@ namespace qbrdge_driver_classlib
                     //TP.CM_CTS or TP.CM_EndOfMsgACK packet
                     if (pktData[5] == 17)
                     {
-                        Debug.WriteLine("TP.CM_CTS " + portInfo.com.PortName);
+                        //Debug.WriteLine("TP.CM_CTS " + portInfo.com.PortName);
                     }
                     else
                     {
-                        Debug.WriteLine("EndOfMsgAck PKT " + portInfo.com.PortName);
+                        //Debug.WriteLine("EndOfMsgAck PKT " + portInfo.com.PortName);
                     }
                     byte[] temp = new byte[7];
                     for (int j = 0; j < 7; j++)
@@ -1357,19 +1336,19 @@ namespace qbrdge_driver_classlib
             newpkt[9] = DA;
 
             /*
-            Debug.Write("READ PKT: ");
+            //Debug.Write("READ PKT: ");
             for (int i = 0; i < newpkt.Length; i++)
             {
-                Debug.Write(newpkt[i].ToString() + ",");
+                //Debug.Write(newpkt[i].ToString() + ",");
             }
-            Debug.WriteLine("");
+            //Debug.WriteLine("");
              */
             NewClientsJ1939ReadMessage(newpkt, portName, ignoreClientId);
         }
 
         private static void NewClientsJ1939ReadMessage(byte[] readMsg, string portName, int ignoreClientId)
         {
-            Debug.WriteLine("J1939 SingPkt " + portName);
+            //Debug.WriteLine("J1939 SingPkt " + portName);
             for (int i = 0; i < ClientIDManager.clientIds.Length; i++)
             {
                 if (i != ignoreClientId)
@@ -1389,7 +1368,7 @@ namespace qbrdge_driver_classlib
                 if (clientInfo.J1939Filter == false)
                 {
                     //if client is registered to receiving port then send message
-                    Debug.WriteLine("J1939 Client " + client.ToString() + " readmsg sent " + portName);
+                    //Debug.WriteLine("J1939 Client " + client.ToString() + " readmsg sent " + portName);
                     Support.SendClientDataPacket(UDPReplyType.readmessage,
                         client, readMsg);
                 }
@@ -1535,7 +1514,7 @@ namespace qbrdge_driver_classlib
                     }
                     catch (Exception exp)
                     {
-                        Debug.WriteLine(exp.ToString());
+                        //Debug.WriteLine(exp.ToString());
                         SendClientErrorPacket(qbt);
                     }
                     serialInfo.QBTransactionNew.RemoveAt(i);
@@ -1927,7 +1906,7 @@ namespace qbrdge_driver_classlib
                 SystemParametersInfo(SPI_GETPLATFORMNAME, (uint)termName.Length, termName, 0);
             }
             catch (Exception exp) {
-                Debug.WriteLine(exp.StackTrace);
+                //Debug.WriteLine(exp.StackTrace);
             }
             return termName;
         }
@@ -1989,13 +1968,13 @@ namespace qbrdge_driver_classlib
                 }
                 outData = Support.StringToByteArray(fileData.Substring(idx1, idx2 - idx1 + 1));
 
-              //  Debug.Write("OUT " + com.PortName + ": ");
+              //  //Debug.Write("OUT " + com.PortName + ": ");
 //                for (int j = 0; j < outData.Length; j++)
 //                {
 //                    byte b = (byte)outData[j];
-//                    Debug.Write(b.ToString("X2") + ",");
+//                    //Debug.Write(b.ToString("X2") + ",");
 //                }
-//                Debug.WriteLine("");
+//                //Debug.WriteLine("");
 
                 com.Write(outData, 0, outData.Length);
                 try
@@ -2004,7 +1983,7 @@ namespace qbrdge_driver_classlib
                 }
                 catch (Exception exp)
                 {
-                    Debug.WriteLine("FIRMWARE UPGRADE FAILED "+exp.ToString());
+                    //Debug.WriteLine("FIRMWARE UPGRADE FAILED "+exp.ToString());
                     com.Close();
                     return false;
                 }

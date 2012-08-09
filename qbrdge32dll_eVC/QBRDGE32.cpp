@@ -116,7 +116,7 @@ BOOL APIENTRY DllMain( HANDLE hModule,
 RP1210A_API RP1210AReturnType WINAPI RP1210_ClientConnect (HWND hwndClient, short nDeviceID, char far* fpchProtocol, long lTxBufferSize, long lRcvBufferSize, short nIsAppPacketizingIncomingMsgs) {
 	CritSection cs;
 	if (ConnectToDriverApp() == false) {
-		_DbgTrace(_T("ConnectToDriverApp RP1210_ClientConnect failed"));
+		//_DbgTrace(_T("ConnectToDriverApp RP1210_ClientConnect failed"));
 		return ERR_MISC_COMMUNICATION;
 	}
 	if ((nDeviceID >= QBRIDGE_COM1) && (nDeviceID <= QBRIDGE_COM9)) {
@@ -140,7 +140,7 @@ RP1210A_API RP1210AReturnType WINAPI RP1210_ClientConnect (HWND hwndClient, shor
 RP1210AReturnType RP1210A_API WINAPI RP1210_ClientDisconnect (short nClientID) {
 	CritSection cs;
 	if (ConnectToDriverApp() == false) {
-		_DbgTrace(_T("RP1210_ClientDisconnect failed"));
+		//_DbgTrace(_T("RP1210_ClientDisconnect failed"));
 		return ERR_MISC_COMMUNICATION;
 	}
 	return Disconnect(nClientID);
@@ -202,7 +202,7 @@ RP1210AReturnType RP1210A_API WINAPI RP1210_SendCommand (short nCommandNumber, s
 RP1210A_API void WINAPI RP1210_GetStatusInfo(TCHAR *buf, int size) {
 	CritSection cs;
 	if (ConnectToDriverApp() == false) {
-		_DbgTrace(_T("RP1210_GetStatusInfo failed"));
+		//_DbgTrace(_T("RP1210_GetStatusInfo failed"));
 	}
 	GetStatusInfo(buf, size);
 	return;
@@ -214,10 +214,10 @@ RP1210A_API void WINAPI RP1210_GetStatusInfo(TCHAR *buf, int size) {
 RP1210A_API void WINAPI RP1210_ReadVersion (char far* fpchDLLMajorVersion,	char far* fpchDLLMinorVersion,	char far* fpchAPIMajorVersion,	char far* fpchAPIMinorVersion) 
 {
 	CritSection cs;
-	fpchDLLMajorVersion[0] = 0x31;
-	fpchDLLMinorVersion[0] = 0x34;
+	fpchDLLMajorVersion[0] = '1';
+	fpchDLLMinorVersion[0] = '5';
 	fpchAPIMajorVersion[0] = '2';
-	fpchAPIMinorVersion[0] = '3';
+	fpchAPIMinorVersion[0] = '4';
 }
 
 /*****************************/
@@ -234,6 +234,7 @@ RP1210AReturnType RP1210A_API WINAPI RP1210_GetHardwareStatus (short nClientID, 
 /* RP1210Trace */
 /**************/
 void RP1210Trace(_TCHAR *formatStr, ...) {
+    /*
 	static bool newLine = true;
 	_TCHAR buf[2048];
 	_TCHAR *bufPtr = buf;
@@ -256,6 +257,7 @@ void RP1210Trace(_TCHAR *formatStr, ...) {
 	}
 
 	OutputDebugString(buf);
+    */
 }
 
 /**************/
@@ -285,6 +287,7 @@ void ToAnsi(const TCHAR *unicodeBuf, char *buf, int size) {
 void _DbgTrace(_TCHAR *formatStr, ...)
 {
 	//return;
+    /*
 #ifdef UDP_DEBUG_SEND
 	static bool newLine = true;
 	_TCHAR buf[2048];
@@ -354,9 +357,11 @@ void _DbgTrace(_TCHAR *formatStr, ...)
   // Clean up and quit.
   WSACleanup();
 #endif
+  */
 }
 
 void _DbgPrintErrCode(DWORD errCode) {	
+    /*
 	if (errCode == WSANOTINITIALISED) {
 		_DbgTrace(_T("A successful AfxSocketInit must occur before using this API.\r\n"));
 	}
@@ -415,4 +420,5 @@ void _DbgPrintErrCode(DWORD errCode) {
 		_DbgTrace(_T("\n"));
 
 	}
+    */
 }
