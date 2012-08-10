@@ -204,7 +204,11 @@ namespace qbrdge_driver_classlib
             {
                 if (clientIds[i].dllInPort == port)
                 {
-                    RemoveClientID(i, port);
+                    try
+                    {
+                        RemoveClientID(i, port);
+                    }
+                    catch (Exception) { }
                 }
             }
         }
