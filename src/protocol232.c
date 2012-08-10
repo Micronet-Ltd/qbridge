@@ -47,7 +47,6 @@ static CircleQueue txPackets;
 static bool awaiting232Ack;
 static UINT32 awaiting232TxTime = 0;
 static int awaiting232FailCount = 0;
-
 static int dropped_due_to_slow_host = 0;
 
 
@@ -57,6 +56,8 @@ static void get_CAN_filters( UINT8 id, char *data, int dataLen );
 #ifdef _DEBUG
 static void dopjdebug( UINT8 id, UINT8 *data, int dataLen);
 #endif
+
+bool advRecvEnabled = false;
 
 //GPJ... had to modify these for the new oscillator (for CAN -- 12MHz osc, 24MHz system clock
 //GPJ... not sure what to do, match comment or match values.  Times based on values here
@@ -565,6 +566,10 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
             dopjdebug( id, data, dataLen );
             break;
 #endif
+		case AdvRecvMode:
+			advRecvEnabled = (data[0]!=0);
+			Send232Ack (ACK_OK, id, &advRecvEnabled, sizeof(advRecvEnabled));
+			break;
         case J1708TransmitConfirm:
         case ReceiveJ1708Packet:
         case ReceiveCANPacket:
@@ -669,8 +674,18 @@ void Transmit232IfReady() {
 void RetryLast232() {
 //DebugPrint ("RetryLast232 %02X, retrycount=%d", last232Command, awaiting232FailCount);
     TransmitFinal232Packet (last232Command, last232PacketID, last232Data, last232DataLen);
-    awaiting232Ack = true;
-    awaiting232TxTime = Get_uS_TimeStamp();
+	
+	/*awaiting232Ack = true;
+	*/
+	if(((last232Command == ReceiveJ1708Packet)||(last232Command == ReceiveCANPacket))
+		&& advRecvEnabled)
+	{
+		awaiting232Ack = false;
+		return;
+	}else{
+		awaiting232Ack = true;
+	}
+	awaiting232TxTime = Get_uS_TimeStamp();
 }
 
 /***************************/

@@ -36,7 +36,8 @@ typedef enum _Commands {
     GetInfo                     = 'M', //0x4D
     CANbusErr                   = 'N', //0x4E
     MiscControl                 = 'O', //0x4f
-    InfoReq                     = '*', //0x2A
+    AdvRecvMode                 = 'P', //0x50
+	InfoReq                     = '*', //0x2A
     RawJ1708                    = '+', //0x2B
     ReqRawPackets               = ',', //0x2C
     ReqEcho                     = '-', //0x2D
@@ -56,4 +57,7 @@ void Transmit232IfReady();
 void RetryLast232();
 
 extern UINT32 getPktIDcounter( void );
+
+extern bool advRecvEnabled;
+
 #endif // PROTOCOL232_H
