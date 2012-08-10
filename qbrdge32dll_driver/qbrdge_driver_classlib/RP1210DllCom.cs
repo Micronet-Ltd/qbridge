@@ -74,12 +74,12 @@ namespace qbrdge_driver_classlib
             aliveThread = new Thread(new ThreadStart(KeepProgramAlive));
             aliveThread.Priority = ThreadPriority.BelowNormal;
             aliveThread.Start();
-            Support._DbgTrace("aliveThread started, thread priority: " + threadPriority.ToString());
+            //Support._DbgTrace("aliveThread started, thread priority: " + threadPriority.ToString());
 
             udpListenThread = new Thread(new ThreadStart(UdpListen));
             udpListenThread.Priority = sysThreadPriority;
             udpListenThread.Start();
-            Support._DbgTrace("udpListenThread started");
+            //Support._DbgTrace("udpListenThread started");
 
             for (int i = 0; i < dllPortAvailable.Length; i++)
             {
@@ -116,14 +116,14 @@ namespace qbrdge_driver_classlib
         {
             while (true)
             {
-                Support._DbgTrace("AliveThread Loop");
+                //Support._DbgTrace("AliveThread Loop");
                 Thread.CurrentThread.Join();
             }
         }
 
         public static void EndProgram()
         {
-            Support._DbgTrace("end program");
+            //Support._DbgTrace("end program");
             udpListener.Close();
             try
             {
@@ -189,7 +189,7 @@ namespace qbrdge_driver_classlib
                     sysThreadPriority = ThreadPriority.Normal;
                     break;
             }
-            Support._DbgTrace("ThreadPriority: " + sysThreadPriority.ToString() + ", " + threadPriority.ToString());
+            //Support._DbgTrace("ThreadPriority: " + sysThreadPriority.ToString() + ", " + threadPriority.ToString());
         }
  
         public static void UdpListen()
@@ -1010,8 +1010,8 @@ namespace qbrdge_driver_classlib
                 sinfo.com.Write(outPkt, 0, outPkt.Length);
 
                 //*very important* Re-Enable Transmit Confirm
-                byte[] pData = new byte[1];
-                pData[0] = 0x01;
+                pktData = new byte[1];
+                pktData[0] = 0x01;
                 cmdType = PacketCmdCodes.PKT_CMD_ENABLE_J1708_CONFIRM;
                 outPkt = QBSerial.MakeQBridgePacket(cmdType, pktData, ref pktId);
                 sinfo.com.Write(outPkt, 0, outPkt.Length);
@@ -1019,10 +1019,12 @@ namespace qbrdge_driver_classlib
                 UpdateQBridgeJ1708Filters(clientId);
 
                 //Enabled Advanced Receive Mode
-                pData[0] = 0x01;
+                pktData = new byte[1];
+                pktData[0] = 0x01;
                 cmdType = PacketCmdCodes.PKT_CMD_ENABLE_ADV_RCV;
                 outPkt = QBSerial.MakeQBridgePacket(cmdType, pktData, ref pktId);
                 sinfo.com.Write(outPkt, 0, outPkt.Length);
+                //Support._DbgTrace("PKT_CMD_ENABLE_ADV_RCV\r\n");
             }
             catch (Exception) { }
         }
@@ -1169,7 +1171,7 @@ namespace qbrdge_driver_classlib
         {
             Thread.CurrentThread.Priority = RP1210DllCom.sysThreadPriority;
 
-            Support._DbgTrace("DllHelloReplyTimeOut");
+            //Support._DbgTrace("DllHelloReplyTimeOut");
             lock (Support.lockThis)
             {
                 dllPortInfo dllPort = helloReplyDllPort;

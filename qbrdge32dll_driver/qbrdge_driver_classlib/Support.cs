@@ -159,16 +159,19 @@ namespace qbrdge_driver_classlib
             /*UdpClient uc = new UdpClient();
             byte[] outb = Support.StringToByteArray(outString);
             IPEndPoint iep = new IPEndPoint(IPAddress.Loopback, UDP_DEBUG_PORT);
-            uc.Send(outb, outb.Length, iep);*/
+            uc.Send(outb, outb.Length, iep);*/            
             /*
-            if (dbgSPort == null)
-            {
-                dbgSPort = new SerialPort("COM2");
-                dbgSPort.BaudRate = 115200;
-                dbgSPort.Open();
+            try {
+                if (dbgSPort == null)
+                {
+                    dbgSPort = new SerialPort("COM2");
+                    dbgSPort.BaudRate = 115200;
+                    dbgSPort.Open();
+                }
+                dbgSPort.Write(outString);
             }
-            dbgSPort.WriteLine(outString);
-             */
+            catch (Exception) {}
+             */             
             return;
         }
     }
