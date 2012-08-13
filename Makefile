@@ -7,7 +7,7 @@
 #  Defines  #
 #############
 
-version	        := V0.008
+version	        := V0.009
 test_version    :=
 versdash        := -
 
@@ -80,6 +80,8 @@ rvdebug: doecho $(target).bin
 
 ##########################################
 # TARGET WITH MODEM RESET (see QCO #796) #
+# After 13 Aug 2012, always define		 #
+# MODEM_RESET in main.c . No need here   #
 ##########################################
 
 modemreset: defs += -DMODEM_RESET

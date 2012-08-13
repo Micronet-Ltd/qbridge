@@ -43,6 +43,7 @@
 /***********/
 /* Defines */
 /***********/
+#define MODEM_RESET 1 //since 13 Aug, 2012, always enable it
 
 /************/
 /* TypeDefs */
