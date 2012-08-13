@@ -38,6 +38,7 @@ namespace QBridgeFirmwareUpgrade
             this.DLProgress = new System.Windows.Forms.ProgressBar();
             this.ofd = new System.Windows.Forms.OpenFileDialog();
             this.serPort = new System.IO.Ports.SerialPort(this.components);
+            this.HideForm1 = new System.Windows.Forms.Timer();
             this.SuspendLayout();
             // 
             // MyLBL
@@ -111,6 +112,11 @@ namespace QBridgeFirmwareUpgrade
             this.serPort.BaudRate = 115200;
             this.serPort.ReadTimeout = 0;
             // 
+            // HideForm1
+            // 
+            this.HideForm1.Interval = 1;
+            this.HideForm1.Tick += new System.EventHandler(this.timer1_Tick);
+            // 
             // UpdateFWForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
@@ -143,6 +149,7 @@ namespace QBridgeFirmwareUpgrade
         private System.Windows.Forms.ProgressBar DLProgress;
         private System.Windows.Forms.OpenFileDialog ofd;
         private System.IO.Ports.SerialPort serPort;
+        private System.Windows.Forms.Timer HideForm1;
     }
 }
 
