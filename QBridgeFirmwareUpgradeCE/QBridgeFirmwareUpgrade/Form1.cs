@@ -1,3 +1,10 @@
+//******** Version History **********//
+
+//  Ver     Date        Modifier    Description 
+//  1.00    10/26/2010  PJ          Convert to VS2008, fix problems so it will actually run correctly
+//  1.01    10/07/2011  PJ          Add more COM ports so we can get to the correct COM port for VM
+//  1.02    08/13/2012  BED         Added command line support for the firmware upgrader.
+
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;

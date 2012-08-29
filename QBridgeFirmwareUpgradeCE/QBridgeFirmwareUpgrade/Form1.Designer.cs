@@ -132,7 +132,7 @@ namespace QBridgeFirmwareUpgrade
             this.Controls.Add(this.MyLBL);
             this.Location = new System.Drawing.Point(0, 56);
             this.Name = "UpdateFWForm";
-            this.Text = "Update QBridge Firmware";
+            this.Text = "QBridge Firmware Upgrader v1.02";
             this.Load += new System.EventHandler(this.UpdateFWForm_Load);
             this.ResumeLayout(false);
 
