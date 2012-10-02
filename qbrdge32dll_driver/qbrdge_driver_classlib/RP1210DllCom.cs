@@ -266,7 +266,18 @@ namespace qbrdge_driver_classlib
                 {
                     // Get Process ID
                     int procid = Process.GetCurrentProcess().Id;
-                    UdpSend(procid.ToString(), iep);
+                    // It's possible UdpSend may throw exception if process is not responding.
+                    try
+                    {
+                        UdpSend(procid.ToString(), iep);
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // Kill process to avoid "zombie" processes when RP1210ClientConnect is called
+                        Process proc = Process.GetProcessById(procid);
+                        proc.Kill();
+
+                    }
                 }
                 else if (sdata == "ack")
                 {
@@ -1093,10 +1104,10 @@ namespace qbrdge_driver_classlib
 
         public static void UdpSend(string text, IPEndPoint iep)
         {
-            byte[] outData = Support.StringToByteArray(text);
-            IPEndPoint outIep = new IPEndPoint(IPAddress.Loopback, iep.Port);
-            udpListener.Send(outData, outData.Length, outIep);
-            //udpListener.Send(outData, outData.Length, "127.0.0.1", iep.Port);
+                byte[] outData = Support.StringToByteArray(text);
+                IPEndPoint outIep = new IPEndPoint(IPAddress.Loopback, iep.Port);
+                udpListener.Send(outData, outData.Length, outIep);
+                //udpListener.Send(outData, outData.Length, "127.0.0.1", iep.Port);
         }
 
         public static void UdpSend(string text, int port)
