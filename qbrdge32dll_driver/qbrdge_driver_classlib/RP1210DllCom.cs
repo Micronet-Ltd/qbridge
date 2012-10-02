@@ -273,6 +273,8 @@ namespace qbrdge_driver_classlib
                     }
                     catch (ObjectDisposedException)
                     {
+                        EndProgram();
+
                         // Kill process to avoid "zombie" processes when RP1210ClientConnect is called
                         Process proc = Process.GetProcessById(procid);
                         proc.Kill();
