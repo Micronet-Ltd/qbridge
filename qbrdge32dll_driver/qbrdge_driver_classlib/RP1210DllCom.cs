@@ -195,7 +195,18 @@ namespace qbrdge_driver_classlib
         public static void UdpListen()
         {
             // setup udp listener
-            udpListener = new UdpClient(udpCorePort);
+            try
+            {
+                udpListener = new UdpClient(udpCorePort);
+            }
+            catch (SocketException)
+            {
+                // Socket exception is generally thrown when two instances of QBridgeWinCEDriver.exe are launched.
+
+                // Get process and kill it, this will also terminate all threads
+                Process proc = Process.GetCurrentProcess();
+                proc.Kill();
+            }
             udpListener.Client.Blocking = true;
             IPEndPoint iep = new IPEndPoint(IPAddress.Any, 0);
 
@@ -266,20 +277,9 @@ namespace qbrdge_driver_classlib
                 {
                     // Get Process ID
                     int procid = Process.GetCurrentProcess().Id;
-                    // It's possible UdpSend may throw exception if process is not responding.
-                    try
-                    {
+                 
                         UdpSend(procid.ToString(), iep);
-                    }
-                    catch (ObjectDisposedException)
-                    {
-                        EndProgram();
 
-                        // Kill process to avoid "zombie" processes when RP1210ClientConnect is called
-                        Process proc = Process.GetProcessById(procid);
-                        proc.Kill();
-
-                    }
                 }
                 else if (sdata == "ack")
                 {
@@ -1106,18 +1106,60 @@ namespace qbrdge_driver_classlib
 
         public static void UdpSend(string text, IPEndPoint iep)
         {
+            // It's possible UdpClient.Send may throw exception if process is not responding.
+            try
+            {
                 byte[] outData = Support.StringToByteArray(text);
                 IPEndPoint outIep = new IPEndPoint(IPAddress.Loopback, iep.Port);
                 udpListener.Send(outData, outData.Length, outIep);
                 //udpListener.Send(outData, outData.Length, "127.0.0.1", iep.Port);
+            }
+            catch (Exception ex)
+            {
+                // May also get socket exception is Udp listener is closed in a separate thread
+                if (ex is ObjectDisposedException || ex is SocketException)
+                {
+                    // End threads and get out
+                    EndProgram();
+
+                    // Kill process to avoid multiple instances of the same process
+                    Process proc = Process.GetCurrentProcess();
+                    proc.Kill();
+                }
+                else
+                    // Wasn't an exception we're looking for so rethrow it
+                    throw;
+
+            }
+
         }
 
         public static void UdpSend(string text, int port)
         {
-            byte[] outData = Support.StringToByteArray(text);
-            IPEndPoint outIep = new IPEndPoint(IPAddress.Loopback, port);
-            udpListener.Send(outData, outData.Length, outIep);
-            //udpListener.Send(outData, outData.Length, "127.0.0.1", port);
+            try
+            {
+                byte[] outData = Support.StringToByteArray(text);
+                IPEndPoint outIep = new IPEndPoint(IPAddress.Loopback, port);
+                udpListener.Send(outData, outData.Length, outIep);
+                //udpListener.Send(outData, outData.Length, "127.0.0.1", port);
+            }
+            catch (Exception ex)
+            {
+                // May also get socket exception is Udp listener is closed in a separate thread
+                if (ex is ObjectDisposedException || ex is SocketException)
+                {
+                    // End threads and get out
+                    EndProgram();
+
+                    // Kill process to avoid multiple instances of the same process
+                    Process proc = Process.GetCurrentProcess();
+                    proc.Kill();
+                }
+                else
+                    // Wasn't an exception we're looking for so rethrow it
+                    throw;
+
+            }
         }
 
         private static void StartHelloTimer()
