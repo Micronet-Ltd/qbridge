@@ -69,7 +69,15 @@ namespace qbrdge_driver_classlib
                     //the specified port is not open
                     return;
                 }
-                catch (Exception) { }
+                catch (TimeoutException) {
+                    continue;
+                }
+                catch (Exception) {
+                    try {
+                        com.Close();
+                    }
+                    catch (Exception) { }
+                }
                 try
                 {
                     if (com == null) {
@@ -80,7 +88,9 @@ namespace qbrdge_driver_classlib
                         return;
                     }
                 }
-                catch (Exception) { }
+                catch (Exception) {
+                    return;
+                }
             }
         }
 
