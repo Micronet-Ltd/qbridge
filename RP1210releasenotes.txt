@@ -1,10 +1,16 @@
+v1527 Release Candidate, Oct 10, 2012
+- Added additional exception handling to serial port thread
+- RTS/CTS connections will closed when a TP connection abort packet is recieved.
+
+v1526 BETA, Oct 3, 2012
+- Added socket exception handling for when two or more instances of QBridgeWinCEDriver.exe are started. The second process will now terminate automatically.
+- Updated ObjectDisposed Exception handling from UdpClient.Send, possibly from a host already being specified or race condition with a closed UdpClient on a separate thread.
+
 v1524 Release Candidate, Aug 9, 2012
 - updating version number to sync with RP1210 ReadVersion API.
 - Changed UDP timers to use "Change" functions instead of "Dispose" to restart
 - Changing a DWORD key "Priority" under LOCAL_MACHINE "SOFTWARE\\RP1210" to a value between 249-252 will change the priority of some threads in RP1210, but not all.
 - Added Enable Advanced Receive mode to init sequence of RP1210
-- Added code to re-init and clear serial buffer after first opening serial port before starting
-initialization sequence.
 
 v1107 Release Candidate, May 23, 2012
 - Updated the clean-up code when closing J1939 client connections.

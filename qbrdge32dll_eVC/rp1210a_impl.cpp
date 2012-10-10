@@ -1171,6 +1171,11 @@ void ProcessDataPacket(char* data, SOCKET RecvSocket, sockaddr_in RecvAddr)
 			connections[clientid].UpdateTransaction(isnotify, transid, ERR_ADDRESS_LOST);
 			//_DbgTrace(_T("sendj1939addresslost"));
 		}
+        else if (strcmp(pktType, "sendJ1939TPAbort") == 0) {
+            //TP.Conn_Abort packet recieved during send of RTS/CTS stream
+            CritSection cs;
+            connections[clientid].UpdateTransaction(isnotify, transid, ERR_J1939_SEND_RTS_CTS_ABORT);
+        }
 	}
 }
  
