@@ -225,7 +225,13 @@ namespace qbrdge_driver_classlib
         //call this function when incoming CAN is recieved
         //it will parse it if needed for RTS/CTS
         //data is the last 7 bytes of the CAN packet data
-        public void ProcessCAN(byte sourceAddr, byte destAddr, byte controlByte, byte[] data) {
+        public void ProcessCAN(byte sourceAddr, byte destAddr, J1939TPCtrlBytes TPCtrlByte, byte[] data)
+        {
+            if (TPCtrlByte == J1939TPCtrlBytes.TP_Conn_Abort) 
+            {
+                Abort();
+                return;
+            }
             if (isDone)
             {
                 return;
@@ -234,7 +240,7 @@ namespace qbrdge_driver_classlib
             {
                 return;
             }
-            if (controlByte == 17 && sourceAddr == DA && destAddr == SA)
+            if (TPCtrlByte == J1939TPCtrlBytes.TP_CM_CTS && sourceAddr == DA && destAddr == SA)
             {
                 PendingIDX = data[1];
                 IDXMax = PendingIDX + data[0];
@@ -242,7 +248,7 @@ namespace qbrdge_driver_classlib
                 if (isDone == false)
                     StartTimer();
             }
-            else if (controlByte == 19 && sourceAddr == DA && destAddr == SA)
+            else if (TPCtrlByte == J1939TPCtrlBytes.TP_CM_EndOfMsgACK && sourceAddr == DA && destAddr == SA)
             {
                 isDone = true;
                 isComplete = true;
@@ -252,14 +258,12 @@ namespace qbrdge_driver_classlib
         }
 
         //abort RTS CTS
-        public void AddressAbort()
+        public void Abort()
         {
             isDone = true;
             isComplete = false;
             PendingCAN.Clear();
-            addrLost = true;
         }
-        public bool addrLost = false;
 
         //this function is called by the timer class when
         //the bampacket recieve has timed out
@@ -292,7 +296,7 @@ namespace qbrdge_driver_classlib
                 int timeInt = 10000;
                 if (useRTSCTS)
                 {
-                    timeInt = 120000;
+                    timeInt = 10000;
                 }
                 if (myTimer == null)
                 {
@@ -337,7 +341,7 @@ namespace qbrdge_driver_classlib
             tot_num_pkts = numPkts;
             max_pkt_send = maxPktSend;
             port_info = portInfo;
-            num_retries = 125;
+            num_retries = 2;
             nextSeq = 1;
             client_idx = clientidx;
             SendCTSPacket(false);
@@ -375,7 +379,7 @@ namespace qbrdge_driver_classlib
         {
             byte[] can_pkt = new byte[5 + 8];
             byte R_DP = 0x00;
-            //set priority, reserv, and dp bits
+            //set priority, reserve, and dp bits
             can_pkt[4] = (byte)(can_pkt[4] | R_DP);
             can_pkt[4] = (byte)(can_pkt[4] | (byte)((how_priority & 0x03) * 2 * 2));
             //set PDU Format (PF)
@@ -442,6 +446,7 @@ namespace qbrdge_driver_classlib
             }
             catch (Exception) { }
         }
+
         private void SendEndOfMsgAck()
         {
             byte[] can_pkt = new byte[5 + 8];
@@ -483,6 +488,45 @@ namespace qbrdge_driver_classlib
             catch (Exception) { }
         }
 
+        //TP.Conn_Abort:
+        public void SendConnectionAbort()
+        {
+            byte[] can_pkt = new byte[5 + 8];
+            byte R_DP = 0x00;
+            //set priority, reserv, and dp bits
+            can_pkt[4] = (byte)(can_pkt[4] | R_DP);
+            can_pkt[4] = (byte)(can_pkt[4] | (byte)((how_priority & 0x03) * 2 * 2));
+            //set PDU Format (PF)
+            can_pkt[3] = 0xEC;
+            //set PDU Specific (PS), DA or GE
+            can_pkt[2] = source_addr;
+            //set source address
+            can_pkt[1] = dest_addr;
+            //set type extended CAN
+            can_pkt[0] = 0x01;
+            //control byte, 255, connection abort
+            can_pkt[5 + 0] = 255;
+            //connection abort reason
+            can_pkt[5 + 1] = 0;
+            //reserved for assignment by SAE, filled with 0xFF
+            can_pkt[5 + 2] = 0xFF;
+            can_pkt[5 + 3] = 0xFF;
+            can_pkt[5 + 4] = 0xFF;
+            //pgn
+            can_pkt[5 + 5] = param_group_num[0]; //parameter group number
+            can_pkt[5 + 6] = param_group_num[1];
+            can_pkt[5 + 7] = param_group_num[2];
+            //send connection abort message, don't wait for ACK
+            byte pktId = 0;
+            byte[] outData = QBSerial.MakeQBridgePacket(PacketCmdCodes.PKT_CMD_SEND_CAN,
+                can_pkt, ref pktId);
+
+            try {
+                port_info.com.Write(outData, 0, outData.Length);
+            }
+            catch (Exception) { }
+        }
+
         //if the class has timed out, then it is marked as invalid
         //and should be removed from the Queue
         public bool IsValid()
@@ -496,7 +540,7 @@ namespace qbrdge_driver_classlib
             return iscomplete;
         }
 
-        //call this function to stop recieving and abort
+        //call this function to stop receiving and abort
         public void Abort()
         {
             isvalid = false;
@@ -504,7 +548,7 @@ namespace qbrdge_driver_classlib
         }
 
         //call this whenever a new potential TD packet is
-        //recieved by the QBridge
+        //received by the QBridge
         //data is the last 7 bytes of the CAN packet data
         public bool UpdateData(string portName, byte sourceAddr, byte seqNum, byte[] data)
         {
@@ -514,7 +558,6 @@ namespace qbrdge_driver_classlib
             }
 
             //Debug.WriteLine("CURRSEQ: " + seqNum.ToString() + " HX: "+seqNum.ToString("X2"));
-
             if (seqNum > main_status.Length || data.Length != 7)
             {
                 return iscomplete;
@@ -554,7 +597,7 @@ namespace qbrdge_driver_classlib
         }
 
         //this function is called by the timer class when
-        //the packet recieve has timed out
+        //the packet receive has timed out
         public void TimeOut(Object state)
         {
             Thread.CurrentThread.Priority = RP1210DllCom.sysThreadPriority;
@@ -650,12 +693,12 @@ namespace qbrdge_driver_classlib
         //rp1210 variables
         private byte[] param_group_num = new byte[3];
         private byte how_priority = 0x00;
-        private byte source_addr = 0x00;
+        public byte source_addr = 0x00;
         public byte dest_addr = 0x00;
         private UInt16 tot_msg_size;
         private byte tot_num_pkts;
 
-        private string port_name;
+        public string port_name;
         private byte[] main_data = new byte[0];
 
 
@@ -673,7 +716,7 @@ namespace qbrdge_driver_classlib
         }
 
         //call this whenever a new potential BAM packet is
-        //recieved by the QBridge
+        //received by the QBridge
         //data is the last 7 bytes of the CAN packet data
         public bool UpdateData(string portName, byte sourceAddr, byte seqNum, byte[] data)
         {
@@ -682,14 +725,7 @@ namespace qbrdge_driver_classlib
             {
                 return iscomplete;
             }
-
             //Debug.WriteLine("SEQNUM: " + seqNum.ToString());
-            //Debug.Write("SEQDATA: ");
-            for (int i = 0; i < data.Length; i++)
-            {
-                //Debug.Write(data[i].ToString() + ",");
-            }
-            //Debug.WriteLine("");
 
             //add data to main_data
             byte[] new_data = new byte[main_data.Length + data.Length];

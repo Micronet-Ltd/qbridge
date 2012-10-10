@@ -76,7 +76,7 @@ namespace qbrdge_driver_classlib
                     try {
                         com.Close();
                     }
-                    catch (Exception) { }
+                    catch (Exception) { return; }
                 }
                 try
                 {
@@ -1070,6 +1070,25 @@ namespace qbrdge_driver_classlib
         private static List<J1939BAMReceiver> BAMRecvList = new List<J1939BAMReceiver>();
         private static List<J1939RTSCTSReceiver> RTSCTSRecvList = new List<J1939RTSCTSReceiver>();
 
+        private static int GetClientIdxFromClaimAddress(byte DA, SerialPortInfo portInfo)
+        {
+            //verify claimed address of a client matches destination address (DA)
+            int clientIdx = -1;
+            for (int i = 0; i < ClientIDManager.clientIds.Length; i++) {
+                ClientIDManager.ClientIDInfo client = ClientIDManager.clientIds[i];
+                if (client != null) {
+                    if (client.serialInfo != null) {
+                        if (portInfo.com == client.serialInfo.com) {
+                            if (client.claimAddress == DA && client.claimAddrAvailable) {
+                                clientIdx = i;
+                            }
+                        }
+                    }
+                }
+            }
+            return clientIdx;
+        }
+
         //pktData in format:
         //[1 byte 0x01][4 bytes CAN Id][<= 8 bytes Msg Data]
         //see EIA-232 serial protocol to QBridge
@@ -1113,7 +1132,8 @@ namespace qbrdge_driver_classlib
             how_priority = (byte)(((byte)P_R_DP / 2 / 2) & 0x07);
             //Check if it is a new BAM or RTS/CTStransfer
             if ((pktData.Length - 5) == 8) {
-                if (pgn[1] == 0xEC && pgn[2] == 0x00 && pktData[5] == 32)
+                J1939TPCtrlBytes TPCtrlByte = (J1939TPCtrlBytes)pktData[5];
+                if (pgn[1] == 0xEC && pgn[2] == 0x00 && TPCtrlByte == J1939TPCtrlBytes.TP_CM_BAM)
                 {
                     //TP.CAM_BAM packet
                     //Debug.WriteLine("BAM PKT "+portInfo.com.PortName);
@@ -1132,34 +1152,13 @@ namespace qbrdge_driver_classlib
                     }
                     return;
                 }
-                else if (pgn[1] == 0xEC && pktData[5] == 16)
+                else if (pgn[1] == 0xEC && TPCtrlByte == J1939TPCtrlBytes.TP_CM_RTS)
                 {
                     //TP.CM_RTS
-                    //Debug.WriteLine("TP.CM_RTS PKT "+portInfo.com.PortName);
-
-                    //verify claimed address of a client matches destination address (DA)
-                    int clientIdx = -1;
-                    bool addrFound = false;
-                    for (int i = 0; i < ClientIDManager.clientIds.Length; i++)
+                    int clientIdx = GetClientIdxFromClaimAddress(DA, portInfo);
+                    if (clientIdx < 0)
                     {
-                        ClientIDManager.ClientIDInfo client = ClientIDManager.clientIds[i];
-                        if (client != null)
-                        {
-                            if (client.serialInfo != null)
-                            {
-                                if (portInfo.com == client.serialInfo.com)
-                                {
-                                    if (client.claimAddress == DA && client.claimAddrAvailable)
-                                    {
-                                        addrFound = true;
-                                        clientIdx = i;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    if (addrFound == false)
-                    {
+                        //claimed address not found
                         return;
                     }
 
@@ -1181,11 +1180,11 @@ namespace qbrdge_driver_classlib
                 else if (pgn[1] == 0xEB && pgn[2] == 0x00)
                 {
                     //TP.DT packet
-                    //Debug.WriteLine("TP.DT PKT " + portInfo.com.PortName);
+
                     //check each BAM receiver
                     for (int i = 0; i < BAMRecvList.Count; i++)
                     {
-                        J1939BAMReceiver br = BAMRecvList[i];
+                        J1939BAMReceiver br = BAMRecvList[i];                        
                         byte[] temp = new byte[7];
                         for (int j = 0; j < 7; j++) {
                             temp[j] = pktData[6+j];
@@ -1215,7 +1214,8 @@ namespace qbrdge_driver_classlib
                         {
                             temp[j] = pktData[6 + j];
                         }
-                        //notify bam receiver of new data
+
+                        //notify BAM receiver of new data
                         br.UpdateData(portName, SA, pktData[5], temp);
                         if (br.IsComplete())
                         {
@@ -1231,75 +1231,82 @@ namespace qbrdge_driver_classlib
                             i--;
                         }
                     }
+
                     return;
                 }
-                else if (pgn[1] == 0xEC && pgn[2] == 0x00 && (pktData[5] == 17 || pktData[5] == 19))
+                else if (pgn[1] == 0xEC && pgn[2] == 0x00 && (TPCtrlByte == J1939TPCtrlBytes.TP_CM_CTS || TPCtrlByte == J1939TPCtrlBytes.TP_CM_EndOfMsgACK
+                    || TPCtrlByte == J1939TPCtrlBytes.TP_Conn_Abort)) 
                 {
-                    //TP.CM_CTS or TP.CM_EndOfMsgACK packet
-                    if (pktData[5] == 17)
-                    {
-                        //Debug.WriteLine("TP.CM_CTS " + portInfo.com.PortName);
+                    //TP.CM_CTS, TP.CM_EndOfMsgACK OR TP.Conn_Abort 
+
+                    if (TPCtrlByte.Equals(J1939TPCtrlBytes.TP_Conn_Abort)) {
+                        //TP.Conn_Abort
+                        int clientIdx = GetClientIdxFromClaimAddress(DA, portInfo);
+                        if (clientIdx < 0) {
+                            //claimed address not found, ignore
+                            return;
+                        }
+                        ClientIDManager.ClientIDInfo client = ClientIDManager.clientIds[clientIdx];
+                        //abort receiving RTS/CTS connections
+                        foreach (J1939RTSCTSReceiver recv in RTSCTSRecvList) {
+                            if (recv.client_idx == clientIdx) {
+                                recv.Abort();
+                            }
+                        }
+                        for (int i = BAMRecvList.Count - 1; i >= 0; i--) {
+                            J1939BAMReceiver br = BAMRecvList[i];
+                            if (SA == br.source_addr && portName == br.port_name) {
+                                BAMRecvList.RemoveAt(i);
+                            }
+                        }
                     }
-                    else
-                    {
-                        //Debug.WriteLine("EndOfMsgAck PKT " + portInfo.com.PortName);
-                    }
+
                     byte[] temp = new byte[7];
-                    for (int j = 0; j < 7; j++)
-                    {
+                    for (int j = 0; j < 7; j++) {
                         temp[j] = pktData[6 + j];
                     }
 
                     //check each RTS/CTS pending transaction, traverse all QBTransactions
-                    for (int i = 0; i < (portInfo.QBTransactionNew.Count + portInfo.QBTransactionSent.Count); i++)
-                    {
+                    for (int i = 0; i < (portInfo.QBTransactionNew.Count + portInfo.QBTransactionSent.Count); i++) {
                         QBTransaction qt;
-                        if (i < portInfo.QBTransactionNew.Count)
-                        {
+                        if (i < portInfo.QBTransactionNew.Count) {
                             qt = portInfo.QBTransactionNew[i];
                         }
-                        else
-                        {
+                        else {
                             qt = portInfo.QBTransactionSent[i - portInfo.QBTransactionNew.Count];
                         }
-                        if (qt.isJ1939)
-                        {
-                            if (qt.j1939transaction.IsDone() == false)
+                        if (qt.isJ1939) {
+                            if (qt.j1939transaction.IsDone() == false) 
                             {
-                                qt.j1939transaction.ProcessCAN(
-                                    SA, DA, pktData[5], temp);
+                                qt.j1939transaction.ProcessCAN(SA, DA, TPCtrlByte, temp);
                             }
                         }
-                        if (qt.j1939transaction.IsDone())
-                        {
-                            if (qt.j1939transaction.IsComplete())
-                            {
+                        if (qt.j1939transaction.IsDone()) {
+                            if (TPCtrlByte == J1939TPCtrlBytes.TP_Conn_Abort) {
+                                Support.SendClientDataPacket(UDPReplyType.sendJ1939TPAbort, qt);
+                            }
+                            else if (qt.j1939transaction.IsComplete()) {
                                 Support.SendClientDataPacket(UDPReplyType.sendJ1939success, qt);
                             }
-                            else
-                            {
+                            else {
                                 Support.SendClientDataPacket(UDPReplyType.sendJ1939replytimeout, qt);
                             }
-                            if (i < portInfo.QBTransactionNew.Count)
-                            {
+                            if (i < portInfo.QBTransactionNew.Count) {
                                 portInfo.QBTransactionNew.RemoveAt(i);
                             }
-                            else
-                            {
+                            else {
                                 portInfo.QBTransactionSent.RemoveAt(i);
                             }
                             i--;
                             CheckJ1939Pending(portInfo);
-                            if (pktData[5] == 19)
+                            if (TPCtrlByte == J1939TPCtrlBytes.TP_CM_EndOfMsgACK) 
                             {
                                 //EndOfMsgAck... only process one
                                 return;
                             }
                         }
-                        else
-                        {
-                            if (qt.pktData.Length == 0)
-                            {
+                        else {
+                            if (qt.pktData.Length == 0) {
                                 qt.pktData = qt.j1939transaction.GetCANPacket();
                             }
                         }
@@ -1367,7 +1374,6 @@ namespace qbrdge_driver_classlib
 
         private static void NewClientsJ1939ReadMessage(byte[] readMsg, string portName, int ignoreClientId)
         {
-            //Debug.WriteLine("J1939 SingPkt " + portName);
             for (int i = 0; i < ClientIDManager.clientIds.Length; i++)
             {
                 if (i != ignoreClientId)
@@ -1387,7 +1393,6 @@ namespace qbrdge_driver_classlib
                 if (clientInfo.J1939Filter == false)
                 {
                     //if client is registered to receiving port then send message
-                    //Debug.WriteLine("J1939 Client " + client.ToString() + " readmsg sent " + portName);
                     Support.SendClientDataPacket(UDPReplyType.readmessage,
                         client, readMsg);
                 }
@@ -1437,7 +1442,6 @@ namespace qbrdge_driver_classlib
                             &&
                             ((use_dest && jf.destAddr == msg_dest) || (use_dest == false)) )
                         {
-                            //Debug.WriteLine("J1939 Client " + client.ToString() + " readmsg sent " + portName);
                             Support.SendClientDataPacket(UDPReplyType.readmessage, client, readMsg);
                             return;
                         }
@@ -1533,7 +1537,6 @@ namespace qbrdge_driver_classlib
                     }
                     catch (Exception exp)
                     {
-                        //Debug.WriteLine(exp.ToString());
                         SendClientErrorPacket(qbt);
                     }
                     serialInfo.QBTransactionNew.RemoveAt(i);
@@ -2035,7 +2038,7 @@ namespace qbrdge_driver_classlib
                 {
                     if (qt.j1939transaction.SA == oldAddr)
                     {
-                        qt.j1939transaction.AddressAbort();
+                        qt.j1939transaction.Abort();
                         Support.SendClientDataPacket(UDPReplyType.sendJ1939addresslost, qt);                   
                         if (i < portInfo.QBTransactionNew.Count)
                         {

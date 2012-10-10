@@ -190,6 +190,7 @@ namespace qbrdge_driver_classlib
         public const string sendJ1939addresslost = "sendJ1939addresslost";
         public const string sendJ1939RTSCTStimeout = "sendJ1939RTSCTStimeout";
         public const string sendJ1939invalidpacket = "sendJ1939invalidpacket"; // sent to DLL when send called with invalid packet format
+        public const string sendJ1939TPAbort = "sendJ1939TPAbort"; //send when TP connection abort recieved during RTS/CTS transfer
     }
 
     enum PacketRecvType
@@ -258,5 +259,14 @@ namespace qbrdge_driver_classlib
         SC_SET_MSG_RECEIVE = 18,
         SC_PROTECT_J1939_ADDRESS = 19,
         SC_UPGRADE_FIRMWARE = 256
+    }
+
+    public enum J1939TPCtrlBytes : byte
+    {
+        TP_CM_RTS = 16,
+        TP_CM_CTS = 17,
+        TP_CM_EndOfMsgACK = 19,
+        TP_Conn_Abort = 255,
+        TP_CM_BAM = 32
     }
 }
