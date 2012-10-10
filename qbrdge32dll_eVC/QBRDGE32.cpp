@@ -74,6 +74,7 @@ void SetupErrorStrings() {
 	SET_ERR_STR (ERR_RECV_OPERATION_TIMEOUT,"No messages recieved, waiting operation aborted.");
 	SET_ERR_STR (ERR_J1939_SEND_RTS_CTS_TIMEOUT, "Send timeout waiting for CTS from destination.");
 	SET_ERR_STR (ERR_INVALID_MSG_PACKET, "Invalid message packet, unable to send.");
+    SET_ERR_STR (ERR_J1939_SEND_RTS_CTS_ABORT, "TP.Conn_Abort, control byte received during RTS/CTS send");
 
 #undef SET_ERR_STRING
 }
@@ -217,7 +218,7 @@ RP1210A_API void WINAPI RP1210_ReadVersion (char far* fpchDLLMajorVersion,	char 
 	fpchDLLMajorVersion[0] = '1';
 	fpchDLLMinorVersion[0] = '5';
 	fpchAPIMajorVersion[0] = '2';
-	fpchAPIMinorVersion[0] = '6';
+	fpchAPIMinorVersion[0] = '7';
 }
 
 /*****************************/
