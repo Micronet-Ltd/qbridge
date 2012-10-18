@@ -15,6 +15,9 @@
 		<Platform
 			Name="TREQ-VM (ARMV4I)"
 		/>
+		<Platform
+			Name="TREQ (x86)"
+		/>
 	</Platforms>
 	<ToolFiles>
 	</ToolFiles>
@@ -377,6 +380,187 @@
 			<DebuggerTool
 			/>
 		</Configuration>
+		<Configuration
+			Name="Debug|TREQ (x86)"
+			OutputDirectory="TREQ (x86)\$(ConfigurationName)"
+			IntermediateDirectory="TREQ (x86)\$(ConfigurationName)"
+			ConfigurationType="2"
+			UseOfMFC="0"
+			CharacterSet="1"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+				PreprocessorDefinitions="_DEBUG;_WIN32_WCE=$(CEVER);UNDER_CE"
+				MkTypLibCompatible="false"
+				TargetEnvironment="1"
+			/>
+			<Tool
+				Name="VCCLCompilerTool"
+				ExecutionBucket="7"
+				AdditionalIncludeDirectories=""
+				PreprocessorDefinitions="_DEBUG;_WIN32_WCE=$(CEVER);UNDER_CE;WINCE;_USRDLL;$(ARCHFAM);$(_ARCHFAM_);STANDARDSHELL_UI_MODEL;RP1210A_EXPORTS"
+				RuntimeLibrary="1"
+				UsePrecompiledHeader="0"
+				WarningLevel="3"
+				DebugInformationFormat="3"
+			/>
+			<Tool
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="_DEBUG;_WIN32_WCE=$(CEVER);UNDER_CE"
+				Culture="1033"
+				AdditionalIncludeDirectories="$(IntDir)"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
+			<Tool
+				Name="VCLinkerTool"
+				AdditionalOptions=" /subsystem:windowsce,6.00"
+				AdditionalDependencies="ws2.lib"
+				OutputFile="$(OutDir)/qbrdge32.dll"
+				LinkIncremental="2"
+				ModuleDefinitionFile="qbridgedll.def"
+				GenerateDebugInformation="true"
+				StackReserveSize="65536"
+				StackCommitSize="4096"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
+				ImportLibrary="$(OutDir)/qbrdge32.lib"
+				TargetMachine="0"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCCodeSignTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
+			<DeploymentTool
+				ForceDirty="-1"
+				RemoteDirectory="\HardDisk\bin\qbrdge32"
+				RegisterOutput="0"
+				AdditionalFiles=""
+			/>
+			<DebuggerTool
+			/>
+		</Configuration>
+		<Configuration
+			Name="Release|TREQ (x86)"
+			OutputDirectory="TREQ (x86)\$(ConfigurationName)"
+			IntermediateDirectory="TREQ (x86)\$(ConfigurationName)"
+			ConfigurationType="2"
+			UseOfMFC="0"
+			CharacterSet="1"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+				PreprocessorDefinitions="NDEBUG;_WIN32_WCE=$(CEVER);UNDER_CE"
+				MkTypLibCompatible="false"
+				TargetEnvironment="1"
+			/>
+			<Tool
+				Name="VCCLCompilerTool"
+				ExecutionBucket="7"
+				Optimization="3"
+				PreprocessorDefinitions="NDEBUG;_WIN32_WCE=$(CEVER);UNDER_CE;WINCE;_USRDLL;$(ARCHFAM);$(_ARCHFAM_);STANDARDSHELL_UI_MODEL;QBRDGE32_EXPORTS;RP1210A_EXPORTS;_CRT_SECURE_NO_WARNINGS"
+				RuntimeLibrary="0"
+				UsePrecompiledHeader="0"
+				WarningLevel="3"
+				DebugInformationFormat="3"
+				UndefinePreprocessorDefinitions="_DEBUG"
+			/>
+			<Tool
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="NDEBUG;_WIN32_WCE=$(CEVER);UNDER_CE"
+				Culture="1033"
+				AdditionalIncludeDirectories="$(IntDir)"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
+			<Tool
+				Name="VCLinkerTool"
+				AdditionalOptions=" /subsystem:windowsce,6.00"
+				AdditionalDependencies="ws2.lib"
+				OutputFile="$(OutDir)/qbrdge32.dll"
+				LinkIncremental="2"
+				ModuleDefinitionFile="qbridgedll.def"
+				GenerateDebugInformation="true"
+				StackReserveSize="65536"
+				StackCommitSize="4096"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
+				ImportLibrary="$(OutDir)/qbrdge32l.lib"
+				TargetMachine="0"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCCodeSignTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
+			<DeploymentTool
+				ForceDirty="-1"
+				RemoteDirectory="\HardDisk\bin\qbrdge32"
+				RegisterOutput="0"
+				AdditionalFiles=""
+			/>
+			<DebuggerTool
+			/>
+		</Configuration>
 	</Configurations>
 	<References>
 	</References>
@@ -421,6 +605,14 @@
 				</FileConfiguration>
 				<FileConfiguration
 					Name="Release|TREQ-VM (ARMV4I)"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UndefinePreprocessorDefinitions="_DEBUG"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|TREQ (x86)"
 					>
 					<Tool
 						Name="VCCLCompilerTool"

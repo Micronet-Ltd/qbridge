@@ -433,7 +433,7 @@ bool ConnectToDriverApp(){
     LONG lRes = RegOpenKeyExW(HKEY_LOCAL_MACHINE, _T("SOFTWARE\\RP1210"), 0, KEY_READ, &hKey);
     if (lRes == ERROR_SUCCESS) {
         unsigned long type=REG_DWORD, size=1024;
-        lRes == RegQueryValueEx(hKey, _T("Priority"), NULL, &type, (LPBYTE)&dwVal, &size);
+        lRes = RegQueryValueEx(hKey, _T("Priority"), NULL, &type, (LPBYTE)&dwVal, &size);
         if (lRes == ERROR_SUCCESS) {
             if (dwVal < Thread::THREADPRIORITYMIN) {
                 dwVal = Thread::THREADPRIORITYMIN;
