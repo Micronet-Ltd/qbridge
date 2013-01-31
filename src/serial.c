@@ -126,19 +126,19 @@ void InitializeAllSerialPorts() {
     // These should really be initialized as constants, but something seems broken about doing that
     ioPort0 = (IOPortRegisterMap *)IOPORT0_REG_BASE;
     ioPort1 = (IOPortRegisterMap *)IOPORT1_REG_BASE;
-    //com1.port = (UARTRegisterMap volatile * const)(UART0_REG_BASE);
-    com2.port = (UARTRegisterMap volatile * const)(UART1_REG_BASE);
-    com3.port = (UARTRegisterMap volatile * const)(UART2_REG_BASE);
-    com4.port = (UARTRegisterMap volatile * const)(UART3_REG_BASE);
+    //com1.port = (UARTRegisterMap volatile * const)(UART0_REG_BASE); //grounded on the schematic
+    com2.port = (UARTRegisterMap volatile * const)(UART1_REG_BASE);   //this is the J1708 interface
+    com3.port = (UARTRegisterMap volatile * const)(UART2_REG_BASE);   //debug port or modem control signals for SCIPIO
+    com4.port = (UARTRegisterMap volatile * const)(UART3_REG_BASE);   //this is our host interface
 
     // OK, this bit of magic was not documented anywhere that Mike & I could find.  I finally dredged up some source
     // code off the internet which set this pins in this manner and it seemed to make everything work.
     // Note:  We may want to change one of these once we decide on a 485 port.  We should probably 1/2 duplex everything on that port
 //#ifdef _DEBUG
    // Configure the GPIO transmit pins as alternate function push pull
-   GPIO_Config(ioPort0, /*UART0_Tx_Pin |*/ UART1_Tx_Pin | UART2_Tx_Pin | UART3_Tx_Pin, GPIO_AF_PP);
+    GPIO_Config(ioPort0, /*UART0_Tx_Pin |*/ UART1_Tx_Pin | /*UART2_Tx_Pin |*/ UART3_Tx_Pin, GPIO_AF_PP);
     // Configure the GPIO receive pins as Input Tristate CMOS
-   GPIO_Config(ioPort0, /*UART0_Rx_Pin |*/ UART1_Rx_Pin | UART2_Rx_Pin | UART3_Rx_Pin, GPIO_IN_TRI_CMOS);
+    GPIO_Config(ioPort0, /*UART0_Rx_Pin |*/ UART1_Rx_Pin | /*UART2_Rx_Pin |*/ UART3_Rx_Pin, GPIO_IN_TRI_CMOS);
 //#else
 //   // Configure the GPIO transmit pins as alternate function push pull
 //   GPIO_Config(ioPort0, /*UART0_Tx_Pin |*/ UART1_Tx_Pin | UART3_Tx_Pin, GPIO_AF_PP);

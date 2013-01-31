@@ -37,6 +37,7 @@ typedef enum _Commands {
     CANbusErr                   = 'N', //0x4E
     MiscControl                 = 'O', //0x4f
     AdvRecvMode                 = 'P', //0x50
+    MdmReset                    = 'Q', //0x51
 	InfoReq                     = '*', //0x2A
     RawJ1708                    = '+', //0x2B
     ReqRawPackets               = ',', //0x2C

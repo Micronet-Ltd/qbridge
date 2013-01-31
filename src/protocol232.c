@@ -561,6 +561,43 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
                 }
             }
             break;
+        case MdmReset:
+	  {
+            if ((dataLen < 1) || ((data[0]==1) && (dataLen < 2)) || ((data[0]==2) && (dataLen < 2)) ) {
+                Send232Ack(ACK_INVALID_DATA, id, NULL, 0);
+		  //break;
+	    }else{
+            extern void StartModemReset();
+	    extern void SetIgnEmerg( UINT8 val );
+	    extern void ClrIgnEmerg( UINT8 val );
+	    extern UINT8 GetIgnEmerg( void );
+	      switch(data[0]){
+	        case 0: //just do the automated wiggling of IGT and EMERG
+		    StartModemReset();
+                    Send232Ack(ACK_OK, id, NULL, 0);
+	            break;
+                case 1: //set IGN/EMERG
+		    SetIgnEmerg( data[1] );
+                    Send232Ack(ACK_OK, id, NULL, 0);
+	            break;
+                case 2: //clr IGN/EMERG
+		    ClrIgnEmerg( data[1] );
+                    Send232Ack(ACK_OK, id, NULL, 0);
+                    break;
+	        case 3: //get IGN/EMERG
+		      {
+		      UINT8 tmp;
+                    tmp = GetIgnEmerg();
+		    Send232Ack(ACK_OK, id, &tmp, sizeof(tmp));
+		      }
+		    break;
+                default:
+                    Send232Ack(ACK_INVALID_DATA,id, NULL, 0);
+                    break;
+              }//end switch
+	    }//end else
+	  }
+            break;
 #ifdef _DEBUG
         case PJDebug:
             dopjdebug( id, data, dataLen );

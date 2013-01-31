@@ -269,6 +269,8 @@ static void InitializeSCIPIO(){
 #if !defined(_DEBUG)  //can't use debug comport and scipio gsm reset at same time since they use same pins
     extern void GPIO_Config(IOPortRegisterMap *ioport, UINT16 pin, Gpio_PinModes md );
 
+    GPIO_SET(0,13); //ignition OFF -- setting puts a low on the pin of the gsm device
+    GPIO_SET(0,14); //emergency OFF --- setting puts a low on the pin of the gsm device
     GPIO_Config((IOPortRegisterMap *)IOPORT0_REG_BASE, UART2_Tx_Pin, GPIO_OUT_PP);
     GPIO_Config((IOPortRegisterMap *)IOPORT0_REG_BASE, UART2_Rx_Pin, GPIO_OUT_PP);
     GPIO_SET(0,13); //ignition OFF -- setting puts a low on the pin of the gsm device
@@ -304,5 +306,36 @@ static void HandleSCIPIO(){
             break;
     }
 #endif
+}
+
+void StartModemReset() //called from 232 command
+{
+  InitializeSCIPIO();
+}
+void SetIgnEmerg( UINT8 val ) //called from 232 command
+{
+  if( val & 1 )
+    GPIO_SET(0,13);
+  if( val & 2 )
+    GPIO_SET(0,14);
+}
+void ClrIgnEmerg( UINT8 val ) //called from 232 command
+{
+  if( val & 1 )
+    GPIO_CLR(0,13);
+  if( val & 2 )
+    GPIO_CLR(0,14);
+}
+
+#define GPIO_IS_SET(p,b) (((IOPortRegisterMap *)(IOPORT##p##_REG_BASE))->PD & ~BIT(b))
+
+UINT8 GetIgnEmerg( void )
+{
+  UINT8 rv=0;
+  if( GPIO_IS_SET( 0, 13 ) )
+    rv |= 1;
+  if( GPIO_IS_SET( 0,14) )
+    rv |= 2;
+  return rv;
 }
 #endif // MODEM_RESET
