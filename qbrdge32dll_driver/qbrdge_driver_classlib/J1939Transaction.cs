@@ -305,7 +305,7 @@ namespace qbrdge_driver_classlib
                 }
                 myTimer.Change(timeInt, Timeout.Infinite);
             }
-            catch (Exception) { }
+            catch (Exception) { }//StartTimer()
         }
         private void StopTimer()
         {
@@ -316,7 +316,7 @@ namespace qbrdge_driver_classlib
                     myTimer.Change(Timeout.Infinite, Timeout.Infinite);
                 }
             }
-            catch (Exception) { }
+            catch (Exception) { }//StopTimer()
         }
     }
 
@@ -444,7 +444,7 @@ namespace qbrdge_driver_classlib
             {
                 port_info.com.Write(outData, 0, outData.Length);
             }
-            catch (Exception) { }
+            catch (Exception) {/*SendCTSPacket(bool isResend)*/ }
         }
 
         private void SendEndOfMsgAck()
@@ -485,7 +485,7 @@ namespace qbrdge_driver_classlib
             {
                 port_info.com.Write(outData, 0, outData.Length);
             }
-            catch (Exception) { }
+            catch (Exception) { /*SendEndOfMsgAck()*/}
         }
 
         //TP.Conn_Abort:
@@ -524,7 +524,7 @@ namespace qbrdge_driver_classlib
             try {
                 port_info.com.Write(outData, 0, outData.Length);
             }
-            catch (Exception) { }
+            catch (Exception) { /* SendConnectionAbort() */}
         }
 
         //if the class has timed out, then it is marked as invalid

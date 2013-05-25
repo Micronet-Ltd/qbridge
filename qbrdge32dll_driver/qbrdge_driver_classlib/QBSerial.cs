@@ -48,8 +48,10 @@ namespace qbrdge_driver_classlib
             //Support._DbgTrace("ReadThread Priority: " + Thread.CurrentThread.Priority.ToString());
             while (true)
             {
+                //wait 100 ms seconds between reading packets
+                Thread.Sleep(100);
                 try
-                {                    
+                {
                     int inDataLen = com.Read(inBuff, inBuffLen, inBuff.Length - inBuffLen);
                     //Support._DbgTrace("R");
                     lock (Support.lockThis)
@@ -64,33 +66,36 @@ namespace qbrdge_driver_classlib
                         if (inBuffLen > (MAX_BUFFSIZE - 1000)) { inBuffLen = 0; }
                     }
                 }
+
                 catch (InvalidOperationException)
-                {
-                    //the specified port is not open
-                    return;
-                }
-                catch (TimeoutException) {
-                    continue;
-                }
-                catch (Exception) {
-                    try {
-                        com.Close();
-                    }
-                    catch (Exception) { return; }
-                }
-                try
-                {
-                    if (com == null) {
-                        return;
-                    }
-                    if (com.IsOpen == false)
-                    {
-                        return;
-                    }
-                }
-                catch (Exception) {
-                    return;
-                }
+                   {
+                       //the specified port is not open
+                       //return;
+                       continue;
+                   }
+                   catch (TimeoutException)
+                   {
+                       continue;
+                   }
+	            catch (Exception)
+	               {
+	                   try
+	                   {
+	                       if (com != null)
+	                       {
+	                           com.Close();
+	                           Thread.Sleep(100);
+	                           com.Open();
+	                           continue;
+	                       }
+	                   }
+	                   catch (Exception) { 
+	                       //return;
+	                       continue;
+	                   }
+	                   continue;
+	               }
+
             }
         }
 
@@ -115,9 +120,10 @@ namespace qbrdge_driver_classlib
             try
             {
                 StopTimer();
+                Thread.Sleep(1);
                 StartTimer();
             }
-            catch (Exception) { }
+            catch (Exception) {/*RestartTimer()*/ }
         }
 
         //this timer will be used to detect a lost QBridge
@@ -167,7 +173,7 @@ namespace qbrdge_driver_classlib
                     this.recvTimer.Change(Timeout.Infinite, Timeout.Infinite);
                 }
             }
-            catch (Exception) { }
+            catch (Exception) { /*StopTimer()*/}
         }       
     }
 
@@ -246,7 +252,7 @@ namespace qbrdge_driver_classlib
                 {
                     com.Open();
                 }
-                catch (Exception exp)
+                catch (Exception exp /*RegisterSerialPort com.open()*/)
                 {
                     //Debug.WriteLine(exp.ToString());
                     RP1210DllCom.UdpSend("-4", iep);
@@ -263,7 +269,7 @@ namespace qbrdge_driver_classlib
                     com.Write(outPkt, 0, outPkt.Length);
                     com.ReadExisting();
                 }
-                catch (Exception) { }
+                catch (Exception) { /*RegisterSerialPort com.write*/}
             }
 
             //com is opened, ready to use, attach to serialinfo where reading will take place
@@ -324,7 +330,7 @@ namespace qbrdge_driver_classlib
                     }
                 }
             }
-            catch (TimeoutException)
+            catch (TimeoutException /*WaitForValidComReply return false*/)
             {
                 return false;
             }
@@ -378,7 +384,7 @@ namespace qbrdge_driver_classlib
                     {
                         closeComports.Insert(closeComports.Count, sinfo.com);
                     }
-                    catch (Exception e)
+                    catch (Exception e /*RemovePort*/)
                     {
                         //Debug.WriteLine(e.ToString());
                     }
@@ -882,7 +888,7 @@ namespace qbrdge_driver_classlib
                                 return;
                             }
                         }
-                        catch (Exception)
+                        catch (Exception /*ProcessValidQBPacket PKT_CMD_UPGRADE_FIRMWARE*/)
                         {
                             RP1210DllCom.UdpSend(
                                 ((int)RP1210ErrorCodes.ERR_FW_UPGRADE).ToString(), qbt.dllInPort);
@@ -1013,7 +1019,7 @@ namespace qbrdge_driver_classlib
                     qbt.StartTimer();
                 }
             }
-            catch (Exception)
+            catch (Exception /*ParseFWUpgrade*/)
             {
                 RP1210DllCom.UdpSend(
                     ((int)RP1210ErrorCodes.ERR_FW_UPGRADE).ToString(), qbt.dllInPort);
@@ -1459,7 +1465,7 @@ namespace qbrdge_driver_classlib
             try {
                 com.Write(newpkt, 0, newpkt.Length);
             }
-            catch (Exception) { }
+            catch (Exception) {/*SendACKPacket*/ }
         }
 
         public static byte[] MakeQBridgePacket(PacketCmdCodes cmdType, byte[] data, ref byte pktId)
@@ -1535,7 +1541,7 @@ namespace qbrdge_driver_classlib
                         }
                         serialInfo.QBTransactionSent.Add(qbt);
                     }
-                    catch (Exception exp)
+                    catch (Exception exp /*CheckSendMsgQ*/)
                     {
                         SendClientErrorPacket(qbt);
                     }
@@ -1601,7 +1607,7 @@ namespace qbrdge_driver_classlib
                 SerialPortInfo sInfo = Support.ClientToSerialPortInfo(qbt.clientId);
                 ClearQBTransactionNew(sInfo);
             }
-            catch (Exception) { }
+            catch (Exception) { /*ClearQBTransactionNew*/}
         }
 
         //returns msgQID
@@ -1926,7 +1932,7 @@ namespace qbrdge_driver_classlib
                 termName = termName.PadRight(64);
                 SystemParametersInfo(SPI_GETPLATFORMNAME, (uint)termName.Length, termName, 0);
             }
-            catch (Exception exp) {
+            catch (Exception exp) {//GetTermName
                 //Debug.WriteLine(exp.StackTrace);
             }
             return termName;
@@ -1945,7 +1951,7 @@ namespace qbrdge_driver_classlib
                     com = new SerialPort("COM3", 115200, Parity.None, 8, StopBits.One);
                 }
             }
-            catch (Exception exp)
+            catch (Exception exp)//UpgradeFirmware
             {
                 exp.ToString();
                 if (comPorts.Count <= 0)
@@ -1993,7 +1999,7 @@ namespace qbrdge_driver_classlib
                 {
                     inDataLen = com.Read(inData, 0, 300);
                 }
-                catch (Exception exp)
+                catch (Exception exp)//UpgradeFirmware com.read
                 {
                     //Debug.WriteLine("FIRMWARE UPGRADE FAILED "+exp.ToString());
                     com.Close();
@@ -2109,7 +2115,7 @@ namespace qbrdge_driver_classlib
                 }
                 replyTimer.Change(timePeriod, Timeout.Infinite);
             }
-            catch (Exception) { }
+            catch (Exception) { }//StartTimer()
         }
         public void StopTimer() 
         {
@@ -2121,10 +2127,11 @@ namespace qbrdge_driver_classlib
                     replyTimer.Change(Timeout.Infinite, Timeout.Infinite);
                 }
             }
-            catch (Exception) { }
+            catch (Exception) { }// StopTimer() 
         }
         public void RestartTimer() {
             StopTimer();
+            Thread.Sleep(10);
             StartTimer();
         }
     }

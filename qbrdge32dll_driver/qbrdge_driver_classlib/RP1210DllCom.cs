@@ -129,7 +129,7 @@ namespace qbrdge_driver_classlib
             {
                 aliveThread.Abort();
             }
-            catch (Exception exp)
+            catch (Exception exp)//EndProgram() aliveThread.abort()
             {
                 //Debug.WriteLine(exp.ToString());
             }
@@ -137,7 +137,7 @@ namespace qbrdge_driver_classlib
             {
                 udpListenThread.Abort();
             }
-            catch (Exception exp)
+            catch (Exception exp)//EndProgram() udpListenThread.abort()
             {
                 //Debug.WriteLine(exp.ToString());
             }
@@ -155,7 +155,7 @@ namespace qbrdge_driver_classlib
                 threadPriority = (int)subKey.GetValue("Priority");
                 subKey.Close();
             }
-            catch (Exception) 
+            catch (Exception) //LoadThreadPriority()
             { 
                 threadPriority = THREAD_PRIORITY_NORMAL;
             }
@@ -199,7 +199,7 @@ namespace qbrdge_driver_classlib
             {
                 udpListener = new UdpClient(udpCorePort);
             }
-            catch (SocketException)
+            catch (SocketException)//UdpListen() 
             {
                 // Socket exception is generally thrown when two instances of QBridgeWinCEDriver.exe are launched.
 
@@ -236,7 +236,7 @@ namespace qbrdge_driver_classlib
                         QBSerial.CheckSendMsgQ();
                     }
                 }
-                catch (Exception exp)
+                catch (Exception exp)//UdpListen() receive
                 {
                     //Debug.WriteLine("udplisten "+exp.ToString());
                 }
@@ -634,7 +634,7 @@ namespace qbrdge_driver_classlib
                             sinfo.com.Write(outData, 0, outData.Length);
                             returnCode = 0;
                         }
-                        catch (Exception exp)
+                        catch (Exception exp)//ParseUdpDataPacket SC_GENERIC_DRIVER_CMD
                         {
                             exp.ToString();
                             returnCode = (int)RP1210ErrorCodes.ERR_HARDWARE_NOT_RESPONDING;
@@ -936,7 +936,7 @@ namespace qbrdge_driver_classlib
                 outPkt = QBSerial.MakeQBridgePacket(cmdType, pktData, ref pktId);
                 sinfo.com.Write(outPkt, 0, outPkt.Length);
             }
-            catch (Exception) { }
+            catch (Exception) { }//UpdateQBridgeJ1708Filters
         }
 
         public static void UpdateQBridgeCANFilters(int clientId)
@@ -1039,7 +1039,7 @@ namespace qbrdge_driver_classlib
                 sinfo.com.Write(outPkt, 0, outPkt.Length);
                 //Support._DbgTrace("PKT_CMD_ENABLE_ADV_RCV\r\n");
             }
-            catch (Exception) { }
+            catch (Exception) { }//UpdateQBridgeCANFilters
         }
 
         public static void AddAddressClaimMsg(byte claimAddr, byte[] addrName, int clientId, bool isNotify,
@@ -1114,7 +1114,7 @@ namespace qbrdge_driver_classlib
                 udpListener.Send(outData, outData.Length, outIep);
                 //udpListener.Send(outData, outData.Length, "127.0.0.1", iep.Port);
             }
-            catch (Exception ex)
+            catch (Exception ex)//UdpSend 1
             {
                 // May also get socket exception is Udp listener is closed in a separate thread
                 if (ex is ObjectDisposedException || ex is SocketException)
@@ -1143,7 +1143,7 @@ namespace qbrdge_driver_classlib
                 udpListener.Send(outData, outData.Length, outIep);
                 //udpListener.Send(outData, outData.Length, "127.0.0.1", port);
             }
-            catch (Exception ex)
+            catch (Exception ex)//UdpSend 2
             {
                 // May also get socket exception is Udp listener is closed in a separate thread
                 if (ex is ObjectDisposedException || ex is SocketException)
@@ -1173,7 +1173,7 @@ namespace qbrdge_driver_classlib
                 }
                 dllHelloTimer.Change(dllHelloReplyTimeLimit, Timeout.Infinite);
             }
-            catch (Exception) {}
+            catch (Exception) { }//StartHelloTimer
         }
         private static void StopHelloTimer()
         {
@@ -1184,7 +1184,7 @@ namespace qbrdge_driver_classlib
                     dllHelloTimer.Change(Timeout.Infinite, Timeout.Infinite);
                 }
             }
-            catch (Exception) { }
+            catch (Exception) { }//StopHelloTimer
         }
         private static void RestartHelloTimer()
         {
@@ -1205,7 +1205,7 @@ namespace qbrdge_driver_classlib
                 dllHelloReplyTimer.Change(dllHelloReplyTimeLimit, Timeout.Infinite);
 
             }
-            catch (Exception) { }
+            catch (Exception) { }//StartHelloReplyTimer
         }
         private static void StopHelloReplyTimer()
         {
@@ -1214,7 +1214,7 @@ namespace qbrdge_driver_classlib
                     dllHelloReplyTimer.Change(Timeout.Infinite, Timeout.Infinite);
                 }
             }
-            catch (Exception) { }
+            catch (Exception) { }//StopHelloReplyTimer
         }
         private static void RestartHelloReplyTimer(dllPortInfo dllPort) 
         {

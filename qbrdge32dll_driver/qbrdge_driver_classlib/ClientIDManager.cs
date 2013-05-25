@@ -208,7 +208,7 @@ namespace qbrdge_driver_classlib
                     {
                         RemoveClientID(i, port);
                     }
-                    catch (Exception) { }
+                    catch (Exception) {/*continue for loop in FreeClientIDs(int port)*/}
                 }
             }
         }
