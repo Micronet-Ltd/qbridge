@@ -45,25 +45,42 @@ namespace qbrdge_driver_classlib
 
         public void ThreadRead()
         {
+            int slpMS = 1;
             //Support._DbgTrace("ReadThread Priority: " + Thread.CurrentThread.Priority.ToString());
             while (true)
             {
-                //wait 100 ms seconds between reading packets
-                Thread.Sleep(100);
+                //wait 1 ms seconds between reading packets
+                Thread.Sleep(slpMS);
                 try
                 {
-                    int inDataLen = com.Read(inBuff, inBuffLen, inBuff.Length - inBuffLen);
-                    //Support._DbgTrace("R");
-                    lock (Support.lockThis)
+                    if (com.IsOpen)
                     {
-                        inBuffLen = inBuffLen + inDataLen;
-                        if (inBuffLen > 0)
+                        int inDataLen = com.BytesToRead;
+                        if (inDataLen <= 0)
                         {
-                            QBSerial.DataReceived(this);
-
-                            QBSerial.CheckSendMsgQ();
+                            //no data in wait longer
+                            slpMS = 100;
+                            continue;
                         }
-                        if (inBuffLen > (MAX_BUFFSIZE - 1000)) { inBuffLen = 0; }
+                        else
+                        {
+                            slpMS = 1;
+                        }
+
+                        int newDataLen = Math.Min(inDataLen,inBuff.Length - inBuffLen-2);
+                        com.Read(inBuff, inBuffLen, newDataLen);
+                        //Support._DbgTrace("R");
+                        lock (Support.lockThis)
+                        {
+                            inBuffLen += newDataLen;
+                            if (inBuffLen > 0)
+                            {
+                                QBSerial.DataReceived(this);
+
+                                QBSerial.CheckSendMsgQ();
+                            }
+                            if (inBuffLen > (MAX_BUFFSIZE - 1000)) { inBuffLen = 0; }
+                        }
                     }
                 }
 
