@@ -10,6 +10,7 @@ const LogLev LogLev::ApiResult(true, L"Api Result");
 const LogLev LogLev::Debug(true, L"Debug Msg");
 const LogLev LogLev::UdpDebug(true, L"Udp Msg");
 const LogLev LogLev::Error(true, L"Error");
+const LogLev LogLev::ErrClientDisconnected (true, L"Client Disconnected");
 
 //**--**--**--**--**--**
 void Log::WriteRaw( LogLev const &lev, LPCWSTR msg )
@@ -76,6 +77,8 @@ LPCWSTR Log::GetFilename()
             *pathEnd = 0;
         }
         wcscat(retVal, L"QBridgeDllLog.txt");
+
+
     }
     return retVal;
 }

@@ -12,6 +12,7 @@ struct LogLev {
     static const LogLev Debug;
     static const LogLev UdpDebug;
     static const LogLev Error;
+    static const LogLev ErrClientDisconnected;
 
 };
 

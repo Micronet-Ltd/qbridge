@@ -103,6 +103,8 @@ RP1210AReturnType Disconnect(short nClientID) {
 	if (QueryDriverApp(QUERY_DISCONNECT_CLIENTID_PKT, GetAssignPort(), cid, NULL, 0, 0) == false) {
 		return ERR_MISC_COMMUNICATION;
 	}
+
+    Log::WriteRaw(LogLev::ErrClientDisconnected, L"Disconnect occurred");
 	connections[nClientID].getHwStatusReturnCode = ERR_CLIENT_DISCONNECTED;
 	connections[nClientID].Clear();
 
@@ -209,6 +211,7 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
             //_DbgTrace(tbuf);
 
             if (connections[nClientID].GetConnectionType() == Conn_Invalid) {
+                Log::WriteRaw(LogLev::ErrClientDisconnected, L"SendMessage1");
                 return ERR_CLIENT_DISCONNECTED;
             }
             cs.Pause();
@@ -220,6 +223,7 @@ RP1210AReturnType SendRP1210Message (short nClientID, char far* fpchClientMessag
             connections[nClientID].RemoveTransaction(nNotifyStatusOnTx, msgId);
 
             if (connections[nClientID].GetConnectionType() == Conn_Invalid) {
+                Log::WriteRaw(LogLev::ErrClientDisconnected, L"Posting SendMessage2");
                 return ERR_CLIENT_DISCONNECTED;
             }
             return returnCode;
@@ -266,6 +270,7 @@ RP1210AReturnType ReadRP1210Message (short nClientID, char far* fpchAPIMessage, 
 			cs.Unpause();
 			::CloseHandle(hEvent);
 			if (connections[nClientID].GetConnectionType() == Conn_Invalid) {
+                Log::WriteRaw(LogLev::ErrClientDisconnected, L"ReadMessage1");
 				return -ERR_CLIENT_DISCONNECTED;
 			}
 		}
@@ -337,6 +342,7 @@ RP1210AReturnType SendCommand (short nCommandNumber, short nClientID, char far* 
 				HANDLE hEvent = connections[nClientID].GetTransEvent(nNotifyStatusOnTx, msgId);
 						
 				if (connections[nClientID].GetConnectionType() == Conn_Invalid) {
+                    Log::WriteRaw(LogLev::ErrClientDisconnected, L"SendCommand1");
 					return ERR_CLIENT_DISCONNECTED;
 				}
 				cs.Pause();
@@ -348,6 +354,7 @@ RP1210AReturnType SendCommand (short nCommandNumber, short nClientID, char far* 
 				connections[nClientID].RemoveTransaction(nNotifyStatusOnTx, msgId);
 
 				if (connections[nClientID].GetConnectionType() == Conn_Invalid) {
+                    Log::WriteRaw(LogLev::ErrClientDisconnected, L"SendCommand2");
 					return ERR_CLIENT_DISCONNECTED;
 				}
 				return returnCode;
@@ -1044,6 +1051,7 @@ static DWORD __stdcall UDPListenFunc(void * args) {
 	
 	//no response from C# app, clean up
 	CritSection cs;
+    Log::WriteRaw(LogLev::ErrClientDisconnected, L"Posting ERR_CLIENT_DISCONNECTED");
 	DLLCleanUp();
 
 	//-----------------------------------------------

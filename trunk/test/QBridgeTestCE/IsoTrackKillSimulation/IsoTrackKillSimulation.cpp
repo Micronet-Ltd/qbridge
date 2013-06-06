@@ -76,7 +76,9 @@ short My_RP1210_ReadMessage(short nClientID, char *fpchAPIMessage, short nBuffer
 void DoConnection() {
     cout << "    Connecting... " << endl;
     RP1210Handle client1;
+    //short client1;
     client1.reset(VALIDATE(RP1210_ClientConnect(NULL, QBRIDGE_COM7, QBRIDGE_J1708_PROTOCOL, 0,0, 0)));
+    //client1 = VALIDATE(RP1210_ClientConnect(NULL, QBRIDGE_COM7, QBRIDGE_J1708_PROTOCOL, 0,0, 0));
     cout << "    Received connection with ID " << client1.get() << endl;
     
     cout << "    Setting filters to pass..." << endl;
@@ -94,6 +96,7 @@ void DoConnection() {
     }
     cout << "    Done Reading messages" << endl;
 
+    //CloseRP1210Handle(client1);
 }
 
 void DoStuff() {
@@ -106,15 +109,72 @@ void DoStuff() {
         } catch(...) {
             cout << "Loop " << i << " ended with exception.  Waiting to reconnect..." << endl;
             Sleep(1000);
-            cout << "Done waiting<< " << endl;
+            cout << "Done waiting " << endl;
         }
     }
 }
 
+//-------------------------------------------------------------------------------------------------------------------------------
+
+DWORD ThreadProc(LPVOID lpParameter) {
+    short client1 = (short)lpParameter;
+
+    cout << "    Reading in thread..." << endl;
+    char buf[256];
+    short result = RP1210_ReadMessage(client1, buf, _countof(buf), true);
+    cout << "    Read complete.  Returned " << result << ".  " << endl;
+
+    return 0;
+}
+
+void DoConnection2() {
+    cout << "    Connecting... " << endl;
+    RP1210Handle client1;
+    //short client1;
+    client1.reset(VALIDATE(RP1210_ClientConnect(NULL, QBRIDGE_COM7, QBRIDGE_J1708_PROTOCOL, 0,0, 0)));
+    //client1 = VALIDATE(RP1210_ClientConnect(NULL, QBRIDGE_COM7, QBRIDGE_J1708_PROTOCOL, 0,0, 0));
+    cout << "    Received connection with ID " << client1.get() << endl;
+
+    cout << "    Setting filters to pass..." << endl;
+    VALIDATE(RP1210_SendCommand(CMD_ALL_FILTERS_PASS, client1.get(), "", 0)); 
+    cout << "    Filters set to pass" << endl;
+
+    cout << "    Spawning Read Thread" << endl;
+    beijer::EventHandle thrdH (CreateThread(NULL, 0, &::ThreadProc, (LPVOID)client1.get(), 0, NULL));
+    if (!thrdH) {
+        cout << "Error spawning thread" << endl;
+        throw exception(); 
+    }
+
+    Sleep(5000);
+
+    static int cnt = 0;
+    cnt ++;
+    if (cnt %2 == 0) {    
+        KillDriver();
+    }
+
+}
+
+void DoStuff2() {
+    for (int i = 0; i < INT_MAX; i++) {
+        cout << "Starting connection loop " << i << endl;
+        try {
+            DoConnection2();
+            cout << "Loop " << i << " ended normally" << endl;
+        } catch(...) {
+            cout << "Loop " << i << " ended with exception.  Waiting to reconnect..." << endl;
+            Sleep(1000);
+            cout << "Done waiting " << endl;
+        }
+    }
+}
+
+
 int _tmain(int argc, _TCHAR* argv[])
 {
     __try {
-        DoStuff();
+        DoStuff2();
     } __finally {
         cout << "DEAD!";
     }

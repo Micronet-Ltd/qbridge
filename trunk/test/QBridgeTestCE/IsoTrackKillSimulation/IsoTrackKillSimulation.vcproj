@@ -100,7 +100,7 @@
 			/>
 			<DeploymentTool
 				ForceDirty="-1"
-				RemoteDirectory=""
+				RemoteDirectory="\harddisk\dev\IsoTrackKillSimulation"
 				RegisterOutput="0"
 				AdditionalFiles=""
 			/>
