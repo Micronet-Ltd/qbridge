@@ -1,9 +1,12 @@
 // QBRDGE32.cpp : Defines the entry point for the DLL application.
 //
+#pragma warning (disable:4996)
 
 #include "Stdafx.h"
 #include "QBRDGE32.h"
 #include "rp1210a_impl.h"
+#include "Log.h"
+
 
 #define CRC_CITT_ONLY
 #define INC_CRC_FUNCS
@@ -110,101 +113,155 @@ BOOL APIENTRY DllMain( HANDLE hModule,
     return TRUE;
 }
 
+
+class ApiRetValLog {
+public:
+    inline ApiRetValLog (RP1210AReturnType value_) : value(value_) {
+        Log::Write(LogLev::ApiResult, L"%S returned %d\n", curFunc, value);
+    }
+
+    inline operator RP1210AReturnType() { return value; }
+
+    static char const * curFunc;
+private:
+    RP1210AReturnType value;
+};
+
+char const * ApiRetValLog::curFunc;
+
+
+#define API_PROLOG ApiRetValLog::curFunc = __FUNCTION__
+
 /*************************/
 /* RP1210_ClientConnect */
 /***********************/
-RP1210A_API RP1210AReturnType WINAPI RP1210_ClientConnect (HWND hwndClient, short nDeviceID, char far* fpchProtocol, long lTxBufferSize, long lRcvBufferSize, short nIsAppPacketizingIncomingMsgs) {
-	CritSection cs;
-	if (ConnectToDriverApp() == false) {
-		_DbgTrace(_T("ConnectToDriverApp RP1210_ClientConnect failed"));
-		return ERR_MISC_COMMUNICATION;
-	}
-	if ((nDeviceID >= QBRIDGE_COM1) && (nDeviceID <= QBRIDGE_COM9)) {
-		int comPort = nDeviceID;
+inline ApiRetValLog WINAPI RP1210_ClientConnect_ (HWND hwndClient, short nDeviceID, char far* fpchProtocol, long lTxBufferSize, long lRcvBufferSize, short nIsAppPacketizingIncomingMsgs) {
+    API_PROLOG;
+    CritSection cs;
+    if (ConnectToDriverApp() == false) {
+        _DbgTrace(_T("ConnectToDriverApp RP1210_ClientConnect failed"));
+        return ERR_MISC_COMMUNICATION;
+    }
+    if ((nDeviceID >= QBRIDGE_COM1) && (nDeviceID <= QBRIDGE_COM9)) {
+        int comPort = nDeviceID;
 
-		if (strcmp(fpchProtocol, QBRIDGE_J1708_PROTOCOL) == 0) {
-			return CreateConnection(1, comPort, hwndClient, lTxBufferSize, lRcvBufferSize, 0);			
-		} else if (strcmp(fpchProtocol, QBRIDGE_J1939_PROTOCOL) == 0) {
-			return CreateConnection(2, comPort, hwndClient, lTxBufferSize, lRcvBufferSize, nIsAppPacketizingIncomingMsgs);	
-		} else {
-			return ERR_INVALID_PROTOCOL;
-		}
-	} else {
-		return ERR_INVALID_DEVICE;
-	}
+        if (strcmp(fpchProtocol, QBRIDGE_J1708_PROTOCOL) == 0) {
+            return CreateConnection(1, comPort, hwndClient, lTxBufferSize, lRcvBufferSize, 0);			
+        } else if (strcmp(fpchProtocol, QBRIDGE_J1939_PROTOCOL) == 0) {
+            return CreateConnection(2, comPort, hwndClient, lTxBufferSize, lRcvBufferSize, nIsAppPacketizingIncomingMsgs);	
+        } else {
+            return ERR_INVALID_PROTOCOL;
+        }
+    } else {
+        return ERR_INVALID_DEVICE;
+    }
+}
+
+RP1210A_API RP1210AReturnType WINAPI RP1210_ClientConnect (HWND hwndClient, short nDeviceID, char far* fpchProtocol, long lTxBufferSize, long lRcvBufferSize, short nIsAppPacketizingIncomingMsgs) {
+    return RP1210_ClientConnect_(hwndClient, nDeviceID, fpchProtocol, lTxBufferSize, lRcvBufferSize, nIsAppPacketizingIncomingMsgs);
 }
 
 /****************************/
 /* RP1210_ClientDisconnect */
 /**************************/
+ApiRetValLog WINAPI RP1210_ClientDisconnect_ (short nClientID) {
+    API_PROLOG;
+    CritSection cs;
+    if (ConnectToDriverApp() == false) {
+        _DbgTrace(_T("RP1210_ClientDisconnect failed"));
+        return ERR_MISC_COMMUNICATION;
+    }
+    return Disconnect(nClientID);
+}
+
 RP1210AReturnType RP1210A_API WINAPI RP1210_ClientDisconnect (short nClientID) {
-	CritSection cs;
-	if (ConnectToDriverApp() == false) {
-		_DbgTrace(_T("RP1210_ClientDisconnect failed"));
-		return ERR_MISC_COMMUNICATION;
-	}
-	return Disconnect(nClientID);
+    return RP1210_ClientDisconnect_(nClientID);
 }
 
 /***********************/
 /* RP1210_GetErrorMsg */
 /*********************/
+inline ApiRetValLog WINAPI RP1210_GetErrorMsg_ (short nErrorCode, char far* fpchDescription) {
+    API_PROLOG;
+    CritSection cs;
+    ASSERT (IS_PTR_VALID(fpchDescription, 80, TRUE));
+    strcpy(fpchDescription, "");
+    if (nErrorCode < 128) {
+        strcpy (fpchDescription, "No Error");
+        return ERR_CODE_NOT_FOUND;
+    } else {
+        int index = nErrorCode - 128;
+        if ((index < ARRAYLEN(errorStrings)) && (errorStrings[index] != NULL)) {
+            strncpy(fpchDescription, errorStrings[index], 79);
+            return 0;
+        } else {
+            strcpy (fpchDescription, "Unknown error");
+            return ERR_CODE_NOT_FOUND;
+        }
+    }
+}
+
 RP1210AReturnType RP1210A_API WINAPI RP1210_GetErrorMsg (short nErrorCode, char far* fpchDescription) {
-	CritSection cs;
-	ASSERT (IS_PTR_VALID(fpchDescription, 80, TRUE));
-	strcpy(fpchDescription, "");
-	if (nErrorCode < 128) {
-		strcpy (fpchDescription, "No Error");
-		return ERR_CODE_NOT_FOUND;
-	} else {
-		int index = nErrorCode - 128;
-		if ((index < ARRAYLEN(errorStrings)) && (errorStrings[index] != NULL)) {
-			strncpy(fpchDescription, errorStrings[index], 79);
-			return 0;
-		} else {
-			strcpy (fpchDescription, "Unknown error");
-			return ERR_CODE_NOT_FOUND;
-		}
-	}
+    return RP1210_GetErrorMsg_(nErrorCode, fpchDescription);
 }
 
 /***********************/
 /* RP1210_SendMessage */
 /*********************/
-RP1210AReturnType RP1210A_API WINAPI RP1210_SendMessage (short nClientID, char far* fpchClientMessage, short nMessageSize, short nNotifyStatusOnTx, short nBlockOnSend) {
-	CritSection cs;
+inline ApiRetValLog WINAPI RP1210_SendMessage_ (short nClientID, char far* fpchClientMessage, short nMessageSize, short nNotifyStatusOnTx, short nBlockOnSend) {
+    API_PROLOG;
+    CritSection cs;
 
-	return SendRP1210Message (nClientID, fpchClientMessage, nMessageSize, nNotifyStatusOnTx, nBlockOnSend, cs);
+    return SendRP1210Message (nClientID, fpchClientMessage, nMessageSize, nNotifyStatusOnTx, nBlockOnSend, cs);
+}
+
+RP1210AReturnType RP1210A_API WINAPI RP1210_SendMessage (short nClientID, char far* fpchClientMessage, short nMessageSize, short nNotifyStatusOnTx, short nBlockOnSend) {
+    return RP1210_SendMessage_(nClientID, fpchClientMessage, nMessageSize, nNotifyStatusOnTx, nBlockOnSend);
 }
 
 /***********************/
 /* RP1210_ReadMessage */
 /*********************/
-RP1210AReturnType RP1210A_API WINAPI RP1210_ReadMessage (short nClientID, char far* fpchAPIMessage, short nBufferSize, short nBlockOnRead) {
-	CritSection cs;
-	ASSERT (IS_PTR_VALID(fpchAPIMessage, nBufferSize, TRUE));
-	
-	return ReadRP1210Message (nClientID, fpchAPIMessage, nBufferSize, nBlockOnRead, cs);
+inline ApiRetValLog WINAPI RP1210_ReadMessage_ (short nClientID, char far* fpchAPIMessage, short nBufferSize, short nBlockOnRead) {
+    API_PROLOG;
+    CritSection cs;
+    ASSERT (IS_PTR_VALID(fpchAPIMessage, nBufferSize, TRUE));
+
+    return ReadRP1210Message (nClientID, fpchAPIMessage, nBufferSize, nBlockOnRead, cs);
 }
+    
+RP1210AReturnType RP1210A_API WINAPI RP1210_ReadMessage (short nClientID, char far* fpchAPIMessage, short nBufferSize, short nBlockOnRead) {
+    return RP1210_ReadMessage_(nClientID, fpchAPIMessage, nBufferSize, nBlockOnRead);
+}
+
 
 /***********************/
 /* RP1210_SendCommand */
 /*********************/
+inline ApiRetValLog WINAPI RP1210_SendCommand_( short nCommandNumber, short nClientID, char far* fpchClientCommand, short nMessageSize )
+{
+    API_PROLOG;
+    CritSection cs;
+    //ASSERT (IS_PTR_VALID(fpchClientCommand, nMessageSize, TRUE));
+    return SendCommand (nCommandNumber, nClientID, fpchClientCommand, nMessageSize, cs);
+}
+
 RP1210AReturnType RP1210A_API WINAPI RP1210_SendCommand (short nCommandNumber, short nClientID, char far* fpchClientCommand, short nMessageSize) {
-	CritSection cs;
-	//ASSERT (IS_PTR_VALID(fpchClientCommand, nMessageSize, TRUE));
-	return SendCommand (nCommandNumber, nClientID, fpchClientCommand, nMessageSize, cs);
+    return RP1210_SendCommand_(nCommandNumber, nClientID, fpchClientCommand, nMessageSize);
 }
 
 /*************************/
 /* RP1210_GetStatusInfo */
 /***********************/
 RP1210A_API void WINAPI RP1210_GetStatusInfo(TCHAR *buf, int size) {
-	CritSection cs;
+    Log::WriteRaw(LogLev::ApiResult, L"Called RP1210_GetStatusInfo");
+
+    CritSection cs;
 	if (ConnectToDriverApp() == false) {
 		_DbgTrace(_T("RP1210_GetStatusInfo failed"));
 	}
 	GetStatusInfo(buf, size);
+
 	return;
 }
 
@@ -213,6 +270,8 @@ RP1210A_API void WINAPI RP1210_GetStatusInfo(TCHAR *buf, int size) {
 /*********************/
 RP1210A_API void WINAPI RP1210_ReadVersion (char far* fpchDLLMajorVersion,	char far* fpchDLLMinorVersion,	char far* fpchAPIMajorVersion,	char far* fpchAPIMinorVersion) 
 {
+    Log::WriteRaw(LogLev::ApiResult, L"Called RP1210_ReadVersion");
+
 	CritSection cs;
 	fpchDLLMajorVersion[0] = 0x31;
 	fpchDLLMinorVersion[0] = 0x34;
@@ -223,11 +282,16 @@ RP1210A_API void WINAPI RP1210_ReadVersion (char far* fpchDLLMajorVersion,	char 
 /*****************************/
 /* RP1210_GetHardwareStatus */
 /***************************/
-RP1210AReturnType RP1210A_API WINAPI RP1210_GetHardwareStatus (short nClientID, char far* fpchClientInfo, short nInfoSize, short nBlockOnRequest) {
-	CritSection cs;
-	ASSERT (IS_PTR_VALID(fpchClientInfo, nInfoSize, TRUE));
+ApiRetValLog WINAPI RP1210_GetHardwareStatus_ (short nClientID, char far* fpchClientInfo, short nInfoSize, short nBlockOnRequest) {
+    API_PROLOG;
+    CritSection cs;
+    ASSERT (IS_PTR_VALID(fpchClientInfo, nInfoSize, TRUE));
 
-	return GetHardwareStatus (nClientID, fpchClientInfo, nInfoSize, nBlockOnRequest, cs);
+    return GetHardwareStatus (nClientID, fpchClientInfo, nInfoSize, nBlockOnRequest, cs);
+}
+    
+RP1210AReturnType RP1210A_API WINAPI RP1210_GetHardwareStatus (short nClientID, char far* fpchClientInfo, short nInfoSize, short nBlockOnRequest) {
+    return RP1210_GetHardwareStatus_ (nClientID, fpchClientInfo, nInfoSize, nBlockOnRequest); 
 }
 
 /****************/

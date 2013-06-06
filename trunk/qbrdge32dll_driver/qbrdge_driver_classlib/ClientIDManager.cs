@@ -48,6 +48,7 @@ namespace qbrdge_driver_classlib
 
             public void ResetDefaults()
             {
+                Log.Write(LogLev.Debug, "ClientIDManager reset defaults");
                 dllInPort = 0;
                 available = true;
                 serialInfo = null; // serial port assigned to client id
@@ -142,6 +143,8 @@ namespace qbrdge_driver_classlib
         //add new client id, return new client id or error code < 0
         public static void AddNewClientID(IPEndPoint iep, int comNum, bool isJ1939Client)
         {
+            Log.Write(LogLev.Debug, string.Format("Adding Client ID: {0}, {1}", iep, comNum));
+
             int clientId = -1;
             for (int i = 0; i < clientIds.Length; i++)
             {
@@ -200,6 +203,8 @@ namespace qbrdge_driver_classlib
         //make available slots from removed port
         public static void FreeClientIDs(int port)
         {
+            Log.Write(LogLev.Debug, string.Format("Free client IDs from Port: {0}", port));
+
             for (int i = 0; i < clientIds.Length; i++)
             {
                 if (clientIds[i].dllInPort == port)
@@ -217,6 +222,7 @@ namespace qbrdge_driver_classlib
 
         public static void RemoveClientID(int cid, int port)
         {
+            Log.Write(LogLev.Debug, string.Format("Remove client ID {0} on port {1}", cid, port));
             if (clientIds[cid].dllInPort == port)
             {
                 SerialPortInfo sinfo = clientIds[cid].serialInfo;

@@ -69,6 +69,7 @@ namespace qbrdge_driver_classlib
             {
                 if (QBTransactionSent.Count == 0) {
                     //add query transaction
+
                     QBTransaction qbt = new QBTransaction();
                     // comport being opened for the first time, send an Init command
                     // to verify that a QBridge is attached.
@@ -80,6 +81,7 @@ namespace qbrdge_driver_classlib
                     qbt.timeoutReply = UDPReplyType.sendJ1939replytimeout;
                     QBTransactionNew.Add(qbt);
 
+                    Log.Write(LogLev.Debug, string.Format("Sending Info request"));
                     QBSerial.CheckSendMsgQ();
                 }
             }
@@ -164,6 +166,8 @@ namespace qbrdge_driver_classlib
         
         public static void RegisterSerialPort(string comNum, int clientId, IPEndPoint iep)
         {
+            Log.Write(LogLev.Debug, string.Format("Register serial port {0}, clientid={1}, iep={2}", comNum, clientId, iep));
+
             SerialPortInfo newcom = new SerialPortInfo();
 
             SerialPort com = null;
@@ -210,6 +214,8 @@ namespace qbrdge_driver_classlib
 
         public static void ReInitSerialPort(ref SerialPortInfo sinfo, int clientId)
         {
+            Log.Write(LogLev.Debug, string.Format("Reinit port {0}, clientId={1}", sinfo.com.PortName, clientId));
+
             //no udp reply send, create msg packet
             QBTransaction qbt = new QBTransaction();
             qbt.clientId = clientId;
@@ -261,6 +267,8 @@ namespace qbrdge_driver_classlib
 
         public void Close()
         {
+            Log.Write(LogLev.Debug, string.Format("Closing all serial ports"));
+
             for (int i = 0; i < comPorts.Count; i++)
             {
                 comPorts[i].com.Close();
@@ -297,6 +305,7 @@ namespace qbrdge_driver_classlib
 
         public static void RemovePort(SerialPortInfo sinfo)
         {
+            Log.Write(LogLev.Debug, string.Format("Removing serial port {0}", sinfo.com.PortName));
             for (int i = 0; i < comPorts.Count; i++)
             {
                 if (comPorts[i].com.PortName == sinfo.com.PortName)
@@ -589,7 +598,8 @@ namespace qbrdge_driver_classlib
 
         private static void ProcessValidQBPacket(PacketCmdCodes cmdType, byte pktId,
             PacketAckCodes ackCode, byte[] pktData, SerialPortInfo portInfo)
-        {           
+        {
+            Log.Write(LogLev.Debug, string.Format("Received valid QBridge packet cmd={0} on port {1}", cmdType, portInfo.com.PortName));
             //find matching transaction, if exists
             QBTransaction qbt = new QBTransaction();
             int qbtIdx = -1;
@@ -1016,6 +1026,7 @@ namespace qbrdge_driver_classlib
 
         public static void J1708PktRecv(string portName, byte[] pktData, int ignoreClientId)
         {
+            Log.Write(LogLev.Debug, string.Format("Received J1708 packet on {1}", portName));
             //add timestamp to j1708 packet
             byte[] tstamp = Support.Int32ToBytes(Environment.TickCount, true);
             byte[] ptmp = new byte[4 + pktData.Length];
@@ -1577,6 +1588,7 @@ namespace qbrdge_driver_classlib
         //port is not responding and notifiy the DLL
         public static void ClearQBTransactionNew(SerialPortInfo serialInfo)
         {
+            Log.Write(LogLev.Debug, string.Format("ClearQBTransactionNew"));
             for (int i = 0; i < serialInfo.QBTransactionNew.Count; i++) {
                 QBTransaction qbt = serialInfo.QBTransactionNew[i];
 
@@ -1601,6 +1613,7 @@ namespace qbrdge_driver_classlib
         //returns msgQID
         public static int AddSendJ1708Msg(int clientId, string j1708msg, bool isNotify, bool isBlocking)
         {
+            Log.Write(LogLev.Debug, string.Format("Sending J1708 Message"));
             int msgId;
             if (isNotify)
             {

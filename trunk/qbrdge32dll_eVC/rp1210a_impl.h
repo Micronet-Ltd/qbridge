@@ -3,6 +3,8 @@
 #ifndef RP1210A_IMPL_H
 #define RP1210A_IMPL_H
 
+#include "Log.h"
+
 static UINT WM_RP1210_ERROR_MESSAGE = 0;
 static UINT WM_RP1210_MESSAGE_MESSAGE = 0;
 static int BLOCK_TIMEOUT = 60000;
@@ -55,8 +57,10 @@ enum ConnectionType {Conn_Invalid = 0, Conn_J1708, Conn_J1939};
 class Connection {
 public:
 	Connection() : 
-		txQueueMax(8000), rxQueueMax(8000), connType(Conn_Invalid), hwnd(0) { }
-	~Connection() {  }
+		txQueueMax(8000), rxQueueMax(8000), connType(Conn_Invalid), hwnd(0) { 
+        }
+	~Connection() {  
+    }
 
 	short nIsAppPacketizingIncomingMsgs;
 	int comPort;
@@ -369,6 +373,7 @@ public:
 	Thread() : valid(false) {}
 	bool SetupThread ( DWORD (WINAPI * pFun) (void* arg), void* pArg)
     {
+        Log::WriteRaw(LogLev::Debug, L"Thread::SetupThread");       
 		if (valid) {
 			return false;
 		}

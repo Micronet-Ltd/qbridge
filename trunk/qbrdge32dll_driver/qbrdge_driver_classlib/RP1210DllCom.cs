@@ -54,12 +54,16 @@ namespace qbrdge_driver_classlib
         static IconMgrBase icoMgr;
         public static void MainStart(IconMgrBase mgr)
         {
+            Log.Write(LogLev.Debug, "Starting QBridge EXE");
+
             icoMgr = mgr;
             mainRP1210Com = new RP1210DllCom();
         }
 
         public RP1210DllCom()
         {
+            Log.Write(LogLev.Debug, string.Format("Creating DLL Comm"));
+
             //QBSerial.UpgradeFirmware();
             mainRP1210Com = this;
 
@@ -114,6 +118,8 @@ namespace qbrdge_driver_classlib
 
        public static void EndProgram()
        {
+           Log.Write(LogLev.Debug, string.Format("Program ending cleanly"));
+
            _DbgTrace("end program");
            Debug.WriteLine("end program");
            udpListener.Close();
@@ -158,6 +164,7 @@ namespace qbrdge_driver_classlib
                     data = udpListener.Receive(ref iep);
                     lock (Support.lockThis)
                     {
+                        Log.Write(LogLev.Debug, string.Format("Received UDP packet from {0}", iep));
                         ParseUdpPacket(data, iep);
                     }
 
@@ -245,6 +252,7 @@ namespace qbrdge_driver_classlib
 
         private static void ParseUdpDataPacket(string sdata, IPEndPoint iep)
         {
+
             // packet in format <number>,<command>;<data> OR
             // <number>|<number>,<command>;<data>
             int commaIdx = sdata.IndexOf(",", 0);

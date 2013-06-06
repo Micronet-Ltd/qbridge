@@ -100,7 +100,7 @@
 			/>
 			<DeploymentTool
 				ForceDirty="-1"
-				RemoteDirectory=""
+				RemoteDirectory="\HardDisk\bin\QBridge"
 				RegisterOutput="0"
 				AdditionalFiles=""
 			/>
@@ -190,7 +190,7 @@
 			/>
 			<DeploymentTool
 				ForceDirty="-1"
-				RemoteDirectory=""
+				RemoteDirectory="\HardDisk\bin\QBridge"
 				RegisterOutput="0"
 				AdditionalFiles=""
 			/>
@@ -391,6 +391,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\qbrdge32dll_eVC\Log.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\qbrdge32dll_eVC\QBRDGE32.h"
 				>
 			</File>
@@ -408,6 +412,10 @@
 			Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
+			<File
+				RelativePath="..\..\qbrdge32dll_eVC\Log.cpp"
+				>
+			</File>
 			<File
 				RelativePath="..\..\qbrdge32dll_eVC\QBRDGE32.cpp"
 				>
