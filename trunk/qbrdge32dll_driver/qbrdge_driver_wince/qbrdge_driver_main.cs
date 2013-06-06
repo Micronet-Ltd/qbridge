@@ -17,17 +17,24 @@ namespace qbridge_driver
 		public static extern bool CloseHandle(IntPtr hObject);
 
 		public const int WAIT_TIMEOUT = 102;
+		public const int WAIT_OBJECT_0 = 0;
 		const int ERROR_ALREADY_EXISTS = 183;
 
 		static void Main()
 		{
-			var mutex = CreateMutex(IntPtr.Zero, false, "QBridgeWinCEDriver");
-			if (Marshal.GetLastWin32Error() != ERROR_ALREADY_EXISTS)
+			var hMutex = CreateMutex(IntPtr.Zero, false, "QBridgeWinCEDriver");
+			if (hMutex == null) return;
+
+			if (WaitForSingleObject(hMutex, 0) == WAIT_OBJECT_0)
 			{
-				qbrdge_driver_classlib.RP1210DllCom.MainStart(new qbrdge_driver_classlib.IconMgrBase());
+				//We have the mutex
+				//if (Marshal.GetLastWin32Error() != ERROR_ALREADY_EXISTS)
+				//{
+					qbrdge_driver_classlib.RP1210DllCom.MainStart(new qbrdge_driver_classlib.IconMgrBase());
+				//}
 			}
-			ReleaseMutex(mutex);
-			CloseHandle(mutex);
+			ReleaseMutex(hMutex);
+			CloseHandle(hMutex);
 		}
 	}
 }
