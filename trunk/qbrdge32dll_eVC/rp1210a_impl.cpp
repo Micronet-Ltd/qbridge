@@ -313,6 +313,7 @@ RP1210AReturnType SendCommand (short nCommandNumber, short nClientID, char far* 
 		if ( (nCommandNumber == CMD_RESET_DEVICE || 
 			nCommandNumber == CMD_UPGRADE_FIRMWARE) && returnCode == 0) {
 			//success, device reset, client not connected
+            Log::WriteRaw(LogLev::ErrClientDisconnected, L"Disconnect due to upgrade firmware or reset device");
 			Disconnect(nClientID);
 		}
 		else if (nCommandNumber == CMD_PROTECT_J1939_ADDRESS) {
@@ -965,6 +966,7 @@ static DWORD __stdcall UDPListenFunc(void * args) {
 		if(select(0, &fdReadSet, NULL, &fdErrorSet, &timeout) != 1)
 		{
 			//_DbgTrace(_T("Select 1 timeout\n"));
+            Log::WriteRaw(LogLev::ErrClientDisconnected, L"DbgListen 1");
 			break;
 		}
 		else {
@@ -981,11 +983,13 @@ static DWORD __stdcall UDPListenFunc(void * args) {
 				if (rv == SOCKET_ERROR)
 				{
 					//_DbgTrace(_T("UDPListen RecvFrom Error\n"));
+                    Log::WriteRaw(LogLev::ErrClientDisconnected, L"DbgListen 2");
 					break;
 				}
 			}
 			else {
 				//_DbgTrace(_T("select 1 error\n"));
+                Log::WriteRaw(LogLev::ErrClientDisconnected, L"DbgListen 3");
 				break;
 			}
 		}
@@ -1044,6 +1048,7 @@ static DWORD __stdcall UDPListenFunc(void * args) {
 			}		
 		}
 		if (udpThread.valid == false) {
+            Log::WriteRaw(LogLev::ErrClientDisconnected, L"DbgListen 4");
 			break;
 		}
 	}
@@ -1051,7 +1056,7 @@ static DWORD __stdcall UDPListenFunc(void * args) {
 	
 	//no response from C# app, clean up
 	CritSection cs;
-    Log::WriteRaw(LogLev::ErrClientDisconnected, L"Posting ERR_CLIENT_DISCONNECTED");
+    Log::WriteRaw(LogLev::ErrClientDisconnected, L"Calling DLLCleanUp from UDPSend");
 	DLLCleanUp();
 
 	//-----------------------------------------------
@@ -1200,6 +1205,8 @@ void ProcessDataPacket(char* data, SOCKET RecvSocket, sockaddr_in RecvAddr)
 /*************/
 void DLLCleanUp()
 {
+    Log::WriteRaw(LogLev::ErrClientDisconnected, L"DllCleanUp");
+
 	for (int i = 0; i <= maxClientID; i++) {
 		connections[i].Clear();
 	}

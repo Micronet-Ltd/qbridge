@@ -26,4 +26,5 @@ public:
     static void AppendToFile(LPCSTR msg);
 
     static LPCWSTR GetFilename();
+    static LPCWSTR GetBackupFilename();
 };

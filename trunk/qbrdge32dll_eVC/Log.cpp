@@ -1,6 +1,9 @@
+#include "StdAfx.h"
 #include "Log.h"
-#include <Windows.h>
 #pragma warning (disable:4996)
+
+#include "QBRDGE32.h"
+#include "rp1210a_impl.h"
 
 #include <vector>
 #include <algorithm>
@@ -8,7 +11,7 @@ using namespace std;
 
 const LogLev LogLev::ApiResult(true, L"Api Result");
 const LogLev LogLev::Debug(true, L"Debug Msg");
-const LogLev LogLev::UdpDebug(true, L"Udp Msg");
+const LogLev LogLev::UdpDebug(false, L"Udp Msg");
 const LogLev LogLev::Error(true, L"Error");
 const LogLev LogLev::ErrClientDisconnected (true, L"Client Disconnected");
 
@@ -59,6 +62,14 @@ void Log::AppendToFile( LPCSTR msg )
         fwrite(msg, sizeof(msg[0]), len, file);
         fclose(file);
     }
+
+    const DWORD maxLogSize = 128 * 1024;
+    WIN32_FILE_ATTRIBUTE_DATA fd = {0};
+    GetFileAttributesEx(GetFilename(), GetFileExInfoStandard, &fd);
+    if (fd.nFileSizeLow > maxLogSize) {
+        DeleteFile(GetBackupFilename());
+        MoveFile(GetFilename(), GetBackupFilename());
+    }
 }
 
 //**--**--**--**--**--**
@@ -79,6 +90,17 @@ LPCWSTR Log::GetFilename()
         wcscat(retVal, L"QBridgeDllLog.txt");
 
 
+    }
+    return retVal;
+}
+
+//**--**--**--**--**--**
+LPCWSTR Log::GetBackupFilename()
+{
+    static wchar_t retVal[MAX_PATH] = {0};
+    if (!retVal[0]) {
+        wcscpy_s(retVal, _countof(retVal), GetFilename());
+        wcscat_s(retVal, _countof(retVal), L".old.txt");
     }
     return retVal;
 }

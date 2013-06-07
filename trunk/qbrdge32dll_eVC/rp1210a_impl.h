@@ -93,7 +93,7 @@ public:
     }
 
 	void Clear() {
-		// send reply to pending transactions
+        // send reply to pending transactions
 		typedef list<Transaction>::iterator transIter;
 		list <transIter> toErase;
 		for (transIter it = transactions.begin(); it != transactions.end(); it++) {
@@ -110,13 +110,11 @@ public:
 			if (t.isNotify && hwnd != 0) {
 				//_DbgTrace(_T("POST error client disconnect\n"));
 
-                Log::WriteRaw(LogLev::ErrClientDisconnected, L"Posting ERR_CLIENT_DISCONNECTED");
 				::PostMessage(GetHwnd(), WM_RP1210_ERROR_MESSAGE, ERR_CLIENT_DISCONNECTED, t.transId+128);				
 				toErase.push_back(it);
 			}
 			else {
 				//notify blocking send msg.
-                Log::WriteRaw(LogLev::ErrClientDisconnected, L"Connection::Clear ERR_CLIENT_DISCONNECTED to blocking calls");
 				t.returnCode = ERR_CLIENT_DISCONNECTED;
 				::SetEvent(t.transEvent);
 			}
@@ -128,6 +126,7 @@ public:
 		txQueueMax = 8000;
 		rxQueueMax = 8000;
 		if (connType != Conn_Invalid) {
+            Log::WriteRaw(LogLev::ErrClientDisconnected, L"Setting connType to Invalid (Connection::Clear)");
 			connType = Conn_Invalid;			
 			ConnectionStatusChanged();
 		}	

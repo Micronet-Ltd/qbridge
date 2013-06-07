@@ -1026,7 +1026,7 @@ namespace qbrdge_driver_classlib
 
         public static void J1708PktRecv(string portName, byte[] pktData, int ignoreClientId)
         {
-            Log.Write(LogLev.Debug, string.Format("Received J1708 packet on {1}", portName));
+            Log.Write(LogLev.Debug, string.Format("Received J1708 packet on {0}", portName));
             //add timestamp to j1708 packet
             byte[] tstamp = Support.Int32ToBytes(Environment.TickCount, true);
             byte[] ptmp = new byte[4 + pktData.Length];
