@@ -7,14 +7,25 @@
 using namespace std;
 
 #include <beCore.h>
+#include <beRegistry.h>
 #include <TlHelp32.h>
 #pragma comment (lib, "Toolhelp.lib")
 #include <atlstr.h>
+#include <sstream>
 
 #include "..\..\..\qbrdge32dll_eVC\Qbrdge32.h"
 #pragma comment (lib, "..\\..\\..\\qbrdge32dll_vs2008\\qbrdge32dll\\TREQ-VM (ARMV4I)\\Release\\Qbrdge32.lib")
 
 #define VALIDATE(exp) Validate(exp, #exp, true)
+#define LOG(exp) { ostringstream os; os exp; Log(os.str().c_str()); }
+
+void Log(LPCSTR msg) {
+    int len = strlen(msg);
+    cout << msg;
+
+    CStringW ods(msg);
+    OutputDebugString(ods);
+}
 
 void KillDriver() {
     typedef beijer::unique_handle<beijer::HandleTraits<HANDLE, INVALID_HANDLE_VALUE, BOOL (WINAPI *)(HANDLE), CloseToolhelp32Snapshot> > ToolHelpSnapshotHandle;
@@ -30,7 +41,7 @@ void KillDriver() {
             name.MakeLower();
             if (name.Right(toKill.GetLength()) == toKill) {
                 BOOL result = TerminateProcess(reinterpret_cast<HANDLE>(pe.th32ProcessID), 1);
-                cout << "        Terminated process " << name << " with process ID of " << pe.th32ProcessID << "  result=" << result << endl;
+                LOG( << "        Terminated process " << name << " with process ID of " << pe.th32ProcessID << "  result=" << result << endl);
             }
             pe.dwSize = sizeof(pe);
         } while (Process32Next(d.get(), &pe));
@@ -39,23 +50,23 @@ void KillDriver() {
 
 short Validate(short code, char const *expression, bool doThrow) {
     if (code == ERR_CLIENT_DISCONNECTED) {
-        cout << "        ERR_CLIENT_DISCONNECTED from expression " << expression << endl;
+        LOG( << "        ERR_CLIENT_DISCONNECTED from expression " << expression << endl);
         KillDriver();
         if (doThrow) { throw exception(); }
     } else if (code < 0) {
-        cout << "        Expression " << expression << " returned invalid negative value " << code << endl;
+        LOG( << "        Expression " << expression << " returned invalid negative value " << code << endl);
         if (doThrow) { throw exception(); }
     } else if (code > 127) {
-        cout << "        Expression " << expression << " returned error code " << code << endl;
+        LOG( << "        Expression " << expression << " returned error code " << code << endl);
         if (doThrow) { throw exception(); }
     } 
     return code;
 }
 
 short CloseRP1210Handle(short handle) {
-    cout << "    Closing connection..." << endl;
+    LOG( << "    Closing connection..." << endl);
     short retVal = Validate (RP1210_ClientDisconnect(handle), "RP1210_ClientDisconnect(handle)", false);
-    cout << "    Handle closed" << endl;
+    LOG( << "    Handle closed" << endl);
     return retVal;
 }
 
@@ -74,27 +85,27 @@ short My_RP1210_ReadMessage(short nClientID, char *fpchAPIMessage, short nBuffer
 }
 
 void DoConnection() {
-    cout << "    Connecting... " << endl;
+    LOG( << "    Connecting... " << endl);
     RP1210Handle client1;
     //short client1;
     client1.reset(VALIDATE(RP1210_ClientConnect(NULL, QBRIDGE_COM7, QBRIDGE_J1708_PROTOCOL, 0,0, 0)));
     //client1 = VALIDATE(RP1210_ClientConnect(NULL, QBRIDGE_COM7, QBRIDGE_J1708_PROTOCOL, 0,0, 0));
-    cout << "    Received connection with ID " << client1.get() << endl;
+    LOG( << "    Received connection with ID " << client1.get() << endl);
     
-    cout << "    Setting filters to pass..." << endl;
+    LOG( << "    Setting filters to pass..." << endl);
     VALIDATE(RP1210_SendCommand(CMD_ALL_FILTERS_PASS, client1.get(), "", 0)); 
-    cout << "    Filters set to pass" << endl;
+    LOG( << "    Filters set to pass" << endl);
 
-    cout << "    Reading messages..." << endl;
+    LOG( << "    Reading messages..." << endl);
     for (int i = 0; i < 3; i++) {
-        cout << "        Reading message " << i << "..." << endl;
+        LOG( << "        Reading message " << i << "..." << endl);
         char buffer[256];
         short readResult = My_RP1210_ReadMessage(client1.get(), buffer, _countof(buffer), false);
         if (readResult < 0) { VALIDATE(-readResult); }
         
-        cout << "        Read message " << i << "  Received " << readResult << " bytes" << endl;
+        LOG( << "        Read message " << i << "  Received " << readResult << " bytes" << endl);
     }
-    cout << "    Done Reading messages" << endl;
+    LOG( << "    Done Reading messages" << endl);
 
     //CloseRP1210Handle(client1);
 }
@@ -102,14 +113,14 @@ void DoConnection() {
 void DoStuff() {
 
     for (int i = 0; i < INT_MAX; i++) {
-        cout << "Starting connection loop " << i << endl;
+        LOG( << "Starting connection loop " << i << endl);
         try {
             DoConnection();
-            cout << "Loop " << i << " ended normally" << endl;
+            LOG( << "Loop " << i << " ended normally" << endl);
         } catch(...) {
-            cout << "Loop " << i << " ended with exception.  Waiting to reconnect..." << endl;
+            LOG( << "Loop " << i << " ended with exception.  Waiting to reconnect..." << endl);
             Sleep(1000);
-            cout << "Done waiting " << endl;
+            LOG( << "Done waiting " << endl);
         }
     }
 }
@@ -119,30 +130,53 @@ void DoStuff() {
 DWORD ThreadProc(LPVOID lpParameter) {
     short client1 = (short)lpParameter;
 
-    cout << "    Reading in thread..." << endl;
+    LOG( << "    Reading in thread..." << endl);
     char buf[256];
     short result = RP1210_ReadMessage(client1, buf, _countof(buf), true);
-    cout << "    Read complete.  Returned " << result << ".  " << endl;
+    LOG( << "    Read complete.  Returned " << result << ".  " << endl);
 
     return 0;
 }
 
 void DoConnection2() {
-    cout << "    Connecting... " << endl;
+    struct ScopeGuard {
+        ScopeGuard() : commit(false) {}
+        ~ScopeGuard() {
+            if (!commit) { 
+                LOG( << "Killing Driver.  Probably due to error in earlier command" << endl);
+                KillDriver();
+            }
+        }
+        bool commit;
+    } sg;
+
+    LOG( << "    Connecting... " << endl);
     RP1210Handle client1;
     //short client1;
     client1.reset(VALIDATE(RP1210_ClientConnect(NULL, QBRIDGE_COM7, QBRIDGE_J1708_PROTOCOL, 0,0, 0)));
     //client1 = VALIDATE(RP1210_ClientConnect(NULL, QBRIDGE_COM7, QBRIDGE_J1708_PROTOCOL, 0,0, 0));
-    cout << "    Received connection with ID " << client1.get() << endl;
+    LOG( << "    Received connection with ID " << client1.get() << endl);
 
-    cout << "    Setting filters to pass..." << endl;
+    LOG( << "    Setting filters to pass..." << endl);
     VALIDATE(RP1210_SendCommand(CMD_ALL_FILTERS_PASS, client1.get(), "", 0)); 
-    cout << "    Filters set to pass" << endl;
+    LOG( << "    Filters set to pass" << endl);
 
-    cout << "    Spawning Read Thread" << endl;
+    LOG( << "    Doing dummy commands..." << endl);
+    for (int i = 0; i < 200; i++) {
+        LOG( << i << " ");
+        VALIDATE(RP1210_SendCommand(CMD_ALL_FILTERS_PASS, client1.get(), "", 0)); 
+        char buf[256];
+        short result = RP1210_ReadMessage(client1.get(), buf, _countof(buf), false);
+        VALIDATE(-result);
+    }
+    LOG( << endl << "    ...done" << endl);
+
+    sg.commit = true;
+
+    LOG( << "    Spawning Read Thread" << endl);
     beijer::EventHandle thrdH (CreateThread(NULL, 0, &::ThreadProc, (LPVOID)client1.get(), 0, NULL));
     if (!thrdH) {
-        cout << "Error spawning thread" << endl;
+        LOG( << "Error spawning thread" << endl);
         throw exception(); 
     }
 
@@ -158,14 +192,14 @@ void DoConnection2() {
 
 void DoStuff2() {
     for (int i = 0; i < INT_MAX; i++) {
-        cout << "Starting connection loop " << i << endl;
+        LOG( << "Starting connection loop " << i << endl);
         try {
             DoConnection2();
-            cout << "Loop " << i << " ended normally" << endl;
+            LOG( << "Loop " << i << " ended normally" << endl);
         } catch(...) {
-            cout << "Loop " << i << " ended with exception.  Waiting to reconnect..." << endl;
+            LOG( << "Loop " << i << " ended with exception.  Waiting to reconnect..." << endl);
             Sleep(1000);
-            cout << "Done waiting " << endl;
+            LOG( << "Done waiting " << endl);
         }
     }
 }
@@ -173,11 +207,9 @@ void DoStuff2() {
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-    __try {
-        DoStuff2();
-    } __finally {
-        cout << "DEAD!";
-    }
+    int pri = beijer::RegistryKey::ReadDWORDValue(HKEY_LOCAL_MACHINE, L"Drivers\\Qbridge", L"Priority", 251);
+    CeSetThreadPriority(GetCurrentThread(), pri);
+     DoStuff2();
 
     return 0;
 }

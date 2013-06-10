@@ -9,11 +9,45 @@
 #include <algorithm>
 using namespace std;
 
-const LogLev LogLev::ApiResult(true, L"Api Result");
-const LogLev LogLev::Debug(true, L"Debug Msg");
-const LogLev LogLev::UdpDebug(false, L"Udp Msg");
-const LogLev LogLev::Error(true, L"Error");
-const LogLev LogLev::ErrClientDisconnected (true, L"Client Disconnected");
+const LogLev LogLev::Setup( L"Setup");
+const LogLev LogLev::ApiResult(L"Api Result");
+const LogLev LogLev::Debug(L"Debug Msg");
+const LogLev LogLev::UdpDebug(L"Udp Msg");
+const LogLev LogLev::Error(L"Error");
+const LogLev LogLev::ErrClientDisconnected (L"Client Disconnected");
+const LogLev LogLev::DriverAppInteraction (L"DriverAppInteraction");
+
+//**--**--**--**--**--**
+LogLev::LogLev( std::wstring name_ ) : name(name_), showLog(IsLogEnabledInRegistry(name_))
+{
+}
+
+
+//**--**--**--**--**--**
+bool LogLev::IsLogEnabledInRegistry( std::wstring const &name ) {
+    HKEY isEnabledKey = NULL;
+    LONG result = RegOpenKeyEx(HKEY_LOCAL_MACHINE, L"Drivers\\QBridge", 0, 0, &isEnabledKey);
+    bool retVal = false;
+    if (result == ERROR_SUCCESS) {
+        DWORD enableLog = 0;
+        DWORD dataSize = sizeof(enableLog);
+        DWORD regKeyType = REG_DWORD;
+        result = RegQueryValueEx(isEnabledKey, (L"DLL_Logging_" + name).c_str(), NULL, &regKeyType, (LPBYTE)&enableLog, &dataSize);
+        if (result == ERROR_SUCCESS) {
+            retVal = enableLog != 0;
+            //Log::Write(LogLev::Setup, L"Setting logging on channel %s to %s", name.c_str(), retVal ? L"On" : L"Off");
+        } else {
+            //Log::Write(LogLev::Setup, L"Error %d getting logging status of %s.  Defaulting to off", result, name.c_str());
+        }
+        RegCloseKey(isEnabledKey);
+        isEnabledKey= NULL;
+    } else {
+        //Log::Write(LogLev::Setup, L"Error %d opening registry to get priority.  Using default", result);
+    }
+
+    return retVal;
+}
+
 
 //**--**--**--**--**--**
 void Log::WriteRaw( LogLev const &lev, LPCWSTR msg )

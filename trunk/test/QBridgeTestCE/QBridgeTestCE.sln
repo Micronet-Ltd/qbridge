@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QBridgePowerDown", "QBridge
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IsoTrackKillSimulation", "IsoTrackKillSimulation\IsoTrackKillSimulation.vcproj", "{7F72ECC4-5096-4BEF-A5B0-88CA54130965}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CopilotBusySimulator2", "CopilotBusySimulator2\CopilotBusySimulator2.vcproj", "{476B77E9-4E3E-4409-8FCE-74DE3798CC42}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -75,6 +77,20 @@ Global
 		{7F72ECC4-5096-4BEF-A5B0-88CA54130965}.Release|TREQ-VM (ARMV4I).ActiveCfg = Release|TREQ-VM (ARMV4I)
 		{7F72ECC4-5096-4BEF-A5B0-88CA54130965}.Release|TREQ-VM (ARMV4I).Build.0 = Release|TREQ-VM (ARMV4I)
 		{7F72ECC4-5096-4BEF-A5B0-88CA54130965}.Release|TREQ-VM (ARMV4I).Deploy.0 = Release|TREQ-VM (ARMV4I)
+		{476B77E9-4E3E-4409-8FCE-74DE3798CC42}.Debug|Any CPU.ActiveCfg = Debug|TREQ-VM (ARMV4I)
+		{476B77E9-4E3E-4409-8FCE-74DE3798CC42}.Debug|Mixed Platforms.ActiveCfg = Debug|TREQ-VM (ARMV4I)
+		{476B77E9-4E3E-4409-8FCE-74DE3798CC42}.Debug|Mixed Platforms.Build.0 = Debug|TREQ-VM (ARMV4I)
+		{476B77E9-4E3E-4409-8FCE-74DE3798CC42}.Debug|Mixed Platforms.Deploy.0 = Debug|TREQ-VM (ARMV4I)
+		{476B77E9-4E3E-4409-8FCE-74DE3798CC42}.Debug|TREQ-VM (ARMV4I).ActiveCfg = Debug|TREQ-VM (ARMV4I)
+		{476B77E9-4E3E-4409-8FCE-74DE3798CC42}.Debug|TREQ-VM (ARMV4I).Build.0 = Debug|TREQ-VM (ARMV4I)
+		{476B77E9-4E3E-4409-8FCE-74DE3798CC42}.Debug|TREQ-VM (ARMV4I).Deploy.0 = Debug|TREQ-VM (ARMV4I)
+		{476B77E9-4E3E-4409-8FCE-74DE3798CC42}.Release|Any CPU.ActiveCfg = Release|TREQ-VM (ARMV4I)
+		{476B77E9-4E3E-4409-8FCE-74DE3798CC42}.Release|Mixed Platforms.ActiveCfg = Release|TREQ-VM (ARMV4I)
+		{476B77E9-4E3E-4409-8FCE-74DE3798CC42}.Release|Mixed Platforms.Build.0 = Release|TREQ-VM (ARMV4I)
+		{476B77E9-4E3E-4409-8FCE-74DE3798CC42}.Release|Mixed Platforms.Deploy.0 = Release|TREQ-VM (ARMV4I)
+		{476B77E9-4E3E-4409-8FCE-74DE3798CC42}.Release|TREQ-VM (ARMV4I).ActiveCfg = Release|TREQ-VM (ARMV4I)
+		{476B77E9-4E3E-4409-8FCE-74DE3798CC42}.Release|TREQ-VM (ARMV4I).Build.0 = Release|TREQ-VM (ARMV4I)
+		{476B77E9-4E3E-4409-8FCE-74DE3798CC42}.Release|TREQ-VM (ARMV4I).Deploy.0 = Release|TREQ-VM (ARMV4I)
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

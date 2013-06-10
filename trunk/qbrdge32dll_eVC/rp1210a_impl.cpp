@@ -19,7 +19,7 @@ void InitializeDLL() {
 	//_DbgTrace(_T("Initialize DLL Start\r\n"));
 	assignPort = -1;
 
-    Log::WriteRaw(LogLev::Debug, L"InitializeDLL");
+    Log::WriteRaw(LogLev::Setup, L"InitializeDLL");
 }
 
 /******************/
@@ -607,7 +607,7 @@ bool QueryDriverApp(PACKET_TYPE queryId, int localPort,
 	//-----------------------------------------------
 	// Initialize Winsock
 	if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
-        Log::WriteRaw(LogLev::Debug, L"QueryDriverApp fail - WSA Startup");
+        Log::WriteRaw(LogLev::UdpDebug, L"QueryDriverApp fail - WSA Startup");
 		return false;
 	}
 
@@ -677,7 +677,7 @@ bool QueryDriverApp(PACKET_TYPE queryId, int localPort,
 				isTimeout = true;
 				closesocket(RecvSocket);
 				WSACleanup();
-                Log::WriteRaw(LogLev::Debug, L"QueryDriverApp fail - socket read");
+                Log::WriteRaw(LogLev::DriverAppInteraction, L"QueryDriverApp fail - socket read");
 				return false;
 			}
 		}
@@ -694,7 +694,7 @@ bool QueryDriverApp(PACKET_TYPE queryId, int localPort,
 			//_DbgTrace(_T("Communication Error with Win App."));
 		}
 		WSACleanup();
-        Log::WriteRaw(LogLev::Debug, L"QueryDriverApp fail - Socket error");
+        Log::WriteRaw(LogLev::DriverAppInteraction, L"QueryDriverApp fail - Socket error");
 		return false;
 	}
 
@@ -726,11 +726,11 @@ bool QueryDriverApp(PACKET_TYPE queryId, int localPort,
         CloseHandle(hProcess);
 		if (!result) {
 			//_DbgTrace(_T("error getting exit code process\n"));
-            Log::WriteRaw(LogLev::Debug, L"QueryDriverApp fail - fail to get exit code");
+            Log::WriteRaw(LogLev::DriverAppInteraction, L"QueryDriverApp fail - fail to get exit code");
 			return false;
 		}
 		if (lpExitCode != STILL_ACTIVE) {
-            Log::WriteRaw(LogLev::Debug, L"QueryDriverApp fail - process is dead");
+            Log::WriteRaw(LogLev::DriverAppInteraction, L"QueryDriverApp fail - process is dead");
 			//_DbgTrace(_T("process is not active\n"));
 			return false;
 		}
@@ -739,13 +739,13 @@ bool QueryDriverApp(PACKET_TYPE queryId, int localPort,
 	else if (queryId == QUERY_NEW_J1708_CLIENTID_PKT || queryId == QUERY_NEW_J1939_CLIENTID_PKT) {
 		intRetVal = atoi(RecvBuf);
 		if (intRetVal < 0 || intRetVal > 127) {
-            Log::WriteRaw(LogLev::Debug, L"QueryDriverApp fail - get new client id");
+            Log::WriteRaw(LogLev::DriverAppInteraction, L"QueryDriverApp fail - get new client id");
 			return false;
 		}
 	}
 	else if (queryId == QUERY_DISCONNECT_CLIENTID_PKT) {
 		if (strcmp(RecvBuf, "ok") != 0) {
-            Log::WriteRaw(LogLev::Debug, L"QueryDriverApp fail - disconnect");
+            Log::WriteRaw(LogLev::DriverAppInteraction, L"QueryDriverApp fail - disconnect");
 			return false;
 		}
 	}
@@ -772,7 +772,7 @@ bool OpenDriverApp() {
 	//LPPROCESS_INFORMATION procInfo;
 	//CreateProcess(szCmdline, NULL, NULL, NULL, false, CREATE_NEW_CONSOLE, NULL, NULL, NULL, procInfo);
 
-    Log::WriteRaw(LogLev::Debug, L"OpenDriverApp called");
+    Log::WriteRaw(LogLev::DriverAppInteraction, L"OpenDriverApp called");
 
 
 	TCHAR buf[MAX_PATH];

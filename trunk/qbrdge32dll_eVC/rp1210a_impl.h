@@ -387,9 +387,29 @@ public:
             pArg,
             CREATE_SUSPENDED,
             &_tid);
+
+        HKEY priorityKey = NULL;
+        LONG result = RegOpenKeyEx(HKEY_LOCAL_MACHINE, L"Drivers\\QBridge", 0, 0, &priorityKey);
+        if (result == ERROR_SUCCESS) {
+            DWORD priority = 251;
+            DWORD dataSize = sizeof(priority);
+            DWORD keyType = REG_DWORD;
+            result = RegQueryValueEx(priorityKey, L"Priority", NULL, &keyType, (LPBYTE)&priority, &dataSize);
+            if (result == ERROR_SUCCESS) {
+                CeSetThreadPriority(_handle, priority);
+                Log::Write(LogLev::Setup, L"Setting thread priority to %d\n", priority);
+            } else {
+                Log::Write(LogLev::Error, L"Error %d reading thread priority from registry.  Using default", result);
+            }
+            RegCloseKey(priorityKey);
+            priorityKey = NULL;
+        } else {
+            Log::Write(LogLev::Error, L"Error %d opening registry to get priority.  Using default", result);
+        }
+
 		return true;
     }
-	~Thread () { } //CloseHandle (_handle);
+    ~Thread () { CloseHandle (_handle); }
     void Resume () { ResumeThread (_handle); }
     void WaitForDeath ()
     {

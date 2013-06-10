@@ -6,22 +6,43 @@ using System.Runtime.InteropServices;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using Microsoft.Win32;
 
 namespace qbrdge_driver_classlib
 {
     public struct LogLev
     {
-        LogLev(bool showLog_, string name_) { showLog = showLog_; name = name_; }
+        public LogLev(bool showLog_, string name_) { showLog = showLog_; name = name_; }
+        public LogLev(string name_)
+        {
+            name = name_;
+            try
+            {
+                using (var key = Registry.LocalMachine.OpenSubKey("Drivers\\QBridge"))
+                {
+                    showLog = bool.Parse((string)key.GetValue("Exe_Logging_" + name_));
+                }
+            }
+            catch
+            {
+                showLog = false;
+            }
+        }
+        
         bool showLog;
         public bool ShowLog { get { return showLog; } }
         string name;
         public string Name { get { return name; } }
         public override string ToString() { return Name; }
 
-        public static readonly LogLev Debug = new LogLev(true, "Debug");
-        public static readonly LogLev Status = new LogLev(true, "Status");
-        public static readonly LogLev Error = new LogLev(true, "Error");
-
+        public static readonly LogLev Setup = new LogLev("Setup");
+        public static readonly LogLev Debug = new LogLev("Debug");
+        public static readonly LogLev Udp = new LogLev("Udp");
+        public static readonly LogLev Serial = new LogLev("Serial");
+        public static readonly LogLev Status = new LogLev("Status");
+        public static readonly LogLev Error = new LogLev("Error");
+        public static readonly LogLev Thread = new LogLev("Thread");
+        public static readonly LogLev ClientId = new LogLev("ClientID");
     }
 
     public class Log

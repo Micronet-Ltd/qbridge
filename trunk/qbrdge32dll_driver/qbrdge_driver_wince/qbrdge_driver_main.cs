@@ -33,8 +33,12 @@ namespace qbridge_driver
 					qbrdge_driver_classlib.RP1210DllCom.MainStart(new qbrdge_driver_classlib.IconMgrBase());
 				//}
 			}
-			ReleaseMutex(hMutex);
-			CloseHandle(hMutex);
+
+            // Note:  The MainStart function actually does exit, so we don't have a clean place for us to clean up the mutex.  Instead, 
+            // rely on the OS to do the cleanup.
+
+            //ReleaseMutex(hMutex);
+			//CloseHandle(hMutex);
 		}
 	}
 }
