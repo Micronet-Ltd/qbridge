@@ -1,0 +1,1897 @@
+#STPBuilderApp
+#hide #option _TOOL_TOUCHSCREEN
+#option _SS_Lines
+#option _SS_Marquee
+
+starttype ack_code as byte
+    ack_ok := 0x30
+    ack_duplicate_packet := 0x31
+    ack_invalid_packet := 0x32
+    ack_invalid_command := 0x33
+    ack_invalid_data := 0x34
+    ack_unable_to_process := 0x35
+endtype
+
+starttype cmd_code as byte
+    cmd_init_packet := 0x40
+    cmd_ack_packet := 0x41
+    cmd_mid_filter_enable := 0x42
+    cmd_set_mid_on_off := 0x43
+    cmd_send_j1708_packet := 0x44
+    cmd_receive_j1708_packet := 0x45
+    cmd_enable_transmit_confirm := 0x46
+    cmd_transmit_confirm := 0x47
+    cmd_send_can_packet := 0x4A
+    cmd_receive_can_packet := 0x4B
+    cmd_can_control_packet := 0x4C
+    cmd_get_info_packet := 0x4D
+endtype
+
+func str_hex(data[] as byte) returns string
+    dim newstr as string
+    dim i as integer
+
+    for i = 0 to len(data)-1
+        newstr := newstr + _formatAsHex(data[i], 2, false) + ", "
+    next
+    return newstr
+endfunc
+
+dim testChkList[] as TestChkBox
+init testChkList := [InitTestChk, EnableConfirmTestChk, TestMIDFilterEnableChk, sendJ1708TestChk, sendcantestchk, multij1708testChk, multij1708testChk, multij1708testChk, multij1708testChk, multij1708testChk, multicantestchk, canFilterTestChk, stressTestChk]
+
+dim currTestIdx as integer
+
+dim lastPacketId as integer
+init lastPacketId := 10
+
+func SendQBPacket(com as comm, cmd as byte, data[] as byte, pktId as reference to byte)
+    dim outdata[] as byte
+    dim crc[] as byte
+
+    redim(outdata, 6 + len(data))
+    outdata[0] = 0x02
+    outdata[1] = len(outdata)
+    outdata[2] = cmd
+    lastPacketId = lastPacketId + 1
+    pktId := lastPacketId
+    outdata[3] = lastPacketId
+    setArrayData(outdata, 4, data, 0, len(data))
+    crc = GetBytes(GetCRC(left(outdata, len(outdata)-2)), false)
+    setArraydata(outdata, len(outdata)-2, crc, 0, 2)
+    transmit(com, outdata, false)
+endfunc
+
+dim crctable[] as integer
+
+func GetCRC(data[] as byte) returns unibyte
+    return CalculateCRC(crctable, 16, false, 0xFFFF, false, 0x0, data)
+endfunc
+
+func Startup ()
+    handles MSG_INIT
+    crctable = CreateCRCTable(16, 0x1021, false)
+    return
+endfunc
+
+func ParseQBData(buffer[] as reference to byte, data[] as byte, com as comm)
+    dim idx1, idx2, pktlen as integer
+    dim pkt[] as byte
+    dim leftIdx as integer
+
+    buffer := buffer + data
+    idx2 := find(buffer, 0, -1, "\x02")
+    if (idx2 <> -1) then
+        leftIdx := idx2
+    endif
+    while (idx2 > -1) do
+        label begin_loop
+        idx1 := idx2
+        if ((idx1+1) > len(buffer)-1) then
+            break
+        endif
+        pktlen := buffer[idx1+1]
+        if ((idx1+pktlen) > len(buffer)) then
+            label innersearch
+            idx2 := find(buffer, idx1+1, -1, "\x02")
+            if (idx2 > -1) then
+                goto begin_loop
+            else
+                break
+            endif
+        endif
+        pkt := mid(buffer, idx1, pktlen)
+        idx1 := idx1 + pktlen
+        'process packet
+        if ProcessQBPacket(pkt, com) == false then
+            idx1 := idx1 - pktlen + 1
+            goto innersearch
+        endif
+        leftIdx := idx1
+
+        idx2 := idx1
+        if (pktlen <= 0) then
+            idx2 := idx1 + 1
+        endif
+        idx2 := find(buffer, idx2, -1, "\x02")
+        if (idx2 <> -1) then
+            'leftIdx := idx2
+        endif
+    loop
+    buffer := mid(buffer, leftIdx, -1) 'remove parsed pkts
+endfunc
+
+func ProcessQBPacket(pkt[] as reference to byte, com as comm) returns boolean
+    dim crc, pktcrc as unibyte
+    dim cmd as byte
+
+    if len(pkt) <= 5 then
+        return false
+    endif
+
+    check error
+        frombytes(pktcrc, mid(pkt, len(pkt)-2, 2), false)
+        crc := getcrc(mid(pkt, 0, len(pkt)-2))
+    on error
+        _clearException()
+        return false
+    enderr
+
+    if (crc <> pktcrc) then
+        'tool_trace(str_hex(pkt))
+        eb.appendText = "CRC error with incoming packet\n"
+        'sendack(ack_invalid_packet, "", 0x00, com)
+        return false
+    endif
+
+    cmd = pkt[2]
+
+    if (cmd <> cmd_ack_packet) then
+        sendack(ack_ok, "", pkt[3], com)
+    endif
+
+    if (currTestIdx < len(testChkList) and currTestIdx >= 0) then
+        if (com == basicSerial_1.Comport) then
+            testChkList[currTestIdx].ProcessResultPort1(pkt[3], cmd, mid(pkt, 4, len(pkt)-6))
+        elseif (com == basicSerial_2.Comport) then
+            testChkList[currTestIdx].ProcessResultPort2(pkt[3], cmd, mid(pkt, 4, len(pkt)-6))
+        elseif (com == basicSerial_3.Comport) then
+            testChkList[currTestIdx].ProcessResultPort3(pkt[3], cmd, mid(pkt, 4, len(pkt)-6))
+        elseif (com == basicSerial_4.Comport) then
+            testChkList[currTestIdx].ProcessResultPort4(pkt[3], cmd, mid(pkt, 4, len(pkt)-6))
+        endif
+    endif
+
+    return true
+endfunc
+
+func sendack(ackcode as ack_code, ackdata[] as byte, pid as byte, com as comm)
+    dim outdata[] as byte
+    dim crc as unibyte
+
+    outdata := "\x02" + "\x00\x41\x00\x00" + ackdata
+    outdata[1] := len(outdata) + 2
+    outdata[3] := pid
+    outdata[4] := ackcode
+    crc := getcrc(outdata)
+    outdata := outdata + getbytes(crc, false)
+    transmit(com, outdata, false)
+endfunc
+
+func StartNextTest()
+    label StartNextOver
+    currTestIdx := currTestIdx + 1
+    if (currTestIdx < len(testChkList)) then
+        if testChkList[currTestIdx].isChecked then
+            testChkList[currTestIdx].Test()
+        else
+            goto StartNextOver
+        endif
+    else
+        currTestIdx := -1
+    endif
+endfunc
+Define Area Object type StressTestChk extends TestChkBox
+#ToolImage "FFFF80019FF9AFF5B7EDBBDDBDBDBE7DBDBDBBDDB7EDAFF59FF98001FFFF"
+init value := "Stress Test"
+
+dim numPkts as integer
+init numPkts := 60
+
+dim pktNums[4] as integer
+
+dim totRecv1[4], totRecv2[4], totRecv3[4], totRecv4[4] as integer
+
+dim numQB as integer
+
+func StartUp()
+    handles MSG_INIT
+    default ()
+    comports[0] := basicserial_1.Comport
+    comports[1] := basicserial_2.Comport
+    comports[2] := basicserial_3.Comport
+    comports[3] := basicserial_4.Comport
+endfunc
+
+
+'tests sending j1708 and CAN from one qbridge to the others.  Verifies transmit confirm
+'on each qbridge and verifies if the other qbridges get the packet.  This all
+'happens simultaneously, one packet at a time from each qbridge.  A new packet
+'is sent after each transmit confirm.
+
+dim comports[4] as comm
+
+dim comfirms as string
+dim comfirmsI[] as integer
+
+func Test()
+    dim i as integer
+    persistentvariables_1.Save()
+    currTestLbl := stressTestLbl
+
+    currTestLbl.bgColor = rgb_yellow
+
+    for i = 0 to len(comports)-1
+        SendQBPacket(comports[i], cmd_can_control_packet, "e\x00", me.lastPktId) 'can filter disable
+        SendQBPacket(comports[i], cmd_mid_filter_enable, "\x00", me.lastPktId)
+        SendQBPacket(comports[i], cmd_enable_transmit_confirm, "\x01", me.lastPktId)
+    next
+
+    for i = 0 to len(totRecv1)-1
+        totRecv1[i] = 0
+        totRecv2[i] = 0
+        totRecv3[i] = 0
+        totRecv4[i] = 0
+
+        pktNums[i] = 0
+    next
+
+    testdone1 := false
+    testdone2 := false
+    testdone3 := false
+    testdone4 := false
+
+    SendPktCom1()
+    SendPktCom2()
+    SendPktCom3()
+    SendPktCom4()
+
+    _RedimStrArray(4, comfirms, comfirmsI)
+
+    StartTimer()
+endfunc
+
+dim sendCan[4] as boolean
+
+func SendPktCom(portNum as integer)
+    eb.appendText = "Send " + str(portNum) + "\n"
+    if portNum == 1 then
+        SendPktCom1()
+    elseif portNum == 2 then
+        SendPktCom2()
+    elseif portNum == 3 then
+        SendPktCom3()
+    else
+        SendPktCom4()
+    endif
+endfunc
+func SendPktCom1()
+    if (sendCan[0]) then
+        canPktData1[5] := pktNums[0]
+        SendQBPacket(basicSerial_1.Comport, cmd_send_can_packet, canPktData1, lastPktIds[0])
+    else
+        j1708PktData1[2] := pktNums[0]
+        SendQBPacket(basicSerial_1.Comport, cmd_send_j1708_packet, j1708PktData1, lastPktIds[0])
+    endif
+    sendCan[0] = not sendCan[0]
+endfunc
+func SendPktCom2()
+    if (sendCan[1]) then
+        canPktData2[5] := pktNums[1]
+        SendQBPacket(basicSerial_2.Comport, cmd_send_can_packet, canPktData2, lastPktIds[1])
+    else
+        j1708PktData2[2] := pktNums[1]
+        SendQBPacket(basicSerial_2.Comport, cmd_send_j1708_packet, j1708PktData2, lastPktIds[1])
+    endif
+    sendCan[1] = not sendCan[1]
+endfunc
+func SendPktCom3()
+    if stressTestSpn.value < 3 then
+        return
+    endif
+    if (sendCan[2]) then
+        canPktData3[5] := pktNums[2]
+        SendQBPacket(basicSerial_3.Comport, cmd_send_can_packet, canPktData3, lastPktIds[2])
+    else
+        j1708PktData3[2] := pktNums[2]
+        SendQBPacket(basicSerial_3.Comport, cmd_send_j1708_packet, j1708PktData3, lastPktIds[2])
+    endif
+    sendCan[2] = not sendCan[2]
+endfunc
+func SendPktCom4()
+    if stressTestSpn.Value < 4 then
+        return
+    endif
+    if (sendCan[3]) then
+        canPktData3[5] := pktNums[3]
+        SendQBPacket(basicSerial_4.Comport, cmd_send_can_packet, canPktData4, lastPktIds[3])
+    else
+        j1708PktData3[2] := pktNums[3]
+        SendQBPacket(basicSerial_4.Comport, cmd_send_j1708_packet, j1708PktData4, lastPktIds[3])
+    endif
+    sendCan[3] = not sendCan[3]
+endfunc
+
+dim lastPktIds[4] as byte
+
+'1 byte can type, 4 byte id, 8 bytes data
+private dim canPktData1[] as byte
+init canPktData1 := "\x01\xCC\xBB\xAA\x00abcdef1h"
+private dim canPktData2[] as byte
+init canPktData2 := "\x01\xCC\xBB\xAA\x00abcdef2h"
+private dim canPktData3[] as byte
+init canPktData3 := "\x01\xCC\xBB\xAA\x00abcdef3h"
+private dim canPktData4[] as byte
+init canPktData4 := "\x01\xCC\xBB\xAA\x00abcdef4h"
+
+private dim j1708PktData1[] as byte
+init j1708PktData1 := "\x03\x02ABCDEFGHIJKLMN1Pdff"
+private dim j1708PktData2[] as byte
+init j1708PktData2 := "\x03\x02ABCDEFGHMN2P"
+private dim j1708PktData3[] as byte
+init j1708PktData3 := "\x03\x02ABCDEFGHIJKLMN3P"
+private dim j1708PktData4[] as byte
+init j1708PktData4 := "\x03\x02ABCDEFGHIJKLMN4P"
+
+init ischecked := true
+
+dim testdone1, testdone2, testdone3, testdone4 as boolean
+
+
+func ProcessResultPort1(pktId as byte, cmd as byte, data[] as byte)
+    ProcessResultGenPort(pktId, cmd, data, 1)
+endfunc
+func ProcessResultPort2(pktId as byte, cmd as byte, data[] as byte)
+    ProcessResultGenPort(pktId, cmd, data, 2)
+endfunc
+func ProcessResultPort3(pktId as byte, cmd as byte, data[] as byte)
+    ProcessResultGenPort(pktId, cmd, data, 3)
+endfunc
+func ProcessResultPort4(pktId as byte, cmd as byte, data[] as byte)
+    ProcessResultGenPort(pktId, cmd, data, 4)
+endfunc
+
+func ProcessResultGenPort(pktId as byte, cmd as byte, data[] as byte, portNum as integer)
+    dim totRcv[] as integer
+    dim isvalid as boolean
+    dim tmpConf1[] as byte
+
+'    tool_trace("port " + str(portNum) + ": "+str_hex(data))
+    if testdone1 or testdone2 or testdone3 or testdone4 then
+        return
+    endif
+    StopTimer()
+    StartTimer()
+
+    if (lastPktIds[portNum-1] == pktId) then
+        if (cmd == cmd_ack_packet) then
+            if pktNums[portNum-1] == numPkts then
+                eb.appendText = "Extra Ack On " + str(portNum) + " " +_formatAsHex(data[0], 2, true)+ "\n"
+                return
+            endif
+            if (data[0] == ack_ok) then
+                _SetString(portNum-1, mid(data, 2, -1), comfirms, comfirmsI)
+            endif
+            return
+        endif
+    endif
+    if (cmd == cmd_transmit_confirm) then
+        tmpConf1 := _getString(portNum-1, comfirms, comfirmsI)
+        if (data[0] == 0x01 and mid(data, 1, -1) == tmpConf1) then
+            'tool_trace("Conf " + str(portNum) + ": "+_formatAsHex(pktNums[portNum-1], 2, false))
+            eb.appendtext = "Conf " + str(portNum) + ": "+_formatAsHex(pktNums[portNum-1], 2, false) + "\n"
+            pktNums[portNum-1] := pktNums[portNum-1] + 1
+            if pktNums[portNum-1] < numPkts then
+                SendPktCom(portNum)
+            endif
+        elseif (data[0] == 0x00) then
+            'tool_trace("resend " + _formatAsHex(pktNums[portNum-1], 2, false))
+            eb.appendtext = "resend " + _formatAsHex(pktNums[portNum-1], 2, false) + "\n"
+            SendPktCom(portNum)
+        endif
+    endif
+    'tool_trace("cmd2: "+_formatAsHex(cmd, 2, false))
+    if (cmd == cmd_receive_j1708_packet or cmd == cmd_receive_can_packet) then
+        if portNum == 1 then
+            totRcv := totRecv1
+        elseif portNum == 2 then
+            totRcv := totRecv2
+        elseif portNum == 3 then
+            totRcv := totRecv3
+        elseif portNum == 4 then
+            totRcv := totRecv4
+        endif
+        if cmd == cmd_receive_can_packet then
+            canPktData1[5] := totRcv[0]
+            canPktData2[5] := totRcv[1]
+            canPktData3[5] := totRcv[2]
+            canPktData4[5] := totRcv[3]
+        else
+            j1708PktData1[2] := totRcv[0]
+            j1708PktData2[2] := totRcv[1]
+            j1708PktData3[2] := totRcv[2]
+            j1708PktData4[2] := totRcv[3]
+        endif
+
+        check error
+        if cmd == cmd_receive_can_packet then
+            'tool_trace("Recv " + str(portNum) + ": "+_FormatAsHex(data[5], 2, false))
+            eb.appendText = "Recv " + str(portNum) + ": "+_FormatAsHex(data[5], 2, false) + "\n"
+        else
+            'tool_trace("Recv " + str(portNum) + ": "+_FormatAsHex(data[1], 2, false))
+            eb.appendText = "Recv " + str(portNum) + ": "+_FormatAsHex(data[1], 2, false) + "\n"
+        endif
+        on error
+            _clearexception()
+            return
+        enderr
+
+        if (data == mid(j1708pktdata1, 1, -1) or data == canPktData1) then
+            totRcv[0] := totRcv[0] + 1
+            if portNum <> 1 then
+                isvalid := true
+            endif
+        elseif (data == mid(j1708pktdata2, 1, -1) or data == canPktData2) then
+            totRcv[1] := totRcv[1] + 1
+            if portNum <> 2 then
+                isvalid := true
+            endif
+        elseif (data == mid(j1708pktdata3, 1, -1) or data == canPktData3) then
+            totRcv[2] := totRcv[2] + 1
+            if portNum <> 3 then
+                isvalid := true
+            endif
+        elseif (data == mid(j1708pktdata4, 1, -1) or data == canPktData4) then
+            totRcv[3] := totRcv[3] + 1
+            if portNum <> 4 then
+                isvalid := true
+            endif
+        endif
+
+        if portNum == 1 then
+            totRecv1 := totRcv
+        elseif portNum == 2 then
+            totRecv2 := totRcv
+        elseif portNum == 3 then
+            totRecv3 := totRcv
+        elseif portNum == 4 then
+            totRecv4 := totRcv
+        endif
+
+        if isvalid then
+            Timeout()
+        else
+            if cmd == cmd_receive_can_packet then
+                tool_trace("data " + str(portNum) + ": "+str_hex(data) + " can: "+str_hex(canPktData1))
+                tool_trace(" " + str_hex(canPktData2) + " " + str_hex(canPktData3) + " " + str_hex(canPktData4))
+            else
+                tool_trace("data " + str(portNum) + ": "+str_hex(data) + " j1708: "+str_hex(j1708PktData1))
+                tool_trace(" " + str_hex(j1708PktData2) + " " + str_hex(j1708PktData3) + " " + str_hex(j1708PktData4))
+            endif
+            if (data[1] == totRcv[0]-1 and data[len(data)-2] == 1) or ->
+                (data[1] == totRcv[1]-1 and data[len(data)-2] == 2) or ->
+                (data[1] == totRcv[2]-1 and data[len(data)-2] == 3) or ->
+                (data[1] == totRcv[3]-1 and data[len(data)-2] == 4) then
+                'just a duplicate
+                duperrs := duperrs + 1
+                eb.appendText = "Duplicat#: " + str(totRcv) +" com1 "+str(duperrs) + "\n"
+            else
+                eb.appendText = "Test Failed Invalid Packet Data or Out of order:\n"
+                eb.appendText = "pkt num: " + str(data[1]) + "\n"
+                eb.appendText = "expected: "+str(totRecv1) + "\n"
+                currTestLbl.bgColor = rgb_red
+                StopTimer()
+                testdone1 := true
+                testdone2 := true
+                StartNextTest()
+            endif
+        endif
+    endif
+endfunc
+
+func TimeOut() returns boolean
+    dim ispass as boolean
+    if (stressTestSpn.Value == 2) then
+        if totRecv1[1] == numPkts and totRecv2[0] == numPkts then
+            ispass := true
+        endif
+    endif
+    if (stressTestSpn.Value == 3) then
+        if totRecv1[1] == numPkts and totRecv1[2] == numPkts and ->
+            totRecv2[0] == numPkts and totRecv2[2] == numPkts and ->
+            totRecv3[0] == numPkts and totRecv3[1] == numPkts then
+                ispass := true
+        endif
+    endif
+    if (stressTestSpn.Value == 4) then
+        if totRecv1[1] == numPkts and totRecv1[2] == numPkts and totRecv1[3] == numPkts and ->
+            totRecv2[0] == numPkts and totRecv2[2] == numPkts and totRecv2[3] == numPkts and ->
+            totRecv3[0] == numPkts and totRecv3[1] == numPkts and totRecv3[3] == numPkts and ->
+            totRecv4[0] == numPkts and totRecv4[1] == numPkts and totRecv4[2] == numPkts then
+                ispass := true
+        endif
+    endif
+    if ispass then
+        eb.appendText = "Test Passed\n"
+        currTestLbl.bgColor = rgb_green
+        StopTimer()
+        StartNextTest()
+        return false
+    else
+        return true
+    endif
+endfunc
+
+dim duperrs as integer
+Enddef
+Define Area Object type TestCanFilterChk extends TestChkBox
+#ToolImage "FFFF8001800180018811842182418181824184218811800180018001FFFF"
+init value := "Test CAN Filter 1"
+
+dim numPkts as integer
+init numPkts := 2
+
+dim totRecv as integer
+
+'set up filter.  send 2 packets, make sure 1 blocked & 1 recieved
+
+func Test()
+    dim i as integer
+    currTestLbl := canFilterTestLbl
+    currTestLbl.bgColor = rgb_yellow
+    eb.appendText = "Starting Send X CAN Test\n"
+    SendQBPacket(BasicSerial_1.Comport, cmd_can_control_packet, "e\x01", me.lastPktId) 'can filter enable
+    'can filter set to only except 0x10000001 ext. addrs
+    SendQBPacket(BasicSerial_1.Comport, cmd_can_control_packet, ->
+        "f\x01" + ->
+        "\x01" + "\x01\x00\x00\x10" + "\xFF\xFF\xFF\x1F" + ->
+        "\x00" + "\x01\x04" + "\xFF\x07", me.lastPktId)
+    SendQBPacket(BasicSerial_2.Comport, cmd_can_control_packet, "e\x00", me.lastPktId) 'can filter disable
+    SendQBPacket(BasicSerial_1.Comport, cmd_enable_transmit_confirm, "\x00", me.lastPktId)
+    SendQBPacket(BasicSerial_2.Comport, cmd_enable_transmit_confirm, "\x00", me.lastPktId)
+    totRecv := 0
+    testdone := false
+
+    'for i = 0 to numPkts-1
+        canPktDataExt[5] := 0
+        canPktDataStd[5] := 1
+        SendQBPacket(basicSerial_2.Comport, cmd_send_can_packet, canPktData1, me.lastPktId)
+        SendQBPacket(basicSerial_2.Comport, cmd_send_can_packet, canPktDataExt, me.lastPktId)
+        SendQBPacket(basicSerial_2.Comport, cmd_send_can_packet, canPktData1, me.lastPktId)
+        SendQBPacket(basicSerial_2.Comport, cmd_send_can_packet, canPktDataStd, me.lastPktId)
+        SendQBPacket(basicSerial_2.Comport, cmd_send_can_packet, canPktData1, me.lastPktId)
+    'next
+    StartTimer()
+endfunc
+
+
+private dim canPktData1[] as byte '1 byte can type, 4 byte id, 8 bytes data
+init canPktData1 := "\x01\xCC\xBB\xAA\x00ZZZZZZ"
+private dim canPktDataExt[] as byte '1 byte can type, 4 byte id, 8 bytes data
+init canPktDataExt := "\x01\x01\x00\x00\x10abcdefgh"
+private dim canPktDataStd[] as byte '1 byte can type, 4 byte id, 8 bytes data
+init canPktDataStd := "\x00\x01\x04abcdefgh"
+
+init ischecked := true
+
+dim testdone as boolean
+
+func ProcessResultPort1(pktId as byte, cmd as byte, data[] as byte)
+    if testdone then
+        return
+    endif
+    StopTimer()
+    StartTimer()
+    if (me.lastPktId == pktId) then
+        return
+    endif
+    if (cmd == cmd_receive_can_packet) then
+        canPktDataExt[5] := totRecv 'verify in order
+        canPktDataStd[5] := totRecv 'verify in order
+        if (data == canPktDataExt or data == canPktDataStd) then
+            totRecv := totRecv + 1
+            TimeOut()
+        else
+            eb.appendText = "Test Failed Invalid Packet Data or Out of order:\n"
+            eb.appendText = "pkt num: " + str(data[1]) + "\n"
+            eb.appendText = "totRecv: "+str(totRecv) + "\n"
+            currTestLbl.bgColor = rgb_red
+            StopTimer()
+            testdone := true
+            StartNextTest()
+        endif
+    endif
+endfunc
+
+func TimeOut() returns boolean
+    if (totRecv == numPkts) then
+        eb.appendText = "Test Passed\n"
+        currTestLbl.bgColor = rgb_green
+        StopTimer()
+        StartNextTest()
+        return false
+    else
+        return true
+    endif
+endfunc
+Enddef
+Define Area Object type TestChkBox extends CheckBoxV2
+#ToolImage "000000033FFFFFF13FFFFFF13FFFFF313FFFFC313FFFF0F13FFFC3F13FFF0FF130FC3FF13C30FFF13F03FFF13FCFFFF13FFFFFF100000001D5555556"
+'Template is derived from CheckBoxV2
+Library Basic source CheckBoxV2
+
+#doc object TestChkBox
+~This is a CheckBoxV2 object with additional and/or modified functionality<BR><BR>
+~The CheckBoxV2 has the following description: <BR><font size=-1>
+~This object represents a boolean value.
+~You can touch this object to toggle the checked value of this object on and off.
+~An override is available whenever the state of this object changes.
+~</font>
+
+#doc override Test
+~..
+func Test()
+    return
+endfunc
+
+#doc override ProcessResult
+~..
+func ProcessResultPort1(pktId as byte, cmd as byte, data[] as byte)
+    return
+endfunc
+func ProcessResultPort2(pktId as byte, cmd as byte, data[] as byte)
+    return
+endfunc
+func ProcessResultPort3(pktId as byte, cmd as byte, data[] as byte)
+    return
+endfunc
+func ProcessResultPort4(pktId as byte, cmd as byte, data[] as byte)
+    return
+endfunc
+
+dim lastPktId as byte
+
+func StartTimer()
+    currTestChk = me
+    testTimer.enabled = true
+endfunc
+
+func StopTimer()
+    testTimer.enabled = false
+endfunc
+
+#doc override TimeOut
+~..
+func TimeOut() returns boolean
+    return true
+endfunc
+Enddef
+Define Area Object type TestEnableTransConfirmChk extends TestChkBox
+#ToolImage "FFFF8001800180018811842182418181824184218811800180018001FFFF"
+init value := "Enable Trans Confirm"
+
+func Test()
+    currTestLbl := EnableConfirmLbl
+    currTestLbl.bgColor = rgb_yellow
+    eb.appendText = "Starting Enable Trans Confirm Test\n"
+    SendQBPacket(BasicSerial_2.Comport, cmd_enable_transmit_confirm, "\x01", me.lastPktId)
+    SendQBPacket(BasicSerial_2.Comport, cmd_mid_filter_enable, "\x00", me.lastPktId)
+    SendQBPacket(BasicSerial_1.Comport, cmd_enable_transmit_confirm, "\x01", me.lastPktId)
+    SendQBPacket(BasicSerial_1.Comport, cmd_mid_filter_enable, "\x00", me.lastPktId)
+    StartTimer()
+endfunc
+
+
+init ischecked := true
+
+func ProcessResultPort1(pktId as byte, cmd as byte, data[] as byte)
+    if (me.lastPktId <> pktId) then
+        return
+    endif
+    if (cmd == cmd_ack_packet) then
+        if (data[0] == ack_ok) then
+            eb.appendText = "Test Passed\n"
+            currTestLbl.bgColor = rgb_green
+        else
+            eb.appendText = "Test Failed Invalid ACK Code\n"
+            currTestLbl.bgColor = rgb_red
+        endif
+    else
+        eb.AppendText = "Unrecognized Packet Returned\n"
+        currTestLbl.bgColor = rgb_red
+    endif
+    StopTimer()
+    StartNextTest()
+endfunc
+Enddef
+Define Area Object type TestInitChk extends TestChkBox
+#ToolImage "FFFF8001800180018811842182418181824184218811800180018001FFFF"
+init value := "Test Init"
+
+func Test()
+    currTestLbl := InitTestLbl
+    currTestLbl.bgColor = rgb_yellow
+    eb.appendText = "Starting Init Test\n"
+    SendQBPacket(BasicSerial_1.Comport, '@', "", me.lastPktId)
+    StartTimer()
+endfunc
+
+
+init ischecked := true
+
+func ProcessResultPort1(pktId as byte, cmd as byte, data[] as byte)
+    if (me.lastPktId <> pktId) then
+        return
+    endif
+    if (cmd == cmd_ack_packet) then
+        if (data[0] == ack_ok) then
+            eb.appendText = "Test Passed\n"
+            currTestLbl.bgColor = rgb_green
+        else
+            eb.appendText = "Test Failed Invalid ACK Code\n"
+            currTestLbl.bgColor = rgb_red
+        endif
+    else
+        eb.AppendText = "Unrecognized Packet Returned\n"
+        currTestLbl.bgColor = rgb_red
+    endif
+    StopTimer()
+    StartNextTest()
+endfunc
+Enddef
+Define Area Object type TestMIDFilterEnableChk extends TestChkBox
+#ToolImage "FFFF8001800180018811842182418181824184218811800180018001FFFF"
+init value := "MID Filter Enable/On/Off"
+init ischecked := true
+
+'Test Sequence:
+'1 - send mid filter disable primary & get ack ok
+'2 - send mid filter disable from secondary & get ack ok
+'3 - send j1708 packet from secondary, to primary, get ack & j1708 confirm
+'on secondary, get j1708 recieve packet on primary
+'4 - send mid filter enable on primary & get ack ok
+'5 - send j1708 packet from secondary, to primary, get ack & j1708 confirm
+'start timer and timer times out with primary not recieving any data
+'6 - set mid filter 0x02 On for com 1 & get ack ok
+'7 - send j1708 packet from secondary to primary, get ack & j1708 confirm
+'on secondary, get j1708 recieve packet on primary
+
+private dim state as integer
+
+func Test()
+    state := 1
+    currTestLbl := TestMidFilterEnableLbl
+    currTestLbl.bgColor = rgb_yellow
+    eb.appendText = "Starting MID Filter Enable Test\n"
+    SendQBPacket(BasicSerial_1.Comport, cmd_mid_filter_enable, "\x00", me.lastPktId)
+    StartTimer()
+endfunc
+
+private dim j1708PktData[] as byte
+init j1708PktData := "\x03\x23ABCDEFGHIJKLMNOP"
+private dim j1708PktData2[] as byte
+init j1708PktData2 := "\x03\x22ABCDEFGHIJKLMNOP"
+
+
+func ProcessResultPort1(pktId as byte, cmd as byte, data[] as byte)
+    if ((state == 1 or state == 4) and me.lastPktId == pktId) then
+        StopTimer()
+        if (cmd == cmd_ack_packet) then
+            if (data[0] == ack_ok) then
+                NextState()
+            else
+                eb.appendText = "Test Failed Invalid ACK Code\n"
+                currTestLbl.bgColor = rgb_red
+            endif
+        else
+            eb.AppendText = "Unrecognized Packet Returned\n"
+            currTestLbl.bgColor = rgb_red
+        endif
+    elseif (state == 3 or state == 7) then
+        if (cmd == cmd_receive_j1708_packet) then
+            if (data == mid(j1708PktData2, 1, -1)) then
+                DataDone := true
+            endif
+            if (ackDone and confirmDone and dataDone) then
+                NextState()
+            endif
+        endif
+    elseif (state == 6 and cmd == cmd_ack_packet) then
+        if (data[0] == ack_ok) then
+            NextState()
+        endif
+    else
+        eb.appendText = "Unexpected Packet Received: " + _formatAsHex(cmd, 2, true) + "\n"
+        currTestLbl.bgColor = rgb_red
+        testTimer.enabled = false
+    endif
+endfunc
+
+func ProcessResultPort2(pktId as byte, cmd as byte, data[] as byte)
+    if (state == 2 and me.lastPktId == pktId) then
+        StopTimer()
+        if (cmd == cmd_ack_packet) then
+            if (data[0] == ack_ok) then
+                eb.appendText = "Secondary Port Filter Disabled\n"
+                NextState()
+            else
+                eb.appendText = "Test Failed Invalid ACK Code\n"
+                currTestLbl.bgColor = rgb_red
+            endif
+        else
+            eb.AppendText = "Unrecognized Packet Returned\n"
+            currTestLbl.bgColor = rgb_red
+        endif
+    elseif ((state == 3 or state == 7) and AckDone == false) then
+        if (cmd == cmd_ack_packet) then
+            if (data[0] == ack_ok) then
+                confirmid := mid(data, 2, 4)
+                AckDone := true
+            endif
+        endif
+    elseif ((state == 3 or state == 7) and AckDone == true) then
+        if (cmd == cmd_transmit_confirm) then
+            if (data[0] == 0x01 and mid(data,1,4) == confirmid) then
+                confirmDone := true
+                if (ackDone and confirmDone and dataDone) then
+                    NextState()
+                endif
+            endif
+        endif
+    elseif (state == 5 and AckDone == false) then
+        if (cmd == cmd_ack_packet) then
+            if (data[0] == ack_ok) then
+                confirmid := mid(data, 2, 4)
+                AckDone := true
+            endif
+        endif
+    elseif (state == 5 and confirmDone == false) then
+        if (cmd == cmd_transmit_confirm) then
+            if (data[0] == 0x01 and mid(data,1,4) == confirmid) then
+                confirmDone := true
+            endif
+        endif
+    else
+        eb.appendText = "Unexpected Packet Received: " + _formatAsHex(cmd, 2, true) + "\n"
+        currTestLbl.bgColor = rgb_red
+        testTimer.enabled = false
+    endif
+endfunc
+
+func NextState()
+    state := state + 1
+    StopTimer()
+    if (state == 2) then
+        SendQBPacket(BasicSerial_2.Comport, cmd_mid_filter_enable, "\x00", me.lastPktId)
+        StartTimer()
+    elseif (state == 3 or state == 7) then
+        AckDone := false
+        ConfirmDone := false
+        DataDone := false
+        SendQBPacket(BasicSerial_2.Comport, cmd_send_j1708_packet, j1708PktData2, me.lastPktId)
+        StartTimer()
+    elseif (state == 4) then
+        SendQBPacket(BasicSerial_1.Comport, cmd_mid_filter_enable, "\x01", me.lastPktId)
+        StartTimer()
+    elseif (state == 5) then
+        AckDone := false
+        ConfirmDone := false
+        DataDone := false
+        SendQBPacket(BasicSerial_2.Comport, cmd_send_j1708_packet, j1708PktData, me.lastPktId)
+        StartTimer()
+    elseif (state == 6) then
+        SendQBPacket(BasicSerial_1.Comport, cmd_set_mid_on_off, "\x01" + "\x22\x00", me.lastPktId)
+        StartTimer()
+    elseif (state == 8) then
+        eb.appendText = "Test Passed\n"
+        currTestLbl.bgColor = rgb_green
+        SendQBPacket(BasicSerial_2.Comport, cmd_mid_filter_enable, "\x00", me.lastPktId)
+        StartNextTest()
+    endif
+endfunc
+
+private dim AckDone, ConfirmDone, DataDone as boolean
+private dim confirmid[] as byte
+
+func TimeOut() returns boolean
+    if (confirmDone and ackDone and state == 5) then
+        NextState()
+        return false
+    else
+        return true
+    endif
+endfunc
+Enddef
+Define Area Object type TestMultiChk extends TestChkBox
+#ToolImage "FFFF8001800180018811842182418181824184218811800180018001FFFF"
+init value := "Test Send X J1708"
+
+dim numPkts as integer
+init numPkts := 250
+
+dim pktNum1 as integer
+dim pktNum2 as integer
+
+dim totRecv1, totRecv2 as integer
+
+dim isCAN as boolean
+init isCAN := false
+
+func StartUp()
+    handles MSG_INIT
+    if (isCAN) then
+        value = "Test Send X CAN"
+    endif
+    default ()
+endfunc
+
+
+'tests sending j1708 from one qbridge to the other.  Verifies transmit confirm
+'on each qbridge and verifies if the other qbridge gets the packet.  This all
+'happens simultaneously, one packet at a time from each qbridge.  A new packet
+'is sent after each transmit confirm.
+
+
+func Test()
+    dim i as integer
+    if (isCAN) then
+        currTestLbl := MultiCANTestLbl
+    else
+        currTestLbl := MultiJ1708TestLbl
+    endif
+    currTestLbl.bgColor = rgb_yellow
+    if isCan then
+        eb.appendText = "Starting Send X CAN Test\n"
+    else
+        eb.appendText = "Starting Send X J1708 Test\n"
+    endif
+    if (isCAN) then
+        SendQBPacket(BasicSerial_1.Comport, cmd_can_control_packet, "e\x00", me.lastPktId) 'can filter disable
+        SendQBPacket(BasicSerial_2.Comport, cmd_can_control_packet, "e\x00", me.lastPktId)
+    else
+        SendQBPacket(BasicSerial_1.Comport, cmd_mid_filter_enable, "\x00", me.lastPktId)
+        SendQBPacket(BasicSerial_2.Comport, cmd_mid_filter_enable, "\x00", me.lastPktId)
+    endif
+    SendQBPacket(BasicSerial_1.Comport, cmd_enable_transmit_confirm, "\x01", me.lastPktId)
+    SendQBPacket(BasicSerial_2.Comport, cmd_enable_transmit_confirm, "\x01", me.lastPktId)
+    totRecv1 := 0
+    totRecv2 := 0
+    testdone1 := false
+    testdone2 := false
+    pktNum1 := 0
+    pktNum2 := 0
+
+    SendPktCom1()
+    SendPktCom2()
+
+    StartTimer()
+endfunc
+
+func SendPktCom1()
+    if (isCAN) then
+        canPktData1[5] := pktNum2
+        SendQBPacket(basicSerial_1.Comport, cmd_send_can_packet, canPktData1, lastPktId1)
+    else
+        j1708PktData1[2] := pktNum2
+        SendQBPacket(basicSerial_1.Comport, cmd_send_j1708_packet, j1708PktData1, lastPktId1)
+    endif
+endfunc
+func SendPktCom2()
+    if (isCAN) then
+        canPktData2[5] := pktNum1
+        SendQBPacket(basicSerial_2.Comport, cmd_send_can_packet, canPktData2, lastPktId2)
+    else
+        j1708PktData2[2] := pktNum1
+        SendQBPacket(basicSerial_2.Comport, cmd_send_j1708_packet, j1708PktData2, lastPktId2)
+    endif
+endfunc
+
+dim lastPktId1, lastPktId2 as byte
+
+private dim canPktData1[] as byte '1 byte can type, 4 byte id, 8 bytes data
+init canPktData1 := "\x01\xCC\xBB\xAA\x00abcdef0h"
+private dim canPktData2[] as byte '1 byte can type, 4 byte id, 8 bytes data
+init canPktData2 := "\x01\xCC\xBB\xAA\x00abcdef9h"
+
+private dim j1708PktData1[] as byte
+init j1708PktData1 := "\x03\x02ABCDEFGHIJKLMN0P"
+private dim j1708PktData2[] as byte
+init j1708PktData2 := "\x03\x02ABCDEFGHIJKLMN9P"
+
+init ischecked := true
+
+dim testdone1, testdone2 as boolean
+
+dim conf1[], conf2[] as byte
+
+func ProcessResultPort1(pktId as byte, cmd as byte, data[] as byte)
+'    tool_trace("Prm: "+str_hex(data))
+    if testdone1 then
+        return
+    endif
+    StopTimer()
+    StartTimer()
+
+    if (lastPktId1 == pktId) then
+        if (cmd == cmd_ack_packet) then
+            if pktNum2 == numPkts then
+                eb.appendText = "Extra Ack On Primary "+_formatAsHex(data[0], 2, true)+ "\n"
+                return
+            endif
+            if (data[0] == ack_ok) then
+                conf1 := mid(data, 2, -1)
+            endif
+            return
+        endif
+    endif
+    if (cmd == cmd_transmit_confirm) then
+        if (data[0] == 0x01 and mid(data, 1, -1) == conf1) then
+            'tool_trace("Prm conf: "+_formatAsHex(pktNum2, 2, false))
+            eb.appendtext = "Prm conf: "+_formatAsHex(pktNum2, 2, false) + "\n"
+            eb.appendText = "Prm conf: " + _formatAsHex(pktNum2, 2, false) + "\n"
+            pktNum2 := pktNum2 + 1
+            if pktNum2 < numPkts then
+                SendPktCom1()
+            endif
+        elseif (data[0] == 0x00) then
+            'tool_trace("resend " + _formatAsHex(pktNum2, 2, false))
+            eb.appendText = "resend " + _formatAsHex(pktNum2, 2, false) + "\n"
+            SendPktCom1()
+        endif
+    endif
+    'tool_trace("cmd2: "+_formatAsHex(cmd, 2, false))
+    if (cmd == cmd_receive_j1708_packet or cmd == cmd_receive_can_packet) then
+        if isCan then
+            canPktData2[5] := totRecv1
+        else
+            j1708PktData2[2] := totRecv1 'verify in order
+        endif
+
+        if isCan then
+            'tool_trace("Prm recv: "+_formatAsHex(data[5], 2, false))
+            eb.appendText = "Prm recv: " + _formatAsHex(data[5], 2, false) + "\n"
+        else
+            'tool_trace("Prm recv: "+_formatAsHex(data[1], 2, false))
+            eb.appendText = "Prm recv: "+_formatAsHex(data[1], 2, false) + "\n"
+        endif
+        if (data == mid(j1708PktData2, 1, -1) or data == canPktData2) then
+            totRecv1 := totRecv1 + 1
+            TimeOut()
+        else
+            if isCan then
+                tool_trace("data: "+str_hex(data) + " can: "+str_hex(canPktData2))
+            else
+                tool_trace("data: "+str_hex(data) + " jdata: "+str_hex(j1708PktData2))
+            endif
+            if (data[1] == totRecv1-1) then
+                'just a duplicate
+                duperrs := duperrs + 1
+                eb.appendText = "Duplicat#: " + str(totRecv1) +" com1 "+str(duperrs) + "\n"
+            else
+                eb.appendText = "Test Failed Invalid Packet Data or Out of order:\n"
+                eb.appendText = "pkt num: " + str(data[1]) + "\n"
+                eb.appendText = "expected: "+str(totRecv1) + "\n"
+                currTestLbl.bgColor = rgb_red
+                StopTimer()
+                testdone1 := true
+                testdone2 := true
+                StartNextTest()
+            endif
+        endif
+    endif
+endfunc
+
+func TimeOut() returns boolean
+    if (totRecv1 == numPkts and totRecv2 == numPkts) then
+        eb.appendText = "Test Passed\n"
+        currTestLbl.bgColor = rgb_green
+        StopTimer()
+        StartNextTest()
+        return false
+    else
+        return true
+    endif
+endfunc
+
+func ProcessResultPort2(pktId as byte, cmd as byte, data[] as byte)
+'    tool_trace("seC: "+str_hex(data))
+    if testdone2 then
+        return
+    endif
+    StopTimer()
+    StartTimer()
+
+    if (lastPktId2 == pktId) then
+        if (cmd == cmd_ack_packet) then
+            if pktNum1 == numPkts then
+                eb.appendText = "Extra Ack On Primary "+_formatAsHex(data[0], 2, true)+ "\n"
+                return
+            endif
+            if (data[0] == ack_ok) then
+                conf2 := mid(data, 2, -1)
+            endif
+            return
+        endif
+    endif
+    if (cmd == cmd_transmit_confirm) then
+        if (data[0] == 0x01 and mid(data, 1, -1) == conf2) then
+            'tool_trace("seC conf: "+_formatAsHex(pktNum1, 2, false))
+            eb.appendText = "seC conf: "+_formatAsHex(pktNum1, 2, false) + "\n"
+            pktNum1 := pktNum1 + 1
+            if pktNum1 < numPkts then
+                SendPktCom2()
+            endif
+        elseif (data[0] == 0x00) then
+            'tool_trace("resend " + _formatAsHex(pktNum1, 2, false))
+            eb.appendText = "resend " + _formatAsHex(pktNum1, 2, false) + "\n"
+            SendPktCom2()
+        endif
+    endif
+
+    'tool_trace("cmd2: "+_formatAsHex(cmd, 2, false))
+    if (cmd == cmd_receive_j1708_packet or cmd == cmd_receive_can_packet) then
+        if isCan then
+            canPktData1[5] := totRecv2 'verify in order
+        else
+            j1708PktData1[2] := totRecv2 'verify in order
+        endif
+
+        'tool_trace("seC recv: "+_formatAsHex(data[1], 2, false))
+        eb.appendText = "seC recv: "+_formatAsHex(data[1], 2, false) + "\n"
+        if (data == mid(j1708PktData1, 1, -1) or data == canPktData1) then
+            totRecv2 := totRecv2 + 1
+            TimeOut()
+        else
+            if isCan then
+                tool_trace("data: "+str_hex(data) + " can: "+str_hex(canPktData1))
+            else
+                tool_trace("data: "+str_hex(data) + " jdata: "+str_hex(j1708PktData1))
+            endif
+            if (data[1] == totRecv2-1) then
+                'just a duplicate
+                duperrs := duperrs + 1
+                eb.appendText = "Duplicat#: " + str(totRecv2) +" com2 "+str(duperrs) + "\n"
+            else
+                eb.appendText = "Test Failed Invalid Packet Data or Out of order:\n"
+                eb.appendText = "pkt num: " + str(data[1]) + "\n"
+                eb.appendText = "expected: "+str(totRecv2) + "\n"
+                currTestLbl.bgColor = rgb_red
+                StopTimer()
+                testdone1 := true
+                testdone2 := true
+                StartNextTest()
+            endif
+        endif
+    endif
+endfunc
+
+dim duperrs as integer
+Enddef
+Define Area Object type TestSendCANChk extends TestChkBox
+#ToolImage "FFFF8001800180018811842182418181824184218811800180018001FFFF"
+init value := "Test Send X CAN"
+
+dim numPkts as integer
+init numPkts := 10
+
+dim totRecv as integer
+
+func Test()
+    dim i as integer
+    currTestLbl := SendCANTestLbl
+    currTestLbl.bgColor = rgb_yellow
+    eb.appendText = "Starting Send X CAN Test\n"
+    SendQBPacket(BasicSerial_1.Comport, cmd_can_control_packet, "e\x00", me.lastPktId) 'can filter disable
+    SendQBPacket(BasicSerial_2.Comport, cmd_can_control_packet, "e\x00", me.lastPktId)
+    SendQBPacket(BasicSerial_1.Comport, cmd_enable_transmit_confirm, "\x00", me.lastPktId)
+    SendQBPacket(BasicSerial_2.Comport, cmd_enable_transmit_confirm, "\x00", me.lastPktId)
+    totRecv := 0
+    testdone := false
+
+    for i = 0 to numPkts-1
+        canPktData[5] := i 'verify in order
+        SendQBPacket(basicSerial_2.Comport, cmd_send_can_packet, canPktData, me.lastPktId)
+    next
+    StartTimer()
+endfunc
+
+
+private dim canPktData[] as byte '1 byte can type, 4 byte id, 8 bytes data
+init canPktData := "\x01\xCC\xBB\xAA\x00abcdefgh"
+
+init ischecked := true
+
+dim testdone as boolean
+
+func ProcessResultPort1(pktId as byte, cmd as byte, data[] as byte)
+    if testdone then
+        return
+    endif
+    StopTimer()
+    StartTimer()
+    if (me.lastPktId == pktId) then
+        return
+    endif
+    if (cmd == cmd_receive_can_packet) then
+        canPktData[5] := totRecv 'verify in order
+        if (data == canPktData) then
+            totRecv := totRecv + 1
+            TimeOut()
+        else
+            eb.appendText = "Test Failed Invalid Packet Data or Out of order:\n"
+            eb.appendText = "pkt num: " + str(data[1]) + "\n"
+            eb.appendText = "totRecv: "+str(totRecv) + "\n"
+            currTestLbl.bgColor = rgb_red
+            StopTimer()
+            testdone := true
+            StartNextTest()
+        endif
+    endif
+endfunc
+
+func TimeOut() returns boolean
+    if (totRecv == numPkts) then
+        eb.appendText = "Test Passed\n"
+        currTestLbl.bgColor = rgb_green
+        StopTimer()
+        StartNextTest()
+        return false
+    else
+        return true
+    endif
+endfunc
+Enddef
+Define Area Object type TestSendJ1708Chk extends TestChkBox
+#ToolImage "FFFF8001800180018811842182418181824184218811800180018001FFFF"
+init value := "Test Send X J1708"
+
+dim numPkts as integer
+init numPkts := 5
+
+dim totRecv as integer
+
+func Test()
+    dim i as integer
+    currTestLbl := SendJ1708TestLbl
+    currTestLbl.bgColor = rgb_yellow
+    eb.appendText = "Starting Send X J1708 Test\n"
+    SendQBPacket(BasicSerial_1.Comport, cmd_mid_filter_enable, "\x00", me.lastPktId)
+    SendQBPacket(BasicSerial_2.Comport, cmd_mid_filter_enable, "\x00", me.lastPktId)
+    SendQBPacket(BasicSerial_1.Comport, cmd_enable_transmit_confirm, "\x01", me.lastPktId)
+    SendQBPacket(BasicSerial_2.Comport, cmd_enable_transmit_confirm, "\x01", me.lastPktId)
+    totRecv := 0
+    testdone := false
+    lastPktSent := false
+
+    for i = 0 to numPkts-2
+        j1708PktData[2] := i 'verify in order
+        SendQBPacket(basicSerial_2.Comport, cmd_send_j1708_packet, j1708PktData, me.lastPktId)
+    next
+    StartTimer()
+endfunc
+
+
+private dim j1708PktData[] as byte
+init j1708PktData := "\x03\x02ABCDEFGHIJKLMNOP"
+
+init ischecked := true
+
+dim testdone as boolean
+
+func ProcessResultPort1(pktId as byte, cmd as byte, data[] as byte)
+    if testdone then
+        return
+    endif
+    StopTimer()
+    StartTimer()
+    if (me.lastPktId == pktId) then
+        return
+    endif
+    if (cmd == cmd_receive_j1708_packet) then
+        j1708PktData[2] := totRecv 'verify in order
+        if (data == mid(j1708PktData, 1, -1)) then
+            totRecv := totRecv + 1
+            TimeOut()
+        else
+            eb.appendText = "Test Failed Invalid Packet Data or Out of order:\n"
+            eb.appendText = "pkt num: " + str(data[1]) + "\n"
+            eb.appendText = "totRecv: "+str(totRecv) + "\n"
+            currTestLbl.bgColor = rgb_red
+            StopTimer()
+            testdone := true
+            StartNextTest()
+        endif
+    endif
+endfunc
+
+func TimeOut() returns boolean
+    if (totRecv == numPkts) then
+        eb.appendText = "Test Passed\n"
+        currTestLbl.bgColor = rgb_green
+        StopTimer()
+        StartNextTest()
+        return false
+    else
+        return true
+    endif
+endfunc
+
+dim lastPktSent as boolean
+func ProcessResultPort2(pktId as byte, cmd as byte, data[] as byte)
+    if (cmd == cmd_transmit_confirm) and lastPktSent == false then
+        lastPktSent :=  true
+        j1708PktData[2] := numPkts-1 'verify in order
+        SendQBPacket(basicSerial_2.Comport, cmd_send_j1708_packet, j1708PktData, me.lastPktId)
+    endif
+endfunc
+Enddef
+Declare BasicSerial_1 as BasicSerialV2
+Level 249970
+#Visible True
+#Lock False
+init parent := default
+
+func datareceived(data[] as byte)
+    ParseQBData(buffer, data, comport)
+endfunc
+Enddec
+Declare BasicSerial_2 as BasicSerialV2
+Level 249969
+#Visible True
+#Lock False
+init parent := default
+init comport := com2
+
+func datareceived(data[] as byte)
+    ParseQBData(buffer, data, comport)
+endfunc
+Enddec
+Declare BasicSerial_3 as BasicSerialV2
+Level 249968
+#Visible True
+#Lock False
+init parent := default
+init comport := com3
+
+func datareceived(data[] as byte)
+    ParseQBData(buffer, data, comport)
+endfunc
+Enddec
+Declare BasicSerial_4 as BasicSerialV2
+Level 249967
+#Visible True
+#Lock False
+init parent := default
+init comport := com4
+
+func datareceived(data[] as byte)
+    ParseQBData(buffer, data, comport)
+endfunc
+Enddec
+Declare Button_1 as ButtonV2
+Level 249994
+#Visible True
+#Lock False
+init value := "Send Get Info. Pkt"
+init parent := default
+init xpos := 4
+init ypos := 125
+init width := 95
+init height := 23
+
+func click()
+    dim pid as byte
+    SendQBPacket(BasicSerial_1.Comport, cmd_get_info_packet, "\x00", pid)
+endfunc
+Enddec
+Declare canFilterTestChk as TestCanFilterChk
+Level 249992
+#Visible True
+#Lock False
+init parent := default
+init xpos := 110
+init ypos := 50
+init width := 95
+init height := 25
+
+func OnStateChange()
+»    if (ischecked == false) then
+»        ischecked = true
+»    endif
+endfunc
+
+init ischecked := false
+init value := "Test CAN Filter"
+Enddec
+Declare canFilterTestLbl as LabelV2
+Level 249993
+#Visible True
+#Lock False
+init value := ""
+init parent := default
+init xpos := 205
+init ypos := 50
+init width := 10
+init height := 25
+init borderstyle := bdr_none
+Enddec
+Declare eb as EditBoxV2
+Level 249972
+#Visible True
+#Lock False
+init parent := default
+init xpos := 120
+init ypos := 120
+init width := 200
+init height := 120
+init boxtype := eb_multilinescroll
+init maxlines := 500
+Enddec
+Declare EnableConfirmLbl as LabelV2
+Level 249978
+#Visible True
+#Lock False
+init value := ""
+init parent := default
+init xpos := 205
+init ypos := 0
+init width := 10
+init height := 25
+init borderstyle := bdr_none
+Enddec
+Declare EnableConfirmTestChk as TestEnableTransConfirmChk
+Level 249979
+#Visible True
+#Lock False
+init parent := default
+init xpos := 110
+init ypos := 0
+init width := 95
+init height := 25
+
+func OnStateChange()
+»    if (ischecked == false) then
+»        ischecked = true
+»    endif
+endfunc
+init ischecked := false
+Enddec
+Declare ExceptionDisplay as ExceptionDisplayV2
+Level 249966
+#Visible False
+#Lock False
+
+Enddec
+Declare InitTestChk as TestInitChk
+Level 249973
+#Visible True
+#Lock False
+init parent := default
+init xpos := 5
+init ypos := 0
+init width := 95
+init height := 25
+
+func OnStateChange()
+»    if (ischecked == false) then
+»        ischecked = true
+»    endif
+endfunc
+init ischecked := false
+Enddec
+Declare InitTestLbl as LabelV2
+Level 249974
+#Visible True
+#Lock False
+init value := ""
+init parent := default
+init xpos := 100
+init ypos := 0
+init width := 10
+init height := 25
+init borderstyle := bdr_none
+Enddec
+Declare KeypadSettings as KeypadSettingsv2
+Level 249964
+#Visible False
+#Lock False
+
+Enddec
+Declare KeyTranslator as KeyTranslationv2
+Level 249965
+#Visible False
+#Lock False
+init translationtable := "0þ241þF1ÿ1þ242þF2ÿ2þ243þF3ÿ3þ244þF4ÿ4þ245þF5ÿ8þ38þ&ÿ9þ37þ%ÿ10þ476þ<home>ÿ11þ229þ<up>ÿ12þ493þ<pgup>ÿ16þ40þ(ÿ17þ41þ)ÿ18þ219þ<left>ÿ19þ64þ@ÿ20þ228þ<right>ÿ24þ35þ#ÿ25þ63þ?ÿ26þ473þ<end>ÿ27þ226þ<down>ÿ28þ490þ<pgdn>ÿ32þ47þ/ÿ33þ42þ*ÿ34þ49þ1ÿ35þ50þ2ÿ36þ51þ3ÿ40þ43þ+ÿ41þ45þ-ÿ42þ52þ4ÿ43þ53þ5ÿ44þ54þ6ÿ49þ44þ,ÿ50þ55þ7ÿ51þ56þ8ÿ52þ57þ9ÿ57þ46þ.ÿ58þ27þ\x1bÿ59þ48þ0ÿ60þ13þ\rÿ"
+init translationtableshifted := "0þ65þAÿ1þ66þBÿ2þ67þCÿ3þ68þDÿ4þ69þEÿ8þ70þFÿ9þ71þGÿ10þ72þHÿ11þ73þIÿ12þ74þJÿ16þ75þKÿ17þ76þLÿ18þ77þMÿ19þ78þNÿ20þ79þOÿ24þ80þPÿ25þ81þQÿ26þ82þRÿ27þ83þSÿ28þ84þTÿ32þ85þUÿ33þ86þVÿ34þ49þ1ÿ35þ50þ2ÿ36þ51þ3ÿ40þ87þWÿ41þ88þXÿ42þ52þ4ÿ43þ53þ5ÿ44þ54þ6ÿ49þ89þYÿ50þ55þ7ÿ51þ56þ8ÿ52þ57þ9ÿ57þ90þZÿ58þ8þ\x08ÿ59þ48þ0ÿ60þ32þ ÿ"
+Enddec
+Declare Label_1 as LabelV2
+Level 249997
+#Visible True
+#Lock False
+init value := "stress test # ports"
+init parent := default
+init xpos := 110
+init ypos := 100
+init width := 100
+init height := 15
+Enddec
+Declare MultiCANTestChk as TestMultiChk
+Level 249986
+#Visible True
+#Lock False
+init parent := default
+init xpos := 5
+init ypos := 50
+init width := 95
+init height := 25
+
+func OnStateChange()
+»    if (ischecked == false) then
+»        ischecked = true
+»    endif
+endfunc
+
+init value := "Test Send X CAN"
+init ischecked := false
+init iscan := true
+Enddec
+Declare MultiCANTestLbl as LabelV2
+Level 249987
+#Visible True
+#Lock False
+init value := ""
+init parent := default
+init xpos := 100
+init ypos := 50
+init width := 10
+init height := 25
+init borderstyle := bdr_none
+Enddec
+Declare MultiJ1708TestChk as TestMultiChk
+Level 249984
+#Visible True
+#Lock False
+init parent := default
+init xpos := 215
+init ypos := 25
+init width := 95
+init height := 25
+
+func OnStateChange()
+»    if (ischecked == false) then
+»        ischecked = true
+»    endif
+endfunc
+init ischecked := false
+Enddec
+Declare MultiJ1708TestLbl as LabelV2
+Level 249985
+#Visible True
+#Lock False
+init value := ""
+init parent := default
+init xpos := 310
+init ypos := 25
+init width := 10
+init height := 25
+init borderstyle := bdr_none
+Enddec
+Declare PersistentVariables_1 as PersistentVariablesV2
+Level 250000
+#Visible True
+#Lock False
+init savelist := "spinner_1.value;stressTestSpn.value;"
+Enddec
+Declare RunTestBtn as ButtonV2
+Level 249971
+#Visible True
+#Lock False
+init value := "Run Tests"
+init parent := default
+init xpos := 0
+init ypos := 210
+init width := 86
+init height := 30
+
+func click()
+    eb.Value = ""
+    currTestIdx := -1
+    StartNextTest()
+endfunc
+Enddec
+Declare ScreenSaver as ScreenSaverV2
+Level 249963
+#Visible False
+#Lock False
+
+Enddec
+Declare SendCANTestChk as TestSendCANChk
+Level 249982
+#Visible True
+#Lock False
+init parent := default
+init xpos := 110
+init ypos := 25
+init width := 95
+init height := 25
+
+func OnStateChange()
+»    if (ischecked == false) then
+»        ischecked = true
+»    endif
+endfunc
+
+init ischecked := false
+Enddec
+Declare SendCANTestLbl as LabelV2
+Level 249983
+#Visible True
+#Lock False
+init value := ""
+init parent := default
+init xpos := 205
+init ypos := 25
+init width := 10
+init height := 25
+init borderstyle := bdr_none
+Enddec
+Declare SendJ1708TestChk as TestSendJ1708Chk
+Level 249980
+#Visible True
+#Lock False
+init parent := default
+init xpos := 5
+init ypos := 25
+init width := 95
+init height := 25
+
+func OnStateChange()
+»    if (ischecked == false) then
+»        ischecked = true
+»    endif
+endfunc
+init ischecked := false
+Enddec
+Declare SendJ1708TestLbl as LabelV2
+Level 249981
+#Visible True
+#Lock False
+init value := ""
+init parent := default
+init xpos := 100
+init ypos := 25
+init width := 10
+init height := 25
+init borderstyle := bdr_none
+Enddec
+Declare setCan125k as ButtonV2
+Level 249991
+#Visible True
+#Lock False
+init value := "Set CAN Baud 125k"
+init parent := default
+init xpos := 2
+init ypos := 195
+init width := 115
+init height := 15
+
+func click()
+    dim pid as byte
+    SendQBPacket(BasicSerial_1.Comport, cmd_can_control_packet, "b4", pid)
+    SendQBPacket(BasicSerial_2.Comport, cmd_can_control_packet, "b4", pid)
+endfunc
+Enddec
+Declare setCan1Meg as ButtonV2
+Level 249989
+#Visible True
+#Lock False
+init value := "Set CAN Baud 1Meg"
+init parent := default
+init xpos := 2
+init ypos := 165
+init width := 115
+init height := 15
+
+func click()
+    dim pid as byte
+    SendQBPacket(BasicSerial_1.Comport, cmd_can_control_packet, "b1", pid)
+    SendQBPacket(BasicSerial_2.Comport, cmd_can_control_packet, "b1", pid)
+endfunc
+Enddec
+Declare setCan250k as ButtonV2
+Level 249988
+#Visible True
+#Lock False
+init value := "Set CAN Baud 250K"
+init parent := default
+init xpos := 2
+init ypos := 150
+init width := 115
+init height := 15
+
+func click()
+    dim pid as byte
+    SendQBPacket(BasicSerial_1.Comport, cmd_can_control_packet, "b3", pid)
+    SendQBPacket(BasicSerial_2.Comport, cmd_can_control_packet, "b3", pid)
+endfunc
+Enddec
+Declare setCan512k as ButtonV2
+Level 249990
+#Visible True
+#Lock False
+init value := "Set CAN Baud 512K"
+init parent := default
+init xpos := 2
+init ypos := 180
+init width := 115
+init height := 15
+
+func click()
+    dim pid as byte
+    SendQBPacket(BasicSerial_1.Comport, cmd_can_control_packet, "b2", pid)
+    SendQBPacket(BasicSerial_2.Comport, cmd_can_control_packet, "b2", pid)
+endfunc
+Enddec
+Declare Spinner_1 as SpinnerV2
+Level 249999
+#Visible True
+#Lock False
+init parent := default
+init xpos := 210
+init ypos := 100
+init width := 95
+init height := 20
+init buttonposition := spin_buttonboth
+init arrowposition := spin_leftright
+init value := 60
+init min := 2
+init max := 250
+
+func valueChanged()
+    stressTestChk.numPkts = value
+endfunc
+Enddec
+Declare StressTestChk as StressTestChk
+Level 249998
+#Visible True
+#Lock False
+init parent := default
+init xpos := 210
+init ypos := 80
+init width := 90
+init height := 20
+init ischecked := true
+Enddec
+Declare stressTestLbl as LabelV2
+Level 249995
+#Visible True
+#Lock False
+init value := ""
+init parent := default
+init xpos := 305
+init ypos := 95
+init width := 10
+init height := 25
+init borderstyle := bdr_none
+Enddec
+Declare stressTestSpn as SpinnerV2
+Level 249996
+#Visible True
+#Lock False
+init parent := default
+init xpos := 110
+init ypos := 80
+init width := 95
+init height := 20
+init buttonposition := spin_buttonboth
+init arrowposition := spin_leftright
+init min := 2
+init max := 4
+init value := 2
+Enddec
+Declare TestMIDFilterEnableChk as TestMIDFilterEnableChk
+Level 249976
+#Visible True
+#Lock False
+init parent := default
+init xpos := 215
+init ypos := 0
+init width := 95
+init height := 25
+init ischecked := false
+Enddec
+Declare TestMIDFilterEnableLbl as LabelV2
+Level 249977
+#Visible True
+#Lock False
+init value := ""
+init parent := default
+init xpos := 310
+init ypos := 0
+init width := 10
+init height := 25
+init borderstyle := bdr_none
+Enddec
+Declare testTimer as TimerV2
+Level 249975
+#Visible True
+#Lock False
+init parent := default
+init timeperiod := 4
+init enabled := false
+init timertype := _tt_oneshot
+
+func timeout()
+    if (currTestChk.TimeOut()) then
+        eb.appendText = "Reply Time Out, Test Failed: " + currTestChk.value + "\n"
+        currTestLbl.bgColor = rgb_red
+    endif
+endfunc
+Enddec
+#Begin_Advanced_Code
+dim currTestChk as TestChkBox
+dim currTestLbl as labelV2
+#End_Advanced_Code
+#Hide Library DataProc Source BasicSerialV2
+#Hide Library Basic Source ButtonV2
+#Hide Library Basic Source CheckBoxV2
+#Hide Library Basic Source editboxV2
+#Hide Library Basic Source ExceptionDisplayV2
+#Hide Library Basic Source keypadsettingsV2
+#Hide Library Basic Source keypadtranslatorV2
+#Hide Library Basic Source LabelV2
+#Hide Library DataProc Source PerstistentVarsV2
+#Hide Library Basic Source ScreenSaverV2
+#Hide Library Basic Source SpinnerV2
+#Hide Library Basic Source timerV2
+#SetFile -1 "*l%global%"
+Includesys Library "basic.qlib"
+Includesys Library "dataproc.qlib"
+Includesys Library "extra.qlib"
+#hide Includesys reference to Library "Galil_mcV2.qlib"
+#hide Includesys reference to Library "j1708V1.qlib"
+#hide Includesys reference to Library "K65EmulationV2.qlib"
+#hide Includesys reference to Library "MitsubishiFX.qlib"
+#hide Includesys reference to Library "ModbusV2.qlib"
+#hide Includesys reference to Library "multilingual.qlib"
+#hide Includesys reference to Library "NIObjsV2.qlib"
+#hide Includesys reference to Library "Opto22MemMapV2.qlib"
+#hide Includesys reference to Library "OptoUIO.qlib"
+#hide Includesys reference to Library "OrbComm.qlib"
+#hide Includesys reference to Library "PrinterControl.qlib"
+#hide Includesys reference to Library "QlariTouchObj.qlib"
+#hide Includesys reference to Library "zworld.qlib"
+#hide Includesys reference to Library "core.qlib.qhide"
+#hide Includesys reference to Library "progobjs.lib"
+#hide Includesys reference to Library "common.lib"
+#hide library basic source necessary
+#SetFile -1 "*r%global%"
+Includesys Bitmap "qlarity.bmp" As default
+Includesys BDFfont "helvR08.bdf" As default
+Includesys BDFfont "helvR14.bdf" As Helv14
+Includesys BDFfont "5x7.bdf" As Small
+Includesys TTfont "vera.ttf" As default
+#config colormap "Clr_ButtonBackground := 183;Clr_ButtonBackgroundAlt := 219;Clr_ButtonForeground := 0;Clr_ButtonForegroundAlt := 2;Clr_FillColor := 15;Clr_LabelBackground := 38;Clr_LabelForeground := 255;Clr_ScreenBackground := 2;Clr_ScreenForeground := 255;Clr_SoftkeybarBackground := 183;Clr_SoftkeybarButtonBg := 219;Clr_SoftkeybarButtonFg := 0;"
+#hide #ifnot opt_colormap%
+#hide #option opt_colormap%
+#hide enum colormap% as Clr_ButtonBackground:=258, Clr_ButtonBackgroundAlt:=260, Clr_ButtonForeground:=259, Clr_ButtonForegroundAlt:=261, Clr_FillColor:=264, Clr_LabelBackground:=256, Clr_LabelForeground:=257, Clr_ScreenBackground:=262, Clr_ScreenForeground:=263, Clr_SoftkeybarBackground:=265, Clr_SoftkeybarButtonBg:=266, Clr_SoftkeybarButtonFg:=267
+#hide #hidden dim _colorMap[] as color
+#hide init _colorMap := [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255, 38, 255, 183, 0, 219, 2, 2, 255, 15, 183, 219, 0]
+#hide #endif
+#config stylemap "Bdr_BumpBorder := 337165;Bdr_ButtonBorder := 335909;Bdr_CheckBoxBorder := 135175;Bdr_CompositeObject := 331781;Bdr_CompositeSunken := 331783;Bdr_InnerButton := 331781;Bdr_InnerLabel := 331783;Bdr_LabelBorder := 331783;Bdr_None := 0;Bdr_Scrollbar := 331781;Bdr_Softkey := 33760557;Bdr_TabBorder := 663589;"
+#hide #ifnot opt_stylemap%
+#hide #option opt_stylemap%
+#hide enum stylemap% as Bdr_BumpBorder:=4, Bdr_ButtonBorder:=0, Bdr_CheckBoxBorder:=6, Bdr_CompositeObject:=9, Bdr_CompositeSunken:=10, Bdr_InnerButton:=7, Bdr_InnerLabel:=8, Bdr_LabelBorder:=1, Bdr_None:=2, Bdr_Scrollbar:=3, Bdr_Softkey:=11, Bdr_TabBorder:=5
+#hide #hidden dim _styleMap[] as integer
+#hide init _styleMap := [335909, 331783, 0, 331781, 337165, 663589, 135175, 331781, 331783, 331781, 331783, 33760557]
+#hide #endif

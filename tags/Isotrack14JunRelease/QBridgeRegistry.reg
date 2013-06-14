@@ -1,0 +1,20 @@
+REGEDIT4
+
+[HKEY_LOCAL_MACHINE\Drivers\QBridge]
+"Exe_Logging_Status"="False"
+"Exe_Logging_Setup"="True"
+"Priority"=dword:000000fa
+"DLL_Logging_Setup"=dword:00000001
+"DLL_Logging_DriverAppInteraction"=dword:00000000
+"DLL_Logging_Client Disconnected"=dword:00000000
+"DLL_Logging_Error"=dword:00000000
+"DLL_Logging_Udp Msg"=dword:00000000
+"DLL_Logging_Debug Msg"=dword:00000000
+"DLL_Logging_Api Result"=dword:00000000
+"Exe_Logging_ClientID"="False"
+"Exe_Logging_Thread"="False"
+"Exe_Logging_Error"="False"
+"Exe_Logging_Serial"="False"
+"Exe_Logging_Udp"="False"
+"Exe_Logging_Debug"="False"
+
