@@ -273,10 +273,10 @@ RP1210A_API void WINAPI RP1210_ReadVersion (char far* fpchDLLMajorVersion,	char 
     Log::WriteRaw(LogLev::ApiResult, L"Called RP1210_ReadVersion");
 
 	CritSection cs;
-	fpchDLLMajorVersion[0] = 0x31;
-	fpchDLLMinorVersion[0] = 0x34;
-	fpchAPIMajorVersion[0] = '2';
-	fpchAPIMinorVersion[0] = '3';
+	fpchDLLMajorVersion[0] = '3';
+	fpchDLLMinorVersion[0] = '0';
+	fpchAPIMajorVersion[0] = '3';
+	fpchAPIMinorVersion[0] = '0';
 }
 
 /*****************************/
