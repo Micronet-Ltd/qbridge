@@ -1,0 +1,8 @@
+obj\Debug\ResolveAssemblyReference.cache
+obj\Debug\QBridgeFirmwareUpgrade.UpdateFWForm.resources
+obj\Debug\QBridgeFirmwareUpgrade.Properties.Resources.resources
+obj\Debug\QBridgeFirmwareUpgrade.csproj.GenerateResource.Cache
+bin\Debug\QBridgeFirmwareUpgrade.exe
+bin\Debug\QBridgeFirmwareUpgrade.pdb
+obj\Debug\QBridgeFirmwareUpgrade.exe
+obj\Debug\QBridgeFirmwareUpgrade.pdb
