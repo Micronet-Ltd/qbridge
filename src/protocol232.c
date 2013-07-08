@@ -561,6 +561,27 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
                 }
             }
             break;
+        case Change232BaudRate:
+            {
+                UINT32 newbaud;
+                if (dataLen != 4) {
+                    Send232Ack(ACK_INVALID_DATA, id, NULL, 0);
+                    break;
+                }
+                newbaud = BufToUINT32( &data[0] );
+                if( !IsBaudSupported(newbaud) ){
+                    Send232Ack(ACK_INVALID_DATA, id, NULL, 0);
+                    break;
+                }
+                // special case -- we need to transmit a reply, then wait for the serial port to go idle and then change the baud rate
+                Send232Ack(ACK_OK, id, NULL, 0);
+                while (!IsTxFifoEmpty(hostPort)) { // loop until the serial port transmission buffer is empty
+                }
+                {
+                    CmdChangeBaud( newbaud );
+                }
+            }
+            break;
         case MdmReset:
 	  {
             if ((dataLen < 1) || ((data[0]==1) && (dataLen < 2)) || ((data[0]==2) && (dataLen < 2)) ) {
@@ -711,7 +732,7 @@ void Transmit232IfReady() {
 void RetryLast232() {
 //DebugPrint ("RetryLast232 %02X, retrycount=%d", last232Command, awaiting232FailCount);
     TransmitFinal232Packet (last232Command, last232PacketID, last232Data, last232DataLen);
-	
+
 	/*awaiting232Ack = true;
 	*/
 	if(((last232Command == ReceiveJ1708Packet)||(last232Command == ReceiveCANPacket))

@@ -35,6 +35,12 @@ typedef struct _BaudTableEntry {
 } BaudTableEntry;
 
 static const BaudTableEntry BaudRateTable[] = {
+   {1500000l, bauddiv_1500000},
+   { 750000l, bauddiv_750000},
+   { 500000l, bauddiv_500000},
+   { 375000l, bauddiv_375000},
+   { 300000l, bauddiv_300000},
+   { 250000l, bauddiv_250000},
    { 115200l, bauddiv_115200},
    { 57600l,  bauddiv_57600},
    { 38400l,  bauddiv_38400},
@@ -258,6 +264,32 @@ bool SetPortSettings (SerialPort *port, UINT32 baud, UINT8 dataBits, UINT8 parit
     port->port->rxReset = 0;
     RESTORE_IRQ(saveState);
     return true;
+}
+
+/******************/
+/* CmdChangeBaud */
+/****************/
+bool CmdChangeBaud( UINT32 baud)
+{
+    if( !SetPortSettings(&com4, baud, 8, 'N', 1, TRUE) ){
+        SetPortSettings(&com4, 115200l, 8, 'N', 1, TRUE);
+        return false;
+    }
+    return true;
+}
+
+/********************/
+/* IsBuadSupported */
+/******************/
+bool IsBaudSupported( UINT32 baud )
+{
+    int i;
+    for (i = 0; i < ARRAY_SIZE(BaudRateTable); i++) {
+        if (BaudRateTable[i].baud == baud) {
+            return true;
+        }
+    }
+    return false;
 }
 
 /*************/

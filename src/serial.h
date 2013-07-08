@@ -7,6 +7,12 @@
 
 
 // Assumes a baud clock of 24.0000 MHz
+#define bauddiv_1500000  1      // %error =
+#define bauddiv_750000   2      // %error = .953
+#define bauddiv_500000   3      // %error = .953
+#define bauddiv_375000   4      // %error = .953
+#define bauddiv_300000   5      // %error = .953
+#define bauddiv_250000   6      // %error = .953
 //#define bauddiv_460800  3.25  // %error = 7.7 --too large
 //#define bauddiv_230400  6.5   // %error = 7.5 --too large to work
 #define bauddiv_115200  13      // %error = .16
@@ -33,6 +39,8 @@ extern SerialPort *hostPort;
 void InitializeAllSerialPorts();
 void DisableAllSerialPorts(void);
 bool SetPortSettings (SerialPort *port, UINT32 baud, UINT8 dataBits, UINT8 parity, UINT8 stopBits, bool setrun);
+bool IsBaudSupported( UINT32 baud );
+bool CmdChangeBaud( UINT32 baud);
 UINT32 Transmit (SerialPort *port, UINT8 *data, int leng);
 void StuffTxFifo(SerialPort *port);
 void ProcessRxFifo (SerialPort *port);
