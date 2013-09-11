@@ -28,8 +28,31 @@ namespace QBridgeFirmwareUpgrade
             InitializeComponent();
         }
 
+        private bool use_builtin_version;
+
         private void UpdateFWForm_Load(object sender, EventArgs e)
         {
+            use_builtin_version = true;
+            if (use_builtin_version)
+            {
+                Filename.Text = "qbridge_v1_011b.srec";
+                Filename.Enabled = false;
+                SerialPort.SelectedIndex = 7;
+                SerialPort.Enabled = false;
+                BrowseBtn.Visible = false;
+                UpgradeBtn.Enabled = false;
+                this.Text = "QBridge Firmware Updater - V1.011b";
+                this.Left = Screen.PrimaryScreen.Bounds.Width / 2 - this.Width / 2;
+                this.Top = Screen.PrimaryScreen.Bounds.Height / 2 - this.Height / 2;
+                this.MaximizeBox = false;
+                this.MinimizeBox = false;
+                this.ControlBox = false;
+                this.Show();
+                this.Refresh();
+                UpgradeBtn_Click(null, null);
+                return;
+            }
+
             Microsoft.Win32.RegistryKey topLevel = Microsoft.Win32.Registry.CurrentUser.CreateSubKey("QSI Corporation");
             key = topLevel.CreateSubKey("QBridgeFirmwareUpgrade");
             Filename.Text = (String)(key.GetValue("DefaultFilename", ""));
@@ -127,39 +150,48 @@ namespace QBridgeFirmwareUpgrade
         {
             // Open the file
             byte[] fileContents;
-            try
+            if (use_builtin_version)
             {
-                FileStream fs = new FileStream(Filename.Text, FileMode.Open);
-                fileContents = new byte[fs.Length];
-                fs.Read(fileContents, 0, (int)fs.Length);
-                fs.Close();
+                object obj = Properties.Resources.qbridge_v1_011b;
+                fileContents = (byte[])(obj);
             }
-            catch (Exception ex)
+            else
             {
-                msg = ex.Message + "\nUnable to open or read " + Filename.Text + ".";
 
-                if (Program.ConsoleMode)
+                try
                 {
-                    Console.WriteLine(msg);
-                    Application.Exit();
+                    FileStream fs = new FileStream(Filename.Text, FileMode.Open);
+                    fileContents = new byte[fs.Length];
+                    fs.Read(fileContents, 0, (int)fs.Length);
+                    fs.Close();
                 }
-                else
-                    MessageBox.Show(msg, "File error", MessageBoxButtons.OK, MessageBoxIcon.Exclamation, MessageBoxDefaultButton.Button1);
-                return;
-                
+                catch (Exception ex)
+                {
+                    msg = ex.Message + "\nUnable to open or read " + Filename.Text + ".";
+
+                    if (Program.ConsoleMode)
+                    {
+                        Console.WriteLine(msg);
+                        Application.Exit();
+                    }
+                    else
+                        MessageBox.Show(msg, "File error", MessageBoxButtons.OK, MessageBoxIcon.Exclamation, MessageBoxDefaultButton.Button1);
+                    return;
+
+                }
+
+                // Set the registry keys for default file name and COM port index
+                key.SetValue("DefaultFilename", Filename.Text);
+                if (Program.ConsoleMode)
+                    SerialPort.SelectedIndex = Convert.ToInt32(Program.PortName.Remove(0, 3));
+
+                key.SetValue("DefaultComPortIndex", SerialPort.SelectedIndex);
             }
 
 
             // Set the progress bar max depending on file size contents
                 DLProgress.Minimum = 0;
                 DLProgress.Maximum = fileContents.Length - 1;
-
-            // Set the registry keys for default file name and COM port index
-            key.SetValue("DefaultFilename", Filename.Text);
-            if (Program.ConsoleMode)
-                SerialPort.SelectedIndex = Convert.ToInt32(Program.PortName.Remove(0, 3));
-
-            key.SetValue("DefaultComPortIndex", SerialPort.SelectedIndex);
 
             // Configure the serial port
             char[] splitChars = { ' ' };
@@ -171,7 +203,7 @@ namespace QBridgeFirmwareUpgrade
             catch (Exception)
             {
                 msg = "Unable to open '" + serPort.PortName + "' for communication.";
-                if (Program.ConsoleMode)
+                if (Program.ConsoleMode || use_builtin_version)
                 {
                     Console.WriteLine(msg);
                     Application.Exit();
@@ -222,7 +254,7 @@ namespace QBridgeFirmwareUpgrade
                     msg = "Device did not enter bootloader as requested\n";
                     // Device did not enter the bootloader
 
-                    if (Program.ConsoleMode)
+                    if (Program.ConsoleMode || use_builtin_version)
                     {
                         Console.WriteLine(msg);
                         Application.Exit();
@@ -280,7 +312,7 @@ namespace QBridgeFirmwareUpgrade
                                         //TRACE(_T("Expected ack and received <%02x> (byte %d.  Line %d) - retrying %d!\n"), recv[idx], idx, nLines, retryCount);
                                         msg = String.Format("bad bl ack ({1:x} offs={2}, cnt={3}) when writing line {0}.", nLines, recv[idx], idx, recvCnt);
 
-                                        if (Program.ConsoleMode)
+                                        if (Program.ConsoleMode || use_builtin_version)
                                         {
                                             Console.WriteLine(msg);
                                             Application.Exit();
@@ -306,7 +338,7 @@ namespace QBridgeFirmwareUpgrade
                     {
                         //TRACE (_T("Device did not respond when writing line %d\n"), nLines);
                         msg = String.Format("Device did not respond when writing line {0} {1}.", nLines, line.Length);
-                        if (Program.ConsoleMode)
+                        if (Program.ConsoleMode || use_builtin_version)
                         {
                             Console.WriteLine(msg);
                             Application.Exit();
@@ -334,10 +366,13 @@ namespace QBridgeFirmwareUpgrade
                 }
 
                 msg = String.Format("Upgrade complete.");
-                if (Program.ConsoleMode)
+                if (Program.ConsoleMode || use_builtin_version)
                 {
-                    Console.WriteLine("-- Upgrading QBridge firmware 100% completed....");
-                    Console.WriteLine(msg);
+                    if (Program.ConsoleMode)
+                    {
+                        Console.WriteLine("-- Upgrading QBridge firmware 100% completed....");
+                        Console.WriteLine(msg);
+                    }
                     Application.Exit();
             }
                 else
