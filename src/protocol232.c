@@ -711,7 +711,7 @@ void Transmit232IfReady() {
         }
         return;
     }
-    if (QueueEmpty(&txPackets)) {
+    if (QueueEmpty(&txPackets) || (txPackets.count < 4)) {
         return;
     }
 
@@ -719,6 +719,8 @@ void Transmit232IfReady() {
     last232Command = DequeueOne(&txPackets);
     last232PacketID = DequeueOne(&txPackets);
     int retreivedLen = DequeueBuf(&txPackets, last232Data, last232DataLen);
+    //GPJ!!! what if len > 64???
+    //GPJ!!! what if amount in que is less than data len??
     AssertPrint (retreivedLen == last232DataLen, "Error retreiving data from buffer");
     retreivedLen++; //remove the compiler warning when _DEBUG not defined
 
@@ -764,6 +766,7 @@ void TransmitFinal232Packet(UINT8 command, UINT8 packetID, UINT8 *data, UINT32 d
     buf[dataLen+5] = (crc & 0xFF00) >> 8;
 
     Transmit (hostPort, buf, buf[1]);
+    //GPJ!! what if transmit fails???
 }
 
 //#############################################################################

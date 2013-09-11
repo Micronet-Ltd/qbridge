@@ -154,8 +154,8 @@ void InitializeAllSerialPorts() {
 
     //InitializePort(&com1, EIC_UART0, Com1IRQ, TRUE, SERIAL_IRQ_PRIORITY);
     InitializePort(&com2, EIC_UART1, Com2IRQ, FALSE, J1708_SERIAL_IRQ_PRIORITY);   //Important not to start the J1708 port until a timer can be started at the same time
-    InitializePort(&com3, EIC_UART2, Com3IRQ, TRUE, SERIAL_IRQ_PRIORITY);
-    InitializePort(&com4, EIC_UART3, Com4IRQ, TRUE, SERIAL_IRQ_PRIORITY);
+    //InitializePort(&com3, EIC_UART2, Com3IRQ, TRUE, SERIAL_IRQ_PRIORITY); //debug port
+    InitializePort(&com4, EIC_UART3, Com4IRQ, TRUE, SERIAL_IRQ_PRIORITY); //host interface
 }
 
 /*******************/
@@ -297,13 +297,16 @@ bool IsBaudSupported( UINT32 baud )
 /***********/
 UINT32 Transmit (SerialPort *port, UINT8 *data, int leng) {
     IRQSTATE saveState = 0;
+    UINT32 retVal = 0;
     DISABLE_IRQ(saveState);
-    UINT32 retVal = Enqueue(&(port->txQueue), data, leng);
+    if( (QUEUE_SIZE - port->txQueue.count) >= leng ){ //que it all or nothing
+        retVal = Enqueue(&(port->txQueue), data, leng);
 #ifdef DEBUG_SERIAL
-    if ((retVal < leng) && (port != debugPort)) {
-        DebugPrint ("Serial com%d transmit queue has overrun.", GetPortNumber(port));
-    }
+        if ((retVal < leng) && (port != debugPort)) {
+            DebugPrint ("Serial com%d transmit queue has overrun.", GetPortNumber(port));
+        }
 #endif
+    }
     StuffTxFifo(port);
     RESTORE_IRQ(saveState);
     return retVal;
