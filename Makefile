@@ -7,8 +7,8 @@
 #  Defines  #
 #############
 
-version	        := V1.011
-test_version    := b
+version	        := V1.012
+test_version    := 
 versdash        := -
 
 target	  	:= qbridge
