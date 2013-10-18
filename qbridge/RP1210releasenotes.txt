@@ -1,0 +1,37 @@
+v1527 Release Candidate, Oct 10, 2012
+- Added additional exception handling to serial port thread
+- RTS/CTS connections will closed when a TP connection abort packet is recieved.
+
+v1526 BETA, Oct 3, 2012
+- Added socket exception handling for when two or more instances of QBridgeWinCEDriver.exe are started. The second process will now terminate automatically.
+- Updated ObjectDisposed Exception handling from UdpClient.Send, possibly from a host already being specified or race condition with a closed UdpClient on a separate thread.
+
+v1524 Release Candidate, Aug 9, 2012
+- updating version number to sync with RP1210 ReadVersion API.
+- Changed UDP timers to use "Change" functions instead of "Dispose" to restart
+- Changing a DWORD key "Priority" under LOCAL_MACHINE "SOFTWARE\\RP1210" to a value between 249-252 will change the priority of some threads in RP1210, but not all.
+- Added Enable Advanced Receive mode to init sequence of RP1210
+
+v1107 Release Candidate, May 23, 2012
+- Updated the clean-up code when closing J1939 client connections.
+- Fixed an instance I found in testing where sending a CAN packet was not getting a confirm
+
+v1106 BETA, May 17, 2012
+- Fixed a bug with setting J1708 filters multiple times
+- Fixed a random crash that I found while running the old address claiming validation test.
+- Fixed a bug where it was returning an invalid packet error by mistake with J1939
+
+v1105 BETA, May 10, 2012
+- Fixed a problem with cleanup of pending transactions on serial ports when closing client connections.
+
+v1104 BETA, May 4, 2012
+- Updated Address claim to adhere to RP1210 protocol.  Will return ERR_ADDRESS_LOST one time if address lost
+
+v1103 BETA, May 2, 2012
+- Fixed an issue where the first J1939 packet sent to the QBridge was timimg out after 40 seconds
+- Changed the timers to use the "Change" functions instead of "Dispose" to restart
+
+v1102 BETA, May 1, 2012
+- If using Address Claim, calls to RP1210_SendMessage will return an error message for an un-claimed Source Address (SA).
+- J1708 MID filtering has been moved to the QBridge layer and will be filter by the QBridge hardware before being received.
+- Periodic queries will be sent to the QBridge if there is inactivity to determine if the TREQ-VMx has been un-docked so the QBridge can be re-initialized when re-docked. 

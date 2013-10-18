@@ -1,0 +1,1217 @@
+#STPBuilderApp
+#hide #option _TOOL_TOUCHSCREEN
+#option _SS_Lines
+#option _SS_Marquee
+
+dim CRCTable[] as integer
+
+enum AckTypes as ACK_OK := '0', ACK_DUPLICATE_PACKET := '1', ACK_INVALID_PACKET := '2', ->
+    ACK_INVALID_COMMAND := '3', ACK_INVALID_DATA := '4', ACK_UNABLE_TO_PROCESS := '5'
+
+enum Commands as InitComm := '@', ACK := 'A', InfoReq := '*', RawJ1708 := '+', ->
+    MIDFilterEnable := 'B', SetMIDState := 'C', SendJ1708Packet := 'D', ->
+    ReceiveJ1708Packet := 'E', EnableJ1708TxConfirm := 'F', J1708TransmitConfirm := 'G', ->
+    UpgradeFirmware := 'H', Reboot := 'I', SendCANPacket := 'J', ->
+    ReceiveCANPacket := 'K', CANControlPacket := 'L', GetInfoPacket := 'M'
+
+starttype CANCtrlType as byte
+    CtrlBaudRate := 'b'
+    CtrlDebugMode := 'd'
+    CtrlReInitialize := 'r'
+    CtrlNotify := 'n'
+    CtrlSetFilters := 'f'
+    CtrlRetrieveFilters := 'g'
+    CtrlEnableFilters := 'e'
+endtype
+
+func SendFilterPacket()
+    dim data[2] as byte
+    dim idx as integer
+    dim i as integer
+
+    'reset to defaults
+    data[0] := CtrlReInitialize
+    data[1] := 2
+    TransmitPacket(CANControlPacket, data, false)
+
+    'set filters
+    data[0] := CtrlSetFilters
+    'data[1] := 0 '0 for disable filters
+    data[1] := 1 '1 for enable filters
+
+    if CANFilterSAb.isChecked then
+        idx := Len(data)
+        Redim(data, idx + 9)
+        data[idx] := 0x01 'extended
+        data[idx+1] := 'b' 'source address
+        data[idx+2] := 0x00 'dest. address or pgn start/PS_GE
+        data[idx+3] := 0x00 'pgn/PF
+        data[idx+4] := 0x00 'pgn/R_DP or how_priority
+        'mask
+        data[idx+5] := 0xFF 'source address
+        data[idx+6] := 0x00 'dest. address or pgn start/PS_GE
+        data[idx+7] := 0x00 'pgn/PF
+        data[idx+8] := 0x00 'pgn/R_DP or how_priority
+    endif
+
+    if CANFilterSAc.isChecked then
+        idx := Len(data)
+        Redim(data, idx + 9)
+        data[idx] := 0x01 'extended
+        data[idx+1] := 'c' 'source address
+        data[idx+2] := 0x00 'dest. address or pgn start/PS_GE
+        data[idx+3] := 0x00 'pgn/PF
+        data[idx+4] := 0x00 'pgn/R_DP or how_priority
+        'mask
+        data[idx+5] := 0xFF 'source address
+        data[idx+6] := 0x00 'dest. address or pgn start/PS_GE
+        data[idx+7] := 0x00 'pgn/PF
+        data[idx+8] := 0x00 'pgn/R_DP or how_priority
+    endif
+
+    if CANFilterSAd.isChecked then
+        idx := Len(data)
+        Redim(data, idx + 9)
+        data[idx] := 0x01 'extended
+        data[idx+1] := 'd' 'source address
+        data[idx+2] := 0x00 'dest. address or pgn start/PS_GE
+        data[idx+3] := 0x00 'pgn/PF
+        data[idx+4] := 0x00 'pgn/R_DP or how_priority
+        'mask
+        data[idx+5] := 0xFF 'source address
+        data[idx+6] := 0x00 'dest. address or pgn start/PS_GE
+        data[idx+7] := 0x00 'pgn/PF
+        data[idx+8] := 0x00 'pgn/R_DP or how_priority
+    endif
+
+    if CANFilterPGN65265.isChecked then
+        idx := Len(data)
+        Redim(data, idx + 9)
+        data[idx] := 0x01 'extended
+        data[idx+1] := 0x00 'source address
+        data[idx+2] := 241
+        data[idx+3] := 254
+        data[idx+4] := 0x00
+        'mask
+        data[idx+5] := 0x00 'source address
+        data[idx+6] := 0xFF 'dest. address or pgn start/PS_GE
+        data[idx+7] := 0xFF 'pgn/PF
+        data[idx+8] := 0x01 'pgn/R_DP or how_priority
+    endif
+
+    if CANFilterDA_Q.isChecked then
+        idx := Len(data)
+        Redim(data, idx + 9)
+        data[idx] := 0x01 'extended
+        data[idx+1] := 0x00 'source address
+        data[idx+2] := 'Q' 'dest. address
+        data[idx+3] := 0x00
+        data[idx+4] := 0x00
+        'mask
+        data[idx+5] := 0x00 'source address
+        data[idx+6] := 0xFF 'dest. address or pgn start/PS_GE
+        data[idx+7] := 0x00 'pgn/PF
+        data[idx+8] := 0x00 'pgn/R_DP or how_priority
+    endif
+
+    if CANFilterPriority3.isChecked then
+        idx := Len(data)
+        Redim(data, idx + 9)
+        data[idx] := 0x01 'extended
+        data[idx+1] := 0x00 'source address
+        data[idx+2] := 0x00 'dest. address
+        data[idx+3] := 0x00
+        data[idx+4] := 0x03 * 2 * 2 'priority
+        'mask
+        data[idx+5] := 0x00 'source address
+        data[idx+6] := 0x00 'dest. address or pgn start/PS_GE
+        data[idx+7] := 0x00 'pgn/PF
+        data[idx+8] := 0x07 * 2 * 2 'pgn/R_DP or how_priority
+    endif
+
+    TransmitPacket(CANControlPacket, data, false)
+endfunc
+
+func Startup ()
+    handles MSG_INIT
+
+    'SetSystemSetting (SYS_COM1BAUD, 19200, SYSACT_DONOW)
+    SetSerialTimeout(COM1, 1)
+    SetSerialRecvSize(COM1, 512)
+
+    CRCTable = CreateCRCTable (16, 0x1021, false)
+
+    SetSerialRecvSize(COM2, 512)
+    SetSerialTimeout(COM2, 1)
+
+    RegisterMsgHandler (default, msg_comm_receive, com1)
+
+    UserDirectMsg (default, _msg_post_init, 0, false)
+
+    TransmitPacket (Initcomm, "", false)
+
+    return
+endfunc
+
+func PostInit (parm as integer) returns boolean
+    handles _msg_post_init
+
+    InitIBridge.click()
+    InitIBridge2.click()
+    return true
+endfunc
+
+
+const STX := 2 as byte
+dim packetID as byte
+'Truncate should normally be set to false.  It is used to create bad packets
+func TransmitPacket (cmd as byte, data[] as byte, truncate as boolean)
+    dim packet[] as byte
+    dim crc as unibyte
+
+    packetID := packetID + 1
+    redim (packet, len(data) + 4)
+    packet[0] = STX
+    packet[1] := len(data) + 6
+    packet[2] := cmd
+    packet[3] := packetID
+    SetArrayData(packet, 4, data, 0, -1)
+
+    crc = CalculateCRC(crcTable, 16, false, 0xFFFF, false, 0x0000, packet)
+    if truncate then
+        packet = left(packet, len(packet)-2)
+    endif
+
+    expectAckType = cmd
+    expectAckPktID = packetID
+    Transmit (COM1, packet + GetBytes (crc, false), false)
+    _print ("Transmitting packet.  Command=" + mid(packet, 2, 1) + " datalen = "  +str(len(data)) + "  overall len=" + str(packet[1]) + " PacketID=" + str(packet[3]))
+endfunc
+
+dim recv[] as byte
+const STXStr := "\x02"
+func CommReceive (data[] as byte) returns boolean
+    handles MSG_COMM_RECEIVE
+
+    dim pos, oldPos as integer
+    dim recvLeng as integer
+    dim pktLeng as integer
+    dim calcCRC as integer
+    recv := recv + data
+
+    label TryAgain
+    pos = find (recv, oldPos, -1, stxStr)
+    if pos < 0 then
+        recv = "" 'Clear out the buffer -- no STX received
+        return true
+    endif
+
+    recvLeng = len(recv)
+    if pos >= recvLeng-1 then
+        goto ShiftAndExit
+    endif
+
+    pktLeng := recv[pos+1]
+    if pos + pktLeng > recvLeng then
+        goto ShiftAndExit
+    endif
+
+    check error
+        calcCRC = CalculateCRC(crcTable, 16, false, 0xFFFF, false, 0x0000, mid(recv, pos, pktLeng-2))
+    on error
+        pos = pos
+    enderr
+    if GetBytes(unibyte(calcCRC), false) <> mid(recv, pos+pktLeng-2, 2) then
+        _PRint ("Invalid CRC received.  Expected=" + cprintf("%04X", calcCRC) + "  Received=" + cprintf("%02X", recv[pos+pktLeng-2]) + cprintf("%02X", recv[pos+pktLeng-1]))
+        oldPos := pos+1
+        goto tryAgain
+    endif
+
+    ProcessPacket (recv[pos+2], recv[pos+3], mid(recv, pos+4, pktLeng-6))
+    oldPos := pos+pktLeng
+    goto TryAgain
+
+    return true
+
+    label ShiftAndExit
+    if pos > 0 then
+        recv := mid(recv, pos, -1)
+    endif
+    if len(recv) > 0 then
+        _print ("Exiting CommReceive with data in buffer:  " + hexPrint(recv))
+    endif
+    return true
+endfunc
+
+func HexPrint(data[] as byte) returns byte[]
+    dim retVal[] as byte
+    dim i, max as integer
+    max = len(data)-1
+    for i = 0 to max
+        retVal = retVal + cprintf("%02X", data[i]) + " "
+    next
+    return trim(retVal)
+endfunc
+
+dim expectAckType as byte
+dim expectAckPktID as byte
+func ProcessPacket (cmd as byte, pktID as byte, data[] as byte)
+    dim cmdStr[1] as byte
+    dim tmpInt as integer
+
+    if cmd == ACK then
+        if expectAckPktID <> pktID then
+            _Print ("Unexpected packet ID in ACK -- see below")
+            goto oops
+        endif
+        if data[0] <> ACK_OK then
+            _Print ("Received NAK.  See below")
+            goto oops
+        endif
+        if (expectAckType == RawJ1708) or (expectAckType == SendJ1708Packet) then
+            check error
+                FromBytes (tmpInt, mid(data, 2, 4), false)
+            on error
+                tmpInt = tmpInt
+            enderr
+            _Print ("J1708 Ack: " + GetAckString(data[0]) + "   Free Bufs=" + str(data[1]) + "   J1708 msg ID=" + str(tmpInt) + "   packetID=" + str(pktID))
+        else
+            label oops
+            cmdStr[0] = expectAckType
+            if cmdStr[0] == '\x00' then
+                cmdStr[0] = '~'
+            endif
+            _Print ("Received Ack (" + cmdStr + "): " + GetAckString(data[0]) + " id=" + str(pktID))
+        endif
+        expectAckType = 0
+        expectAckPktID = 0
+        return
+    endif
+
+    if cmd == ReceiveJ1708Packet then
+        _Print ("Received J1708 Packet. " + str(len(data)) + " bytes. " + HexPrint(data))
+        SendAck(ACK_OK, pktID)
+    elseif cmd == J1708TransmitConfirm then
+        FromBytes(tmpInt, mid(data, 1, 4), false)
+        _Print ("Received J1708 Packet Confirmation.  Success=" + str(data[0]) + "  ID=" + str(tmpInt))
+        SendAck(ACK_OK, pktID)
+    elseif cmd == ReceiveCANPacket then
+        _Print ("Received CAN Packet.  " + str(len(data)) + " bytes. " + HexPrint(data))
+        SendAck(ACK_OK, pktID)
+    else
+        cmdStr[0] := cmd
+        _print ("Received Packet: " + cmdStr + " ID=" + str(pktID) + " dataLen=" + str(len(data)))
+    endif
+endfunc
+
+dim testAck as boolean
+init testack := false
+
+dim option as integer
+dim lastRxPacketID as integer
+init lastRxPacketID := -1
+func SendAck(ackCode as byte, pktID as byte)
+    dim code[1] as byte
+    dim packet[] as byte
+    dim crc as unibyte
+
+    redim (packet, 1 + 4)
+    packet[0] := STX
+    packet[1] := 1 + 6
+    packet[2] := ACK
+    packet[3] := pktID
+
+    if pktID == lastRxPacketID then
+        packet[4] := ACK_DUPLICATE_PACKET
+    else
+        packet[4] := ackCode
+    endif
+
+    if testAck then
+        if GetRandomNum() < .5 then
+            'Going to sabotoge the ACK somehow
+            option = 5*GetRandomNum()
+            if option == 0 then
+                _Print ("Not going to send the ACK")
+                return 'Don't send the ACK
+            else
+                packet[4] = '0' + option 'Spurious ACK code
+                _print ("Sending Ack Code: " + str(packet[4]))
+            endif
+        endif
+    endif
+
+    if (packet[4] <> ACK_INVALID_PACKET) then
+        lastRxPacketID = pktID
+    endif
+
+    crc = CalculateCRC(crcTable, 16, false, 0xFFFF, false, 0x0000, packet)
+
+    Transmit (COM1, packet + GetBytes (crc, false), false)
+endfunc
+
+func GetAckString(code as byte) returns string
+    if code == ACK_OK then
+        return "OK"
+    elseif code == ACK_DUPLICATE_PACKET then
+        return "Duplicate"
+    elseif code == ACK_INVALID_PACKET Then
+        return "Invalid Packet"
+    elseif code == ACK_INVALID_COMMAND then
+        return "Invalid Command"
+    elseif code == ACK_INVALID_DATA then
+        return "Invalid data"
+    elseif code == ACK_UNABLE_TO_PROCESS then
+        return "Unable to process"
+    else
+        return "<unknown ack code>"
+    endif
+endfunc
+
+func CreateJ1708Packet (msgID as byte, data[] as byte) returns byte[]
+    dim toTx[] as byte
+    dim i as integer
+    dim checksum as byte
+    redim (toTx, len(data)+2)
+    toTx[0] := msgID
+    SetArrayData (toTx, 1, data, 0, -1)
+
+    for i = len(data) to 0 step -1
+        checksum = checksum + toTx[i]
+    next
+    toTx[len(data)+1] = -integer(checksum)
+
+    return toTx
+endfunc
+
+dim suppress as objref basicserialv2
+init suppress := basicserial_1
+func IBridgeRX(data[] as byte, bs as objref basicserialv2)
+    dim cmd as byte
+    dim leng, subLen as integer
+
+    if suppress == bs then
+        return
+    endif
+
+    bs.Buffer = bs.Buffer + data
+
+    label top
+    leng = len(bs.Buffer)
+    if leng == 0 then
+        return
+    endif
+
+    cmd = bs.Buffer[0]
+    if cmd == 'I' then
+        if leng >= 3 then
+            bs.Buffer = mid(bs.buffer, 3, -1)
+            goto top
+        else
+            return
+        endif
+    elseif cmd == 'S' then
+        bs.buffer = mid(bs.buffer, 1, -1)
+        _Print ("IBridge(" + right(str(bs), 1) + "): Ack")
+        goto top
+    elseif cmd == '#' then
+        bs.buffer = mid(bs.buffer, 1, -1)
+        _Print ("IBridge(" + right(str(bs), 1) + "): Nak")
+        goto top
+    elseif cmd == 'M' then
+        if leng > 2 then
+            subLen = bs.buffer[2]
+        else
+            return
+        endif
+        if leng >= subLen+3 then
+            _Print ("IBridge(" + right(str(bs), 1) + "): Packet (" + str(subLen) + " bytes): " + HexPrint(mid(bs.buffer, 3, subLen)))
+            bs.buffer = mid(bs.buffer, subLen+3, -1)
+            goto top
+        else
+            return
+        endif
+    endif
+endfunc
+Declare AttemptCollision as ButtonV2
+Level 249967
+#Visible True
+#Lock False
+init value := "Attempt Collision"
+init parent := screen_1
+init xpos := 72
+init ypos := 46
+init width := 62
+init height := 31
+
+func click()
+    SendRandomPacket.click()
+    ManualTx.click()
+    J1708Packet.click()
+    ManualTx.click()
+    J1708Packet.click()
+    ManualTx.click()
+    J1708Packet.click()
+endfunc
+init repeatrate := 100
+init repeatwait := 500
+init tone := note_none
+Enddec
+Declare BasicSerial_1 as BasicSerialV2
+Level 249961
+#Visible True
+#Lock False
+init parent := default
+init comport := com2
+
+func datareceived(data[] as byte)
+    IBridgeRx(data, me)
+endfunc
+Enddec
+Declare BasicSerial_2 as BasicSerialV2
+Level 249960
+#Visible True
+#Lock False
+init parent := default
+
+func datareceived(data[] as byte)
+    IBridgeRx(data, me)
+endfunc
+
+init comport := com3
+Enddec
+Declare BridgeGrp1 as GroupBoxV2
+Level 249973
+#Visible True
+#Lock False
+init parent := screen_1
+init xpos := 137
+init ypos := 3
+init width := 86
+init height := 176
+init borderstyle := bdr_compositeobject
+init value := "IBridge 1"
+Enddec
+Declare BrokenPacket as ButtonV2
+Level 249964
+#Visible True
+#Lock False
+init value := "Broken Packet"
+init parent := screen_1
+init xpos := 4
+init ypos := 85
+init width := 62
+init height := 31
+
+func click()
+    TransmitPacket ('@', "adfasdfasdf", true)
+endfunc
+init repeatrate := 100
+init repeatwait := 500
+init tone := note_none
+Enddec
+Declare CANFilterDA_Q as CheckBoxV2
+Level 249996
+#Visible True
+#Lock False
+init value := "CAN Filter DA is Q Off"
+init parent := tab_2
+init xpos := 68
+init ypos := 164
+init width := 60
+init height := 40
+
+init tone := note_none
+init ischecked := true
+init style := _crb_button
+
+func OnStateChange()
+    SendFilterPacket()
+endfunc
+init valueon := "CAN Filter DA is Q On"
+Enddec
+Declare CANFilterPGN65265 as CheckBoxV2
+Level 249995
+#Visible True
+#Lock False
+init value := "CAN Filter PGN35265 Off"
+init parent := tab_2
+init xpos := 68
+init ypos := 124
+init width := 60
+init height := 40
+
+init tone := note_none
+init ischecked := true
+init style := _crb_button
+
+func OnStateChange()
+    SendFilterPacket()
+endfunc
+init valueon := "CAN Filter PGN35265 On"
+Enddec
+Declare CANFilterPriority3 as CheckBoxV2
+Level 249997
+#Visible True
+#Lock False
+init value := "CAN Filter Priority 3 Off"
+init parent := tab_2
+init xpos := 133
+init ypos := 164
+init width := 60
+init height := 40
+
+init tone := note_none
+init ischecked := true
+init style := _crb_button
+
+func OnStateChange()
+    SendFilterPacket()
+endfunc
+init valueon := "CAN Filter Priority 3 On"
+Enddec
+Declare CANFilterSAb as CheckBoxV2
+Level 249992
+#Visible True
+#Lock False
+init value := "CAN Filter SA=b Off"
+init parent := tab_2
+init xpos := 66
+init ypos := 35
+init width := 60
+init height := 31
+
+init tone := note_none
+init ischecked := true
+init style := _crb_button
+
+func OnStateChange()
+    SendFilterPacket()
+endfunc
+init valueon := "CAN Filter SA=b On"
+Enddec
+Declare CANFilterSAc as CheckBoxV2
+Level 249993
+#Visible True
+#Lock False
+init value := "CAN Filter SA=c Off"
+init parent := tab_2
+init xpos := 67
+init ypos := 65
+init width := 60
+init height := 31
+
+init tone := note_none
+init ischecked := true
+init style := _crb_button
+
+func OnStateChange()
+    SendFilterPacket()
+endfunc
+init valueon := "CAN Filter SA=c On"
+Enddec
+Declare CANFilterSAd as CheckBoxV2
+Level 249994
+#Visible True
+#Lock False
+init value := "CAN Filter SA=d Off"
+init parent := tab_2
+init xpos := 68
+init ypos := 96
+init width := 60
+init height := 31
+
+init tone := note_none
+init ischecked := true
+init style := _crb_button
+
+func OnStateChange()
+    SendFilterPacket()
+endfunc
+init valueon := "CAN Filter SA=d On"
+Enddec
+Declare DebugInfoPacket as ButtonV2
+Level 249963
+#Visible True
+#Lock False
+init value := "Get Info"
+init parent := screen_1
+init xpos := 4
+init ypos := 47
+init width := 62
+init height := 31
+
+func click()
+    dim bytes[] as byte
+    dim i as integer
+
+    TransmitPacket (InfoReq, "\x00", false)
+    TransmitPacket (InfoReq, "\x01", false)
+endfunc
+init repeatrate := 100
+init repeatwait := 500
+init tone := note_none
+Enddec
+Declare ExceptionDisplay as ExceptionDisplayV2
+Level 250000
+#Visible False
+#Lock False
+
+Enddec
+Declare GetInfo as ButtonV2
+Level 249981
+#Visible True
+#Lock False
+init value := "Get Info"
+init parent := tab_2
+init xpos := 1
+init ypos := 9
+init width := 62
+init height := 31
+
+func click()
+    dim bytes[] as byte
+    dim i as integer
+
+    TransmitPacket (InfoReq, "\x00", false)
+    TransmitPacket (InfoReq, "\x02", false)
+endfunc
+init repeatrate := 100
+init repeatwait := 500
+init tone := note_none
+Enddec
+Declare IBridgeGrp2 as GroupBoxV2
+Level 249978
+#Visible True
+#Lock False
+init parent := screen_1
+init xpos := 227
+init ypos := 3
+init width := 86
+init height := 176
+init borderstyle := bdr_compositeobject
+init value := "IBridge 2"
+Enddec
+Declare InitIBridge as ButtonV2
+Level 249971
+#Visible True
+#Lock False
+init value := "Init I-Bridge"
+init parent := bridgegrp1
+init xpos := 10
+init ypos := 25
+init width := 64
+init height := 27
+
+func click()
+    Transmit (COM2, "IQD", true)
+    Transmit (COM2, "n", true)
+    Transmit (COM2, "B\x00", true)
+    Transmit (COM2, "a\x01", true)
+endfunc
+Enddec
+Declare InitIBridge2 as ButtonV2
+Level 249977
+#Visible True
+#Lock False
+init value := "Init I-Bridge"
+init parent := ibridgegrp2
+init xpos := 11
+init ypos := 27
+init width := 64
+init height := 27
+
+func click()
+    Transmit (COM3, "IQD", true)
+    Transmit (COM3, "n", true)
+    Transmit (COM3, "B\x00", true)
+    Transmit (COM3, "a\x01", true)
+endfunc
+Enddec
+Declare J1708Packet as ButtonV2
+Level 249966
+#Visible True
+#Lock False
+init value := "J1708 Raw"
+init parent := screen_1
+init xpos := 4
+init ypos := 125
+init width := 62
+init height := 31
+
+func click()
+    TransmitPacket (RawJ1708, CreateJ1708Packet (112, "\x41\x42\x43\x44\x45\x46\x47"), false)
+endfunc
+init repeatrate := 100
+init repeatwait := 500
+init tone := note_none
+Enddec
+Declare J1708QBTest as ButtonV2
+Level 249989
+#Visible True
+#Lock False
+init value := "QBridgeTestPacket"
+init parent := tab_2
+init xpos := 1
+init ypos := 84
+init width := 62
+init height := 31
+init repeatrate := 100
+init repeatwait := 500
+
+func click()
+    TransmitPacket(SendJ1708Packet, "\x07\x75QSI", false)
+endfunc
+Enddec
+Declare J1708Transmit as ButtonV2
+Level 249986
+#Visible True
+#Lock False
+init value := "Normal J1708Tx"
+init parent := tab_2
+init xpos := 1
+init ypos := 48
+init width := 62
+init height := 31
+init repeatrate := 100
+init repeatwait := 500
+
+func click()
+    TransmitPacket(SendJ1708Packet, "\x07\x75QSI", false)
+endfunc
+Enddec
+Declare J1708Transmit_1 as ButtonV2
+Level 249990
+#Visible True
+#Lock False
+init value := "RP12TEstPacketTimer"
+init parent := tab_2
+init xpos := 4
+init ypos := 174
+init width := 70
+init height := 31
+init repeatrate := 500
+init repeatwait := 500
+
+func click()
+    TransmitPacket(SendJ1708Packet, "\x04\x70Hello World", false)
+endfunc
+Enddec
+Declare ManualQuery as ButtonV2
+Level 249970
+#Visible True
+#Lock False
+init value := "Manual Query"
+init parent := bridgegrp1
+init xpos := 10
+init ypos := 58
+init width := 64
+init height := 27
+
+func click()
+    Transmit (COM2, "G", true)
+endfunc
+Enddec
+Declare ManualQuery2 as ButtonV2
+Level 249975
+#Visible True
+#Lock False
+init value := "Manual Query"
+init parent := ibridgegrp2
+init xpos := 11
+init ypos := 60
+init width := 64
+init height := 27
+
+func click()
+    Transmit (COM3, "G", true)
+endfunc
+Enddec
+Declare ManualTx as ButtonV2
+Level 249969
+#Visible True
+#Lock False
+init value := "Manual TX to IBridge"
+init parent := bridgegrp1
+init xpos := 10
+init ypos := 92
+init width := 64
+init height := 27
+
+func click()
+    Transmit (COM2, "C\x04\x71\x01\xF3\x9B", false)
+    'Transmit (COM2, "C\x06\x72\x10\x20\x30\xF3\x3B", true)
+endfunc
+Enddec
+Declare ManualTx2 as ButtonV2
+Level 249976
+#Visible True
+#Lock False
+init value := "Manual TX to IBridge"
+init parent := ibridgegrp2
+init xpos := 11
+init ypos := 94
+init width := 64
+init height := 27
+
+func click()
+    Transmit (COM3, "C\x04\x70\x00\xF3\x9D", true)
+endfunc
+Enddec
+Declare MyTab as TabV2
+Level 249980
+#Visible False
+#Lock False
+init parent := tabcontainer_1
+init xpos := 2
+init ypos := 26
+init width := 316
+init height := 212
+init caption := "Base Test"
+init taborder := 0
+Enddec
+Declare NumberKeypad_1 as NumberKeypadV2
+Level 249984
+#Visible True
+#Lock False
+init parent := tab_2
+init xpos := 192
+init ypos := 4
+init width := 119
+init height := 107
+Enddec
+Declare Rapid_Tx_to_IBridge as ButtonV2
+Level 249972
+#Visible True
+#Lock False
+init value := "RaMID Tx to IBridge"
+init parent := bridgegrp1
+init xpos := 10
+init ypos := 124
+init width := 64
+init height := 27
+
+func click()
+    ManualTx.click()
+    ManualTx.click()
+    ManualTx.click()
+    ManualTx.click()
+endfunc
+
+init repeatrate := 100
+init repeatwait := 500
+init tone := note_none
+Enddec
+Declare RapidJ1708Tx as ButtonV2
+Level 249968
+#Visible True
+#Lock False
+init value := "RaMID J1708 Tx"
+init parent := screen_1
+init xpos := 4
+init ypos := 163
+init width := 62
+init height := 31
+
+func click()
+    J1708Packet.click()
+    J1708Packet.click()
+    J1708Packet.click()
+    J1708Packet.click()
+endfunc
+init repeatrate := 100
+init repeatwait := 500
+init tone := note_none
+Enddec
+Declare Screen_1 as ScreenV2
+Level 249979
+#Visible True
+#Lock False
+init parent := mytab
+init xpos := 0
+init ypos := 0
+init width := 320
+init height := 209
+Enddec
+Declare ScreenSaver as ScreenSaverV2
+Level 249959
+#Visible False
+#Lock False
+
+Enddec
+Declare SendRandomButton as ButtonV2
+Level 249965
+#Visible True
+#Lock False
+init value := "Random Button"
+init parent := screen_1
+init xpos := 72
+init ypos := 9
+init width := 62
+init height := 31
+
+func click()
+    dim buttons[] as objref buttonv2
+    init buttons := [brokenPacket, DebugInfoPacket, SendRandomPacket]
+    dim i as integer
+    i = GetRandomNum() * len(buttons)
+    buttons[i].click()
+endfunc
+
+init repeatrate := 100
+init repeatwait := 500
+init tone := note_none
+Enddec
+Declare SendRandomPacket as ButtonV2
+Level 249962
+#Visible True
+#Lock False
+init value := "Random Packet"
+init parent := screen_1
+init xpos := 4
+init ypos := 9
+init width := 62
+init height := 31
+
+func click()
+    dim bytes[] as byte
+    dim i as integer
+    redim (bytes, 200*GetRandomNum())
+
+    for i = len(bytes)-1 to 0 step -1
+        bytes[i] = integer(256*GetRandomNum())
+    next
+
+    TransmitPacket (integer(65 + (GetRandomNum() * 26)), bytes, false)
+endfunc
+init repeatrate := 100
+init repeatwait := 500
+init tone := note_none
+Enddec
+Declare SetPIDOff as ButtonV2
+Level 249985
+#Visible True
+#Lock False
+init value := "Set MID Off"
+init parent := tab_2
+init xpos := 128
+init ypos := 73
+init width := 62
+init height := 31
+
+func click()
+    dim bytes[] as byte
+    bytes = GetBytes(unibyte(integer(numberkeypad_1.value)), false)
+
+    TransmitPacket (SetMIDState,"\x00" + bytes, false)
+endfunc
+init repeatrate := 100
+init repeatwait := 500
+init tone := note_none
+Enddec
+Declare SetPIDOn as ButtonV2
+Level 249983
+#Visible True
+#Lock False
+init value := "Set MID On"
+init parent := tab_2
+init xpos := 128
+init ypos := 38
+init width := 62
+init height := 31
+
+func click()
+    dim bytes[] as byte
+    bytes = GetBytes(unibyte(integer(numberkeypad_1.value)), false)
+
+    TransmitPacket (SetMIDState, "\x01" + bytes, false)
+endfunc
+init repeatrate := 100
+init repeatwait := 500
+init tone := note_none
+Enddec
+Declare SetPIDOn_1 as ButtonV2
+Level 249988
+#Visible True
+#Lock False
+init value := "Set MID List On"
+init parent := tab_2
+init xpos := 128
+init ypos := 118
+init width := 62
+init height := 31
+
+func click()
+    dim ids[] as unibyte
+    dim bytes[] as byte
+    init ids := [1, 2, 4, 8, 16, 32, 64, 128, 256, 511]
+    bytes = GetBytes(ids, false)
+
+    TransmitPacket (SetMIDState, "\x01" + bytes, false)
+endfunc
+init repeatrate := 100
+init repeatwait := 500
+init tone := note_none
+Enddec
+Declare Tab_2 as TabV2
+Level 249998
+#Visible True
+#Lock False
+init parent := tabcontainer_1
+init xpos := 2
+init ypos := 26
+init width := 316
+init height := 212
+init caption := "232 Protocol"
+init taborder := 1
+Enddec
+Declare TabContainer_1 as TabContainerV2
+Level 249999
+#Visible True
+#Lock False
+init parent := default
+init xpos := 0
+init ypos := 0
+init width := 320
+init height := 240
+init activetab := mytab
+Enddec
+Declare ToggleCANFilters as CheckBoxV2
+Level 249991
+#Visible True
+#Lock False
+init value := "CAN Filters Off"
+init parent := tab_2
+init xpos := 68
+init ypos := 4
+init width := 60
+init height := 31
+
+init tone := note_none
+init ischecked := true
+init style := _crb_button
+
+func OnStateChange()
+    dim data[2] as byte
+    data[0] := CtrlEnableFilters
+    if isChecked then
+        data[1] = 1
+    else
+        data[1] = 0
+    endif
+    TransmitPacket(CANControlPacket, data, false)
+endfunc
+init valueon := "CAN Filters On"
+Enddec
+Declare TogglePIDS as CheckBoxV2
+Level 249982
+#Visible True
+#Lock False
+init value := "MID Filters Off"
+init parent := tab_2
+init xpos := 128
+init ypos := 4
+init width := 62
+init height := 31
+
+init tone := note_none
+init ischecked := true
+init style := _crb_button
+
+func OnStateChange()
+    dim data[1] as byte
+    if isChecked then
+        data[0] = 1
+    else
+        data[0] = 0
+    endif
+    TransmitPacket(MIDFilterEnable, data, false)
+endfunc
+init valueon := "MID Filters On"
+Enddec
+Declare ToggleTxConfirm as CheckBoxV2
+Level 249987
+#Visible True
+#Lock False
+init value := "Toggle Tx Confirm"
+init parent := tab_2
+init xpos := 248
+init ypos := 117
+init width := 62
+init height := 31
+
+init tone := note_none
+init ischecked := false
+init style := _crb_button
+
+func OnStateChange()
+    dim data[1] as byte
+    if isChecked then
+        data[0] = 1
+    else
+        data[0] = 0
+    endif
+    TransmitPacket(EnableJ1708TxConfirm, data, false)
+endfunc
+Enddec
+Declare UpgradeFWPkt as ButtonV2
+Level 249974
+#Visible True
+#Lock False
+init value := "Upgrade FW Cmd"
+init parent := screen_1
+init xpos := 72
+init ypos := 163
+init width := 62
+init height := 31
+
+func click()
+    TransmitPacket(UpgradeFirmware, "", false)
+endfunc
+init repeatrate := 100
+init repeatwait := 500
+init tone := note_none
+Enddec
+#Hide Library DataProc Source BasicSerialV2
+#Hide Library Basic Source ButtonV2
+#Hide Library Basic Source CheckBoxV2
+#Hide Library Basic Source ExceptionDisplayV2
+#Hide Library Extra Source GroupBox
+#Hide Library Basic Source NumberKeypadV2
+#Hide Library Basic Source ScreenSaverV2
+#Hide Library Basic Source ScreenV2
+#Hide Library Basic Source tabV2
+#Hide Library Basic Source tabV2
+#SetFile -1 "*l%global%"
+Includesys Library "basic.qlib"
+Includesys Library "dataproc.qlib"
+Includesys Library "extra.qlib"
+#hide Includesys reference to Library "Galil_mcV2.qlib"
+#hide Includesys reference to Library "ModbusV2.qlib"
+#hide Includesys reference to Library "multilingual.qlib"
+#hide Includesys reference to Library "NIObjsV2.qlib"
+#hide Includesys reference to Library "OrbComm.qlib"
+#hide Includesys reference to Library "core.qlib.qhide"
+#hide Includesys reference to Library "progobjs.lib"
+#hide Includesys reference to Library "common.lib"
+#hide library basic source necessary
+#SetFile -1 "*r%global%"
+Includesys Bitmap "qlarity.bmp" As default
+Includesys BDFfont "helvR08.bdf" As default
+Includesys BDFfont "helvR14.bdf" As Helv14
+Includesys BDFfont "5x7.bdf" As Small
+Includesys TTfont "vera.ttf" As default
+#config colormap "Clr_ButtonBackground := 219;Clr_ButtonBackgroundAlt := 223;Clr_ButtonForeground := 0;Clr_ButtonForegroundAlt := 2;Clr_FillColor := 15;Clr_LabelBackground := 223;Clr_LabelForeground := 2;Clr_ScreenBackground := 255;Clr_ScreenForeground := 2;Clr_SoftkeybarBackground := 183;Clr_SoftkeybarButtonBg := 255;Clr_SoftkeybarButtonFg := 2;"
+#hide #ifnot opt_colormap%
+#hide #option opt_colormap%
+#hide enum colormap% as Clr_ButtonBackground:=258, Clr_ButtonBackgroundAlt:=260, Clr_ButtonForeground:=259, Clr_ButtonForegroundAlt:=261, Clr_FillColor:=264, Clr_LabelBackground:=256, Clr_LabelForeground:=257, Clr_ScreenBackground:=262, Clr_ScreenForeground:=263, Clr_SoftkeybarBackground:=265, Clr_SoftkeybarButtonBg:=266, Clr_SoftkeybarButtonFg:=267
+#hide #hidden dim _colorMap[] as color
+#hide init _colorMap := [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255, 223, 2, 219, 0, 223, 2, 255, 2, 15, 183, 255, 2]
+#hide #endif
+#config stylemap "Bdr_BumpBorder := 33895724;Bdr_ButtonBorder := 33890340;Bdr_CheckBoxBorder := 654643206;Bdr_CompositeObject := 33890340;Bdr_CompositeSunken := 33890342;Bdr_InnerButton := 637865988;Bdr_InnerLabel := 1862602758;Bdr_LabelBorder := 33886214;Bdr_None := 0;Bdr_Scrollbar := 1325731844;Bdr_SignalBars := 335905;Bdr_Softkey := 33760548;Bdr_TabBorder := 34222116;"
+#hide #ifnot opt_stylemap%
+#hide #option opt_stylemap%
+#hide enum stylemap% as Bdr_BumpBorder:=4, Bdr_ButtonBorder:=0, Bdr_CheckBoxBorder:=6, Bdr_CompositeObject:=9, Bdr_CompositeSunken:=10, Bdr_InnerButton:=7, Bdr_InnerLabel:=8, Bdr_LabelBorder:=1, Bdr_None:=2, Bdr_Scrollbar:=3, Bdr_SignalBars:=12, Bdr_Softkey:=11, Bdr_TabBorder:=5
+#hide #hidden dim _styleMap[] as integer
+#hide init _styleMap := [33890340, 33886214, 0, 1325731844, 33895724, 34222116, 654643206, 637865988, 1862602758, 33890340, 33890342, 33760548, 335905]
+#hide #endif
