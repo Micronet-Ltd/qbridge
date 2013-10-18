@@ -57,9 +57,9 @@ namespace QBridgeFirmwareUpgrade.Properties {
             }
         }
         
-        internal static byte[] qbridge_v1_011b {
+        internal static byte[] qbridge_v1_012 {
             get {
-                object obj = ResourceManager.GetObject("qbridge_v1_011b", resourceCulture);
+                object obj = ResourceManager.GetObject("qbridge_v1_012", resourceCulture);
                 return ((byte[])(obj));
             }
         }

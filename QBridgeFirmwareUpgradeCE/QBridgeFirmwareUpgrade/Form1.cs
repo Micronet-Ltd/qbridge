@@ -35,13 +35,13 @@ namespace QBridgeFirmwareUpgrade
             use_builtin_version = true;
             if (use_builtin_version)
             {
-                Filename.Text = "qbridge_v1_011b.srec";
+                Filename.Text = "qbridge_v1_012.srec";
                 Filename.Enabled = false;
                 SerialPort.SelectedIndex = 7;
                 SerialPort.Enabled = false;
                 BrowseBtn.Visible = false;
                 UpgradeBtn.Enabled = false;
-                this.Text = "QBridge Firmware Updater - V1.011b";
+                this.Text = "QBridge Firmware Updater - V1.012";
                 this.Left = Screen.PrimaryScreen.Bounds.Width / 2 - this.Width / 2;
                 this.Top = Screen.PrimaryScreen.Bounds.Height / 2 - this.Height / 2;
                 this.MaximizeBox = false;
@@ -152,7 +152,7 @@ namespace QBridgeFirmwareUpgrade
             byte[] fileContents;
             if (use_builtin_version)
             {
-                object obj = Properties.Resources.qbridge_v1_011b;
+                object obj = Properties.Resources.qbridge_v1_012;
                 fileContents = (byte[])(obj);
             }
             else
