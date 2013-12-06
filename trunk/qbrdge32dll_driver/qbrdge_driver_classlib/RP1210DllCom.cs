@@ -1105,6 +1105,13 @@ namespace qbrdge_driver_classlib
 				sinfo.com.Write(outPkt, 0, outPkt.Length);
 
 				UpdateQBridgeJ1708Filters(clientId);
+
+                //Enabled Advanced Receive Mode
+                pktData = new byte[1];
+                pktData[0] = 0x01;
+                cmdType = PacketCmdCodes.PKT_CMD_ENABLE_ADV_RCV;
+                outPkt = QBSerial.MakeQBridgePacket(cmdType, pktData, ref pktId);
+                sinfo.com.Write(outPkt, 0, outPkt.Length);
 			}
 			catch (Exception) { }
 		}
