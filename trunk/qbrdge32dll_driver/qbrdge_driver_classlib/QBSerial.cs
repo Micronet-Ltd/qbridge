@@ -80,7 +80,7 @@ namespace qbrdge_driver_classlib
                     qbt.timePeriod = Support.portLostLimit;
                     qbt.timeoutReply = UDPReplyType.sendJ1939replytimeout;
                     QBTransactionNew.Add(qbt);
-
+                    
                     Log.Write(LogLev.Serial, string.Format("Sending Info request"));
                     QBSerial.CheckSendMsgQ();
                 }
@@ -91,8 +91,7 @@ namespace qbrdge_driver_classlib
         {
             if (recvTimer == null)
             {
-                TimerCallback timerDelegate = new TimerCallback(TimeOut);
-                recvTimer = new Timer(timerDelegate, this, Timeout.Infinite, Timeout.Infinite);
+                recvTimer = new Timer(new TimerCallback(TimeOut), this, Timeout.Infinite, Timeout.Infinite);
             }
 
             recvTimer.Change(Convert.ToInt32(Support.portLostLimit), Timeout.Infinite);
@@ -896,13 +895,14 @@ namespace qbrdge_driver_classlib
             }
             else if (cmdType == PacketCmdCodes.PKT_CMD_ACK && qbt != null && qbtIdx > -1) 
             {
-                if (qbt.cmdType == PacketCmdCodes.PKT_CMD_INFO_REQ) {
-                    qbt.StopTimer();
-                    portInfo.QBTransactionSent.RemoveAt(qbtIdx);
+                if (qbt.cmdType == PacketCmdCodes.PKT_CMD_INFO_REQ) 
+                {
+                     //qbt.StopTimer(); // the timer should not be stopped until after it's been verified that port is replying
+                     portInfo.QBTransactionSent.RemoveAt(qbtIdx);
                 }
             }
             else {
-                Debug.Write("Undefined Data Recieved: ");
+               // Debug.Write("Undefined Data Recieved: ");
             }
         }
 
@@ -1119,7 +1119,7 @@ namespace qbrdge_driver_classlib
                 if (pgn[1] == 0xEC && pgn[2] == 0x00 && pktData[5] == 32)
                 {
                     //TP.CAM_BAM packet
-                    Debug.WriteLine("BAM PKT "+portInfo.com.PortName);
+                    // Debug.WriteLine("BAM PKT "+portInfo.com.PortName);
                     byte[] data_pgn = new byte[3];
                     data_pgn[0] = pktData[5+5];
                     data_pgn[1] = pktData[5+6];
@@ -1500,7 +1500,7 @@ namespace qbrdge_driver_classlib
 
         // call this function to check the send msg Q and send messages if possible
         // this function should always be called in a synchronized thread
-        public static void CheckSendMsgQ()
+        public static void  CheckSendMsgQ()
         {
             foreach(SerialPortInfo serialInfo in comPorts)
             {
@@ -1535,7 +1535,7 @@ namespace qbrdge_driver_classlib
                                 serialInfo.com.Write(qbt.lastSentPkt, 0, qbt.lastSentPkt.Length);
                                 qbt.RestartTimer();                                
                             }
-                        }
+                            }
                         else {                            
                             serialInfo.com.Write(qbt.lastSentPkt, 0, qbt.lastSentPkt.Length);
                             qbt.RestartTimer();
@@ -1544,7 +1544,7 @@ namespace qbrdge_driver_classlib
                     }
                     catch (Exception exp)
                     {
-                        Debug.WriteLine(exp.ToString());
+                        //Debug.WriteLine(exp.ToString());
                         SendClientErrorPacket(qbt);
                     }
                     serialInfo.QBTransactionNew.RemoveAt(i);
