@@ -6,7 +6,6 @@
 
 #define QUEUE_SIZE 512
 typedef struct _CircleQueue {
-    UINT32 count;
     UINT32 head;
     UINT32 tail;
     UINT8 data[QUEUE_SIZE];
@@ -20,6 +19,8 @@ extern inline bool QueueEmpty (CircleQueue *queue);
 extern inline UINT8 DequeueOne (CircleQueue *queue);
 int DequeueBuf(CircleQueue *queue, UINT8*buf, int bufLen);
 void EnsureQueueFree(CircleQueue *queue, int count);
+extern inline int QueueValidBytesCount(CircleQueue *queue);
+extern inline int QueueSpaceAvailableCount(CircleQueue *queue);
 
 #define ClearQueue(queue) InitializeQueue(queue)
 

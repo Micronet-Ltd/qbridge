@@ -136,6 +136,7 @@ void ProcessReceived232Data() {
             return;
         }
         if (CurPacketSize() > curPacketRecvBytes) {
+		 //GPJ -- what if we have corrupted data in front of a valid packet???  Should we validate the size somehow?
             // In this case the current packet is larger than the data we have received so far -- just quit and wait for more data
             // Ultimately, we should probably have some sort of timeout mechanism, so that if more than 200ms elapse with no new data
             // we flush the current buffer.
@@ -626,7 +627,7 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
 #endif
 		case AdvRecvMode:
 			advRecvEnabled = (data[0]!=0);
-			Send232Ack (ACK_OK, id, &advRecvEnabled, sizeof(advRecvEnabled));
+			Send232Ack (ACK_OK, id, (UINT8 *)&advRecvEnabled, sizeof(advRecvEnabled));
 			break;
         case J1708TransmitConfirm:
         case ReceiveJ1708Packet:
@@ -671,7 +672,7 @@ bool QueueTxFinal232Packet (UINT8 command, UINT8 packetID, UINT8 *data, UINT32 d
     AssertPrint (dataLen < 64, "Serial transmission request too long");
 
     UINT8 len = dataLen;
-    if( (len + 3) + txPackets.count < QUEUE_SIZE ){
+    if( (len + 3) <= QueueSpaceAvailableCount(&txPackets) ){
         Enqueue(&txPackets, &len, 1);
         Enqueue(&txPackets, &command, 1);
         Enqueue(&txPackets, &packetID, 1);
@@ -711,7 +712,7 @@ void Transmit232IfReady() {
         }
         return;
     }
-    if (QueueEmpty(&txPackets) || (txPackets.count < 4)) {
+    if ( (QueueValidBytesCount(&txPackets) < 4)) {
         return;
     }
 

@@ -299,7 +299,7 @@ UINT32 Transmit (SerialPort *port, UINT8 *data, int leng) {
     IRQSTATE saveState = 0;
     UINT32 retVal = 0;
     DISABLE_IRQ(saveState);
-    if( (QUEUE_SIZE - port->txQueue.count) >= leng ){ //que it all or nothing
+	if( QueueSpaceAvailableCount(&port->txQueue) >= leng ){ //que it all or nothing
         retVal = Enqueue(&(port->txQueue), data, leng);
 #ifdef DEBUG_SERIAL
         if ((retVal < leng) && (port != debugPort)) {
