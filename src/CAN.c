@@ -151,7 +151,23 @@ void DisableAllCANFilters(void) {
 
 int findCANfilter( UINT32 mask, UINT32 value ){
     //search thru valid messages and see if this one is present
+	//as near as I can tell, this hardware does the following
+	//  if( (rxmsg & mask) == cmpval )
+	//      save rxmsg in the associated msg location
+	//the problem with this is that the cmpval that was setup
+	//originally is now lost.  take the following scenario
+	// set the filter mask = 0x01ffffff
+	// set the filter compar = 0x00fee000
+	//if the following (valid J1939) message is received
+	//  0x18fee000  <-- pgn=0xfee0, src addr=0, priority=6
+	// this will pass the filter operation
+	//   0x18fee000 & 0x01ffffff ==> 00fee000
+	// compare 00fee000 == 00fee000 ---> yes, so hw saves the rx message back to the memory
+	// 0x18fee000
+	//Now when I read back the filter, it looks wrong and I don't find the "compare value"
+	//so we need to mask the compare value (I suppose the hardware must do that when it compares)
     int i;
+	UINT32 v, m;
     UINT32 enabled_filters;
     UINT32 myxtnd = value & STANDARD_CAN_FLAG ? 0 : Xtd;
     value &= ~STANDARD_CAN_FLAG;
@@ -160,14 +176,16 @@ int findCANfilter( UINT32 mask, UINT32 value ){
         value &= 0x1fffffff;
     }else{
         mask  &= 0x000007ff;
-        mask  <<= 18;
+        //mask  <<= 18;
+		mask <<= 2;
         value &= 0x000007ff;
-        value <<= 18;
+        //value <<= 18;
+		value <<= 2;
     }
-    value |= MsgVal<<16;
-    value |= myxtnd<<16;  //this also has direction... do we ever car about transmits?
-    mask  |= MDir<<16;  //we always pay attention to direction
-    mask  |= MXtd<<16;  //and, if they are setting a filter, they care about extended or not
+    //value |= MsgVal<<16;
+    //value |= myxtnd<<16;  //this also has direction... do we ever car about transmits?
+    //mask  |= MDir<<16;  //we always pay attention to direction
+    //mask  |= MXtd<<16;  //and, if they are setting a filter, they care about extended or not
 
     enabled_filters = (CAN->MV2R << 16 ) | CAN->MV1R;
     enabled_filters &= 0x3fffffff;  //mask off bits used for transmit and enable all
@@ -182,19 +200,29 @@ int findCANfilter( UINT32 mask, UINT32 value ){
                 ;
             //compare to passed in value
             bool found=FALSE;
-            if( myxtnd ) {
-                if( (CAN->IF1_Regs.IFn_M1R == (mask & 0xffff))
-                 && ((CAN->IF1_Regs.IFn_M2R & ~0x2000) == mask>>16)
-                 && (CAN->IF1_Regs.IFn_A1R == (value & 0xffff))
-                 && (CAN->IF1_Regs.IFn_A2R == value>>16) ){
-                    found = TRUE;
-                }
-            }else{
-                if( ((CAN->IF1_Regs.IFn_M2R & ~0x2000) == mask>>16)
-                 && (CAN->IF1_Regs.IFn_A2R == value>>16) ){
-                    found = TRUE;
-                }
-            }
+
+			v = CAN->IF1_Regs.IFn_A2R;
+			if( (v & MsgVal) && ((v & Dir) == 0)){	//nothing else matters if this one isn't valid OR the direction is wrong
+				if( (v & Xtd) && myxtnd ){
+					v = ((v & IDMask) << IDshift) | CAN->IF1_Regs.IFn_A1R;
+					m = CAN->IF1_Regs.IFn_M2R & ~0x2000; //ignore reserved bit
+					if( m & (MXtd | MDir) ){
+						m = ((m & MIDmask) << MIDshift) | CAN->IF1_Regs.IFn_M1R;
+						v &= m; //hardware doesn't care about other bits in the Arb reg so we shouldn't
+						if( (v == value) && (m == mask) )
+							found = TRUE;
+					}
+				}else if ( !(v & Xtd) && !myxtnd ){
+					v = v & IDMask;
+					m = CAN->IF1_Regs.IFn_M2R & ~0x2000; //ignore reserved bit
+					if( m & (MDir | MXtd) ){ //mask always has to pay attention to direction and extended
+						m = m & MIDmask;
+						v &= m;	//hardware doesn't care about other bits in the Arb reg so we shouldn't
+						if( (v == value) && (m == mask) )
+							found = TRUE;
+					}
+				}
+			}
             //if the same, return this index
             if( found )
                 return( i + 1 );
@@ -223,6 +251,7 @@ int read_CAN_filter( int filter_position, UINT32 *mask, UINT32 *value ){
         UINT32 t4 = CAN->IF1_Regs.IFn_A2R;
         *value = (t4 & Xtd) ? (((t4 & IDMask) << IDshift) | t3) : (STANDARD_CAN_FLAG | ((t4 & IDMask) >> 2));
         *mask  = (t4 & Xtd) ? (((t2 & IDMask) << IDshift) | t1) : ((t2 & IDMask) >> 2);
+		*value = *value & *mask; //clear any bits that may have been written to by the hardware store operation which are ignored by the hardware
         return( 1 );
     }
     return( 0 );
