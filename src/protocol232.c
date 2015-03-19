@@ -104,7 +104,10 @@ void ProcessReceived232Data() {
     lastDataReceiveTime = Get_uS_TimeStamp();
 
     // Append data from serial buffer to packet buffer
-    int len = DequeueBuf(&hostPort->rxQueue, curPacketBuf+curPacketRecvBytes, MAX_232PACKET-curPacketRecvBytes);
+	int len2do = MAX_232PACKET-curPacketRecvBytes;
+	if( len2do > 2 )
+		len2do = 2;
+    int len = DequeueBuf(&hostPort->rxQueue, curPacketBuf+curPacketRecvBytes, len2do);//MAX_232PACKET-curPacketRecvBytes);
     curPacketRecvBytes += len;
 
     while (curPacketRecvBytes > 0) {
@@ -140,7 +143,15 @@ void ProcessReceived232Data() {
             // In this case the current packet is larger than the data we have received so far -- just quit and wait for more data
             // Ultimately, we should probably have some sort of timeout mechanism, so that if more than 200ms elapse with no new data
             // we flush the current buffer.
-            return;
+			//try to dequeue the rest of the packet
+			len2do = CurPacketSize() - curPacketRecvBytes;
+			if( len2do > 0 ){
+				len = DequeueBuf(&hostPort->rxQueue, curPacketBuf+curPacketRecvBytes, len2do);//MAX_232PACKET-curPacketRecvBytes);
+				curPacketRecvBytes += len;
+			}
+			if (CurPacketSize() > curPacketRecvBytes) { //still don't have complete packet?
+				return;
+			}
         }
 
         // At this point we have a potential packet starting with an STX character
@@ -174,6 +185,7 @@ void ProcessReceived232Data() {
             return;
         }
         ShiftCurPacket(CurPacketSize());
+		return; //so we don't take forever in this loop, let's only do one packet per loop so we can service the transmit/receive
     }
 }
 
