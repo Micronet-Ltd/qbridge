@@ -14,6 +14,8 @@
 #include <string.h>
 #include <alloca.h>
 
+#define _DEBUG
+
 #define STX 2
 #define MAX_232PACKET 256
 static UINT8 curPacketBuf[MAX_232PACKET];
@@ -237,6 +239,8 @@ extern bool j1708RxQueueOverflowed;
 /* Process232Packet */
 /*******************/
 void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
+
+	SERIAL_PROTOCOL_DEBUG("Process232Packet: cmd=%s,id=%d,data0=0x%x,dataLen=%d", cmd, id, data[0], dataLen );
     if (cmd != ACK) {
         if (id == lastPacketID) {
             Send232Ack (ACK_DUPLICATE_PACKET, id, NULL, 0);
@@ -272,9 +276,9 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
                 switch (data[0]) {
                 case ACK_INVALID_PACKET:
                     awaiting232FailCount++;
-                    SERIAL_PROTOCOL_DEBUG("Received ACK_INVALID_PACKET %d response from host", awaiting232FailCount);
+                    SERIAL_PROTOCOL_DEBUG("Received ACK_INVALID_PACKET awaiting232FailCount=%d response from host", awaiting232FailCount);
                     if (awaiting232FailCount > MAX_232_RETRIES) {
-                        SERIAL_PROTOCOL_DEBUG("Max etries exceeded.  Giving up");
+                        SERIAL_PROTOCOL_DEBUG("Max retries exceeded.  Giving up");
                         awaiting232Ack = false;
                     } else {
 //DebugPrint ("Calling Retry (ack error)");
@@ -313,12 +317,15 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
 
                 if (data[0] == 0) {
                     mydl = snprintf(myver, 140,"QBridge firmware version %s. %s\n", VERSION, BuildDateStr);
+                    SERIAL_PROTOCOL_DEBUG("QBridge firmware version %s. %s\n", VERSION, BuildDateStr);
                     char *sptr = romfind(_RomStartAddr, "Bootloader", 8*1024);
                     if( sptr != 0 )
                         mydl += snprintf(&myver[mydl], 140-mydl,"QBridge %s", sptr);
                     sptr = romfind(_BootROMvars, "Built", 8*1024);
                     if( sptr != 0 )
                         mydl += snprintf(&myver[mydl], 140-mydl,"Bootloader %s", sptr);
+
+                    SERIAL_PROTOCOL_DEBUG("QBridge firmware version full %s\n", myver);
                 }else if( data[0] == 1 ){ //get j1708 bus debug information
                     memset(myver,0,sizeof(myver));
                     #define cpyit(offset,var,vtype) extern vtype var; \
@@ -344,41 +351,71 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
                 }else if( data[0] == 2 ){ //get CAN bus debug information
                     memset(myver,0,sizeof(myver));
                     cpyit( 0,TxCnt, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:TxCnt=%d", TxCnt);
                     cpyit( 4,RxCnt, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:RxCnt=%d", RxCnt);
                     cpyit( 8,StuffErrCnt, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:StuffErrCnt=%d", StuffErrCnt);
                     cpyit(12,FormErrCnt, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:FormErrCnt=%d", FormErrCnt);
                     cpyit(16,AckErrCnt, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:AckErrCnt=%d", AckErrCnt);
                     cpyit(20,Bit1ErrCnt, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:Bit1ErrCnt=%d", Bit1ErrCnt);
                     cpyit(24,Bit0ErrCnt, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:Bit0ErrCnt=%d", Bit0ErrCnt);
                     cpyit(28,CRCErrCnt, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:CRCErrCnt=%d", CRCErrCnt);
                     cpyit(32,LostMessageCnt, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:LostMessageCnt=%d", LostMessageCnt);
                     cpyit(36,can_int_queue_overflow, bool);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:can_int_queue_overflow=%d", can_int_queue_overflow);
                     cpyit(40,can_int_queue_overflow_count, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:can_int_queue_overflow_count=%d", can_int_queue_overflow_count);
                     cpyit(44,CANtransmitConfirm, bool);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:CANtransmitConfirm=%d", CANtransmitConfirm);
                     cpyit(48,CANBusOffNotify, bool);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:CANBusOffNotify=%d", CANBusOffNotify);
                     cpyit(52,CANAutoRestart, bool);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:CANAutoRestart=%d", CANAutoRestart);
                     cpyit(56,CANautoRecoverCount, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:CANautoRecoverCount=%d", CANautoRecoverCount);
                     cpyit(60,CANrxWaitForHostCount, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:CANrxWaitForHostCount=%d", CANrxWaitForHostCount);
                     cpyit(64,CANrxBadValueCount, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:CANrxBadValueCount=%d", CANrxBadValueCount);
                     cpyit(68,boff_int_cnt, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:boff_int_cnt=%d", boff_int_cnt);
                     cpyit(72,boff_notify_cnt, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:boff_notify_cnt=%d", boff_notify_cnt);
                     cpyit(76,boff_want_notify_cnt, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:boff_want_notify_cnt=%d", boff_want_notify_cnt);
                     cpyit(80,CANbusErrReportCount, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:CANbusErrReportCount=%d", CANbusErrReportCount);
                     cpyit(84,CANdroppedFromHostCount, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:CANdroppedFromHostCount=%d", CANdroppedFromHostCount);
                     cpyit(88,CANBusTransitionDetected, bool); //memcpy( myver+44, &CANBusTransitionDetected, sizeof(bool));
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:CANBusTransitionDetected=%d", CANBusTransitionDetected);
                     cpyit(92,CANBusCurState, bool);//memcpy( myver+48, &CANBusCurState, sizeof(bool));
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:CANBusCurState=%d", CANBusCurState);
                     CANBusTransitionDetected = false;
                     int tmp = GetFreeCANtxBuffers();
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:FreeCantxBuffer=%d", tmp);
                     memcpy( myver+96, &tmp, sizeof(int));
                     tmp = GetFreeCANrxBuffers();
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:FreeCanRxBuffer=%d", tmp);
                     memcpy( myver+100, &tmp, sizeof(int));
                     tmp = getCANBaud();
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:getCANBaud=%d", tmp);
                     memcpy( myver+104, &tmp, sizeof(int));
                     tmp = getCANTestMode();
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:getCANTestMode=%d", tmp);
                     memcpy( myver+108, &tmp, sizeof(int));
                     tmp = getCANhwErrCnt();
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:getCanhwErrCnt=%d", tmp);
                     memcpy( myver+112, &tmp, sizeof(int));
                     cpyit( 116, can_overflow_report, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:can_overflow_report=%d", tmp);
                     mydl = 120;
                 }else if( data[0] == 3 ){ //reset the rx queue overflow errors
                     can_overflow_report=0;
@@ -582,6 +619,7 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
                     break;
                 }
                 newbaud = BufToUINT32( &data[0] );
+                DebugPrint("Change232Baud: Request newbaud=%d", newbaud);
                 if( !IsBaudSupported(newbaud) ){
                     Send232Ack(ACK_INVALID_DATA, id, NULL, 0);
                     break;
@@ -592,6 +630,7 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
                 }
                 {
                     CmdChangeBaud( newbaud );
+                    DebugPrint("Change232Baud: CmdChangeBaud complete\n");
                 }
             }
             break;
@@ -659,7 +698,7 @@ void Send232Ack(ACKCodes code, UINT8 id, UINT8* data, UINT32 dataLen) {
     UINT8 * buf = (UINT8 *)alloca(dataLen+1);
     memcpy (buf+1, data, dataLen);
     buf[0] = code;
-//DebugPrint ("Sending Ack to packet %d from host",id);
+    DebugPrint ("Send232Ack Ack to packet %d from host",id);
     TransmitFinal232Packet(ACK, id, buf, dataLen+1);
 }
 
@@ -693,7 +732,7 @@ bool QueueTxFinal232Packet (UINT8 command, UINT8 packetID, UINT8 *data, UINT32 d
         addedLen++; //remove the compiler warning when _DEBUG not defined
     }else{
         dropped_due_to_slow_host++;
-        DebugPrint("Not enough room to queue another packet, dropping cmd %x id %d", command, packetID);
+        DebugPrint("Not enough room to queue another packet, dropping cmd 0x%x id %d, dropped_due_to_slow_host=%d", command, packetID, dropped_due_to_slow_host);
         return FALSE;
     }
 
@@ -796,6 +835,7 @@ static void parseCANcontrol( UINT8 id, UINT8 *data, int dataLen ){
         Send232Ack (ACK_INVALID_DATA, id, NULL, 0);
         return;
     }
+    DebugPrint("parseCANcontrol, data=0x%x,0x%x datalen=%d", data[0], data[1], dataLen);
     switch( data[0] ) {
         case 'd':   //set the debug mode
             if( dataLen != 2 ) {

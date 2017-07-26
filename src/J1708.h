@@ -14,7 +14,7 @@ extern bool j1708MIDFilterEnabled;
 extern UINT8 j1708EnabledMIDs[64];
 extern bool j1708TransmitConfirm;
 
-
+//#define _DEBUG
 typedef struct _J1708Message {
     UINT8 priority;
     UINT8 len;

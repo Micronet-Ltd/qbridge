@@ -43,6 +43,8 @@
 /***********/
 /* Defines */
 /***********/
+#define _DEBUG
+
 #define MODEM_RESET 1 //since 13 Aug, 2012, always enable it
 
 /************/
@@ -111,27 +113,27 @@ void irq_lockup(void)
 
     switch (mode) {
     case ARM_MODE_FIQ:
-        DebugPrint("FIQ");
+        DebugPrint("irq_lockup:FIQ");
         break;
     case ARM_MODE_IRQ:
-        DebugPrint("IRQ");
+        DebugPrint("irq_lockup:IRQ");
         break;
     case ARM_MODE_SVC:
-        DebugPrint("SWI");
+        DebugPrint("irq_lockup:SWI");
         break;
     case ARM_MODE_ABT:
-        DebugPrint("ABORT");
+        DebugPrint("irq_lockup:ABORT");
         break;
     case ARM_MODE_UND:
-        DebugPrint("UNDEFINED INSN");
+        DebugPrint("irq_lockup:UNDEFINED INSN");
         break;
     default:
-        DebugPrint("UNKNOWN");
+        DebugPrint("irq_lockup:UNKNOWN");
         //DebugPrint(errmsg);
         for(;;) ; /* Lock up here for default case */
     }
 
-    DebugPrint("Unhandled exception: cpsr=0x%x lr(user pc)=0x%x", cpsr, lr);
+    DebugPrint("irq_lockup:Unhandled exception: cpsr=0x%x lr(user pc)=0x%x", cpsr, lr);
 
     /* Now lock the machine */
     // We want to ensure that the debug serial port has been flushed

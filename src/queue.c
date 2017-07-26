@@ -22,6 +22,8 @@
 #include "queue.h"
 #include "common.h"
 
+#define _DEBUG
+
 /********************/
 /* InitializeQueue */
 /******************/
