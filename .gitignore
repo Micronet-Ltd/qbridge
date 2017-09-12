@@ -1,0 +1,6 @@
+dpn/
+lst/
+obj/
+qbridge.*
+tools/crc
+tools/sreccrc
