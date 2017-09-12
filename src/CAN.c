@@ -95,7 +95,7 @@ void InitializeCANBusController( void ) {
 #endif
     CAN->ControlReg = (CANControlRegisterBits)Init;
     setCANBaud( DEFAULT_CAN_BAUD_RATE );  //J1939 specifies 250k baud
-    setCANTestMode(Test_No_Test_Mode);
+    setCANTestMode(Test_Silent); //Bootup in silent mode
     //clear content of message RAM
     while( CAN->IF1_Regs.IFn_CRR & CAN_MIF_CRR_BUSY )
         ;
