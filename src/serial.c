@@ -27,8 +27,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#define _DEBUG
-#define DEBUG_SERIAL
+
 
 typedef struct _BaudTableEntry {
     UINT32 baud;
@@ -54,7 +53,7 @@ static const BaudTableEntry BaudRateTable[] = {
    { 600l,    bauddiv_600},
 };
 
-static void InitializePort (SerialPort *port, UINT32 baud, EIC_SOURCE src, void (*hdlr)(void), bool setrun, int portpriority );
+static void InitializePort (SerialPort *port, EIC_SOURCE src, void (*hdlr)(void), bool setrun, int portpriority );
 static void DisablePort(SerialPort *port);
 
 //SerialPort com1;
@@ -143,9 +142,9 @@ void InitializeAllSerialPorts() {
     // Note:  We may want to change one of these once we decide on a 485 port.  We should probably 1/2 duplex everything on that port
 //#ifdef _DEBUG
    // Configure the GPIO transmit pins as alternate function push pull
-    GPIO_Config(ioPort0, /*UART0_Tx_Pin |*/ UART1_Tx_Pin | UART2_Tx_Pin | UART3_Tx_Pin, GPIO_AF_PP);
+    GPIO_Config(ioPort0, /*UART0_Tx_Pin |*/ UART1_Tx_Pin | /*UART2_Tx_Pin |*/ UART3_Tx_Pin, GPIO_AF_PP);
     // Configure the GPIO receive pins as Input Tristate CMOS
-    GPIO_Config(ioPort0, /*UART0_Rx_Pin |*/ UART1_Rx_Pin | UART2_Rx_Pin | UART3_Rx_Pin, GPIO_IN_TRI_CMOS);
+    GPIO_Config(ioPort0, /*UART0_Rx_Pin |*/ UART1_Rx_Pin | /*UART2_Rx_Pin |*/ UART3_Rx_Pin, GPIO_IN_TRI_CMOS);
 //#else
 //   // Configure the GPIO transmit pins as alternate function push pull
 //   GPIO_Config(ioPort0, /*UART0_Tx_Pin |*/ UART1_Tx_Pin | UART3_Tx_Pin, GPIO_AF_PP);
@@ -154,25 +153,22 @@ void InitializeAllSerialPorts() {
 //#endif
 
     //InitializePort(&com1, EIC_UART0, Com1IRQ, TRUE, SERIAL_IRQ_PRIORITY);
-    DebugPrint("InitializePort: UART1,com2:J1708, default 9600");
-    InitializePort(&com2, 9600l, EIC_UART1, Com2IRQ, FALSE, J1708_SERIAL_IRQ_PRIORITY);   //Important not to start the J1708 port until a timer can be started at the same time
-    DebugPrint("InitializePort: UART2,com3:debugPort, default 115200");
-    InitializePort(&com3, 115200l, EIC_UART2, Com3IRQ, TRUE, SERIAL_IRQ_PRIORITY); //debug port
-    DebugPrint("InitializePort: UART3,com4:host Interface, default 115200");
-    InitializePort(&com4, 115200l, EIC_UART3, Com4IRQ, TRUE, SERIAL_IRQ_PRIORITY); //host interface
+    InitializePort(&com2, EIC_UART1, Com2IRQ, FALSE, J1708_SERIAL_IRQ_PRIORITY);   //Important not to start the J1708 port until a timer can be started at the same time
+    //InitializePort(&com3, EIC_UART2, Com3IRQ, TRUE, SERIAL_IRQ_PRIORITY); //debug port
+    InitializePort(&com4, EIC_UART3, Com4IRQ, TRUE, SERIAL_IRQ_PRIORITY); //host interface
 }
 
 /*******************/
 /* InitializePort */
 /*****************/
-static void InitializePort (SerialPort *port, UINT32 baud, EIC_SOURCE src, void (*hdlr)(void), bool setrun, int portpriority) {
+static void InitializePort (SerialPort *port, EIC_SOURCE src, void (*hdlr)(void), bool setrun, int portpriority) {
     IRQSTATE saveState = 0;
     DISABLE_IRQ(saveState);
     InitializeQueue(&(port->rxQueue));
     InitializeQueue(&(port->txQueue));
     RESTORE_IRQ(saveState);
 
-    SetPortSettings(port, baud, 8, 'N', 1, setrun);
+    SetPortSettings(port, 115200l, 8, 'N', 1, setrun);
     port->port->intEnable = (RxHalfFullIE | TimeoutNotEmptyIE | OverrunErrorIE | FrameErrorIE | ParityErrorIE);
     port->port->guardTime = 0;
     port->port->timeout = 8;
@@ -267,7 +263,6 @@ bool SetPortSettings (SerialPort *port, UINT32 baud, UINT8 dataBits, UINT8 parit
     port->port->txReset = 0;
     port->port->rxReset = 0;
     RESTORE_IRQ(saveState);
-    DebugPrint("setPortSetting baud=%d", baud);
     return true;
 }
 
@@ -276,9 +271,7 @@ bool SetPortSettings (SerialPort *port, UINT32 baud, UINT8 dataBits, UINT8 parit
 /****************/
 bool CmdChangeBaud( UINT32 baud)
 {
-	DebugPrint("CmdChangeBaud COM4/host interface baud=%d", baud);
     if( !SetPortSettings(&com4, baud, 8, 'N', 1, TRUE) ){
-    	DebugPrint("CmdChangeBaud COM4/host interface ret false, setting baud to 115200l");
         SetPortSettings(&com4, 115200l, 8, 'N', 1, TRUE);
         return false;
     }
@@ -531,6 +524,5 @@ void HandleComIRQ(SerialPort *port) {
 /* IsTxFifoEmpty */
 /****************/
 inline bool IsTxFifoEmpty(SerialPort *port) {
-    DebugPrint("."); /* TODO: Remove this!! Abid */
     return (port->port->status & TxEmpty) != 0;
 }

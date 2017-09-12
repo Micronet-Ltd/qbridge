@@ -8,8 +8,6 @@
 #include "stdio.h"
 #include "protocol232.h"
 
-//#define _J1708DEBUG
-
 J1708TxQueue j1708TxQueue;
 J1708RxQueue j1708RxQueue;
 
@@ -45,7 +43,6 @@ static void handle_delayed_j1708_com_irq( void );
 /* InitializeJ1708 */
 /******************/
 void InitializeJ1708() {
-	DebugPrint("InitializeJ1708: setting baudrate to 9600");
     SetPortSettings(j1708Port, 9600, 8, 'N', 1, FALSE); //important not to start baud rate generator until a timer can be started with it at the same time
     j1708Port->port->timeout = 10; // the idle time for a J1708 bus
 

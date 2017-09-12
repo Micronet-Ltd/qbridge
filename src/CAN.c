@@ -47,8 +47,6 @@ int CANbusErrReportCount = 0;
 bool CANBusTransitionDetected;
 bool CANBusCurState;
 
-#define _DEBUG
-
 //Private methods
 static void CAN_IRQ_Handler( void ) __attribute__ ((interrupt("IRQ")));
 

@@ -5,6 +5,7 @@
 #include "queue.h"
 #include "interrupt.h"
 
+
 //Public methods
 void InitializeCANBusController( void );
 bool setCANBaud( UINT32 desired_baud );
