@@ -8,7 +8,7 @@
 #############
 
 version	        := V1.013
-test_version    := 
+test_version    := a
 versdash        := -
 
 target	  	:= qbridge
