@@ -43,7 +43,7 @@
 /***********/
 // common debugging options
 #undef  _DEBUG
-//#define _DEBUG /* Global Enable debug */
+#define _DEBUG /* Global Enable debug */
 #ifdef _DEBUG
 #define DEBUG_SERIAL
 #endif
