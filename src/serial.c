@@ -140,21 +140,23 @@ void InitializeAllSerialPorts() {
     // OK, this bit of magic was not documented anywhere that Mike & I could find.  I finally dredged up some source
     // code off the internet which set this pins in this manner and it seemed to make everything work.
     // Note:  We may want to change one of these once we decide on a 485 port.  We should probably 1/2 duplex everything on that port
-//#ifdef _DEBUG
+#ifdef _DEBUG
    // Configure the GPIO transmit pins as alternate function push pull
-    GPIO_Config(ioPort0, /*UART0_Tx_Pin |*/ UART1_Tx_Pin | /*UART2_Tx_Pin |*/ UART3_Tx_Pin, GPIO_AF_PP);
+    GPIO_Config(ioPort0, /*UART0_Tx_Pin |*/ UART1_Tx_Pin | UART2_Tx_Pin | UART3_Tx_Pin, GPIO_AF_PP);
     // Configure the GPIO receive pins as Input Tristate CMOS
-    GPIO_Config(ioPort0, /*UART0_Rx_Pin |*/ UART1_Rx_Pin | /*UART2_Rx_Pin |*/ UART3_Rx_Pin, GPIO_IN_TRI_CMOS);
-//#else
-//   // Configure the GPIO transmit pins as alternate function push pull
-//   GPIO_Config(ioPort0, /*UART0_Tx_Pin |*/ UART1_Tx_Pin | UART3_Tx_Pin, GPIO_AF_PP);
-//    // Configure the GPIO receive pins as Input Tristate CMOS
-//   GPIO_Config(ioPort0, /*UART0_Rx_Pin |*/ UART1_Rx_Pin | UART3_Rx_Pin, GPIO_IN_TRI_CMOS);
-//#endif
+    GPIO_Config(ioPort0, /*UART0_Rx_Pin |*/ UART1_Rx_Pin | UART2_Rx_Pin | UART3_Rx_Pin, GPIO_IN_TRI_CMOS);
+#else
+    // Configure the GPIO transmit pins as alternate function push pull
+     GPIO_Config(ioPort0, /*UART0_Tx_Pin |*/ UART1_Tx_Pin | /*UART2_Tx_Pin |*/ UART3_Tx_Pin, GPIO_AF_PP);
+     // Configure the GPIO receive pins as Input Tristate CMOS
+     GPIO_Config(ioPort0, /*UART0_Rx_Pin |*/ UART1_Rx_Pin | /*UART2_Rx_Pin |*/ UART3_Rx_Pin, GPIO_IN_TRI_CMOS);
+#endif
 
     //InitializePort(&com1, EIC_UART0, Com1IRQ, TRUE, SERIAL_IRQ_PRIORITY);
     InitializePort(&com2, EIC_UART1, Com2IRQ, FALSE, J1708_SERIAL_IRQ_PRIORITY);   //Important not to start the J1708 port until a timer can be started at the same time
-    //InitializePort(&com3, EIC_UART2, Com3IRQ, TRUE, SERIAL_IRQ_PRIORITY); //debug port
+#ifdef _DEBUG
+    InitializePort(&com3, EIC_UART2, Com3IRQ, TRUE, SERIAL_IRQ_PRIORITY); //debug port
+#endif
     InitializePort(&com4, EIC_UART3, Com4IRQ, TRUE, SERIAL_IRQ_PRIORITY); //host interface
 }
 
