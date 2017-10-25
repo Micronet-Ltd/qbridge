@@ -512,6 +512,12 @@ void HandleComIRQ(SerialPort *port) {
         handled = true;
     }
 
+    // Interrupt on idle timeout
+	if ((port->port->status & TimeoutIdle) != 0) {
+		port->port->intEnable &= ~(TimeoutIdleIE);
+		handled = true;
+	}
+
     if (!handled) {
         if (port != debugPort) {
             DebugPrint ("Unknown interrupt on com%d.  IntEnable=%04X  Status=%04X", GetPortNumber(port), port->port->intEnable, port->port->status);

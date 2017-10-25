@@ -87,12 +87,15 @@ void InitializeCANBusController( void ) {
 
     GPIO_Config((IOPortRegisterMap *)IOPORT1_REG_BASE, CAN_Tx_Pin, GPIO_AF_PP );
     GPIO_Config((IOPortRegisterMap *)IOPORT1_REG_BASE, CAN_Rx_Pin, GPIO_IN_TRI_CMOS );
+
 #if 1 //debug //give ourselves a trigger that can be used later
     GPIO_Config((IOPortRegisterMap *)IOPORT1_REG_BASE, BIT(7), GPIO_OUT_PP );
     GPIO_Config((IOPortRegisterMap *)IOPORT1_REG_BASE, BIT(6), GPIO_OUT_PP );
     GPIO_CLR(1,7);
     GPIO_CLR(1,6);
 #endif
+    EICDisableIRQ(EIC_CAN);
+
     CAN->ControlReg = (CANControlRegisterBits)Init;
     setCANBaud( DEFAULT_CAN_BAUD_RATE );  //J1939 specifies 250k baud
     setCANTestMode(Test_Silent); //Bootup in silent mode
@@ -254,6 +257,7 @@ int read_CAN_filter( int filter_position, UINT32 *mask, UINT32 *value ){
 		*value = *value & *mask; //clear any bits that may have been written to by the hardware store operation which are ignored by the hardware
         return( 1 );
     }
+    DebugPrint ("%s error return 0", __func__);
     return( 0 );
 }
 
@@ -296,6 +300,7 @@ int setCANfilter( UINT32 mask, UINT32 value ){
             return i+1;
         }
     }
+    DebugPrint ("%s: error return 0", __func__);
     return(0);  //indicate failure
 }
 

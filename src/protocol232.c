@@ -261,6 +261,7 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
             packetID = 0;
             J1708ResetDefaultPrefs();
             CANResetDefaultPrefs();
+            InitializeCAN();
             if (dataLen == 0) {
                 Send232Ack(ACK_OK, id, NULL, 0);
             } else {
@@ -1026,6 +1027,7 @@ static void get_CAN_filters( UINT8 id, char *data, int dataLen ){
             }
         }
     }
+    DebugPrint("filter %d,mask=%d, id=%d", i, mask, identifier);
     Send232Ack( ACK_OK, id, myretd, list-myretd );
 }
 
