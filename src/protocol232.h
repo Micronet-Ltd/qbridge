@@ -39,6 +39,7 @@ typedef enum _Commands {
     AdvRecvMode                 = 'P', //0x50
     MdmReset                    = 'Q', //0x51
     Change232BaudRate           = 'R', //0x52
+	TestCommand					= 'T', //0x54
 	InfoReq                     = '*', //0x2A
     RawJ1708                    = '+', //0x2B
     ReqRawPackets               = ',', //0x2C

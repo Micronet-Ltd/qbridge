@@ -370,6 +370,24 @@ void DisableCANReceiveALL( void ) {
 }
 
 /********************************************************************/
+/* readCANFiltersEnabled: Read whether filters are enabled or not   */
+/* result: false: filters NOT enabled, true: filters enabled        */
+/********************************************************************/
+bool readCANFiltersEnabled(){
+	UINT32 enabled_filters = 0;
+	bool ret = 0;
+	enabled_filters = (CAN->MV2R << 16 ) | CAN->MV1R;
+	if (enabled_filters & (1<<(ALLMSG -1))){
+		ret = false;
+	}
+	else{
+		ret = true;
+	}
+	DebugPrint ("%s: enabled_filters=0x%x, ret=%d", __func__, enabled_filters, ret);
+	return ret;
+}
+
+/********************************************************************/
 /* Stop any transfer in progress from our CAN BUS                   */
 /********************************************************************/
 void DisableCANTxIP( void ) {

@@ -28,6 +28,7 @@ int findCANfilter( UINT32 mask, UINT32 value );
 int read_CAN_filter( int filter_position, UINT32 *mask, UINT32 *value );
 void EnableCANReceiveALL( void );
 void DisableCANReceiveALL( void );
+bool readCANFiltersEnabled(void);
 void DisableCANTxIP( void );
 void ClearCANTxQueue( void );
 void ClearCANRxQueue( void );

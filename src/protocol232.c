@@ -7,6 +7,9 @@
 //#include "J1939.h"
 #include "stdio.h"
 
+//#define _DEBUG
+//#define _SERIAL_DEBUG
+
 #define CRC_CITT_ONLY
 #define INC_CRC_FUNCS
 #include "crc.h"
@@ -53,6 +56,7 @@ static int dropped_due_to_slow_host = 0;
 static void parseCANcontrol( UINT8 id, UINT8 *data, int dataLen );
 static void set_CAN_filters( UINT8 id, char *data, int dataLen );
 static void get_CAN_filters( UINT8 id, char *data, int dataLen );
+static void get_CAN_filters_enabled(UINT8 id);
 #ifdef _DEBUG
 static void dopjdebug( UINT8 id, UINT8 *data, int dataLen);
 #endif
@@ -345,41 +349,71 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
                 }else if( data[0] == 2 ){ //get CAN bus debug information
                     memset(myver,0,sizeof(myver));
                     cpyit( 0,TxCnt, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:TxCnt=%d", TxCnt);
                     cpyit( 4,RxCnt, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:RxCnt=%d", RxCnt);
                     cpyit( 8,StuffErrCnt, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:StuffErrCnt=%d", StuffErrCnt);
                     cpyit(12,FormErrCnt, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:FormErrCnt=%d", FormErrCnt);
                     cpyit(16,AckErrCnt, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:AckErrCnt=%d", AckErrCnt);
                     cpyit(20,Bit1ErrCnt, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:Bit1ErrCnt=%d", Bit1ErrCnt);
                     cpyit(24,Bit0ErrCnt, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:Bit0ErrCnt=%d", Bit0ErrCnt);
                     cpyit(28,CRCErrCnt, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:CRCErrCnt=%d", CRCErrCnt);
                     cpyit(32,LostMessageCnt, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:LostMessageCnt=%d", LostMessageCnt);
                     cpyit(36,can_int_queue_overflow, bool);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:can_int_queue_overflow=%d", can_int_queue_overflow);
                     cpyit(40,can_int_queue_overflow_count, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:can_int_queue_overflow_count=%d", can_int_queue_overflow_count);
                     cpyit(44,CANtransmitConfirm, bool);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:CANtransmitConfirm=%d", CANtransmitConfirm);
                     cpyit(48,CANBusOffNotify, bool);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:CANBusOffNotify=%d", CANBusOffNotify);
                     cpyit(52,CANAutoRestart, bool);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:CANAutoRestart=%d", CANAutoRestart);
                     cpyit(56,CANautoRecoverCount, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:CANautoRecoverCount=%d", CANautoRecoverCount);
                     cpyit(60,CANrxWaitForHostCount, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:CANrxWaitForHostCount=%d", CANrxWaitForHostCount);
                     cpyit(64,CANrxBadValueCount, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:CANrxBadValueCount=%d", CANrxBadValueCount);
                     cpyit(68,boff_int_cnt, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:boff_int_cnt=%d", boff_int_cnt);
                     cpyit(72,boff_notify_cnt, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:boff_notify_cnt=%d", boff_notify_cnt);
                     cpyit(76,boff_want_notify_cnt, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:boff_want_notify_cnt=%d", boff_want_notify_cnt);
                     cpyit(80,CANbusErrReportCount, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:CANbusErrReportCount=%d", CANbusErrReportCount);
                     cpyit(84,CANdroppedFromHostCount, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:CANdroppedFromHostCount=%d", CANdroppedFromHostCount);
                     cpyit(88,CANBusTransitionDetected, bool); //memcpy( myver+44, &CANBusTransitionDetected, sizeof(bool));
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:CANBusTransitionDetected=%d", CANBusTransitionDetected);
                     cpyit(92,CANBusCurState, bool);//memcpy( myver+48, &CANBusCurState, sizeof(bool));
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:CANBusCurState=%d", CANBusCurState);
                     CANBusTransitionDetected = false;
                     int tmp = GetFreeCANtxBuffers();
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:FreeCantxBuffer=%d", tmp);
                     memcpy( myver+96, &tmp, sizeof(int));
                     tmp = GetFreeCANrxBuffers();
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:FreeCanRxBuffer=%d", tmp);
                     memcpy( myver+100, &tmp, sizeof(int));
                     tmp = getCANBaud();
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:getCANBaud=%d", tmp);
                     memcpy( myver+104, &tmp, sizeof(int));
                     tmp = getCANTestMode();
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:getCANTestMode=%d", tmp);
                     memcpy( myver+108, &tmp, sizeof(int));
                     tmp = getCANhwErrCnt();
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:getCanhwErrCnt=%d", tmp);
                     memcpy( myver+112, &tmp, sizeof(int));
                     cpyit( 116, can_overflow_report, int);
+                    SERIAL_PROTOCOL_DEBUG("CanBusInfo:can_overflow_report=%d", tmp);
                     mydl = 120;
                 }else if( data[0] == 3 ){ //reset the rx queue overflow errors
                     can_overflow_report=0;
@@ -642,6 +676,10 @@ void Process232Packet(UINT8 cmd, UINT8 id, UINT8* data, int dataLen) {
 			advRecvEnabled = (data[0]!=0);
 			Send232Ack (ACK_OK, id, (UINT8 *)&advRecvEnabled, sizeof(advRecvEnabled));
 			break;
+
+		case TestCommand:
+			Send232Ack(ACK_OK, id, (UINT8 *)'T', sizeof(char));
+			break;
         case J1708TransmitConfirm:
         case ReceiveJ1708Packet:
         case ReceiveCANPacket:
@@ -892,6 +930,9 @@ static void parseCANcontrol( UINT8 id, UINT8 *data, int dataLen ){
                 DisableCANReceiveALL();
             }
             break;
+        case 'j': //get filters enabled or not
+        	get_CAN_filters_enabled(id);
+        	break;
         case 'i':   //get CAN info (status, counters, etc)
             break;
         default:
@@ -899,6 +940,11 @@ static void parseCANcontrol( UINT8 id, UINT8 *data, int dataLen ){
             return;
     }
     Send232Ack (ACK_OK, id, NULL, 0);
+}
+
+static void get_CAN_filters_enabled(UINT8 id){
+	char resp = (char)readCANFiltersEnabled();
+	Send232Ack( ACK_OK, id, &resp, sizeof(char) );
 }
 
 //************************************************************
