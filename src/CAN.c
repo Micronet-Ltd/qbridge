@@ -126,6 +126,7 @@ void InitializeCANBusController( void ) {
     RegisterEICHdlr( EIC_CAN, CAN_IRQ_Handler, CAN_IRQ_PRIORITY );
     EICEnableIRQ(EIC_CAN);
     CAN->ControlReg = EIE+SIE+IE;
+    setCANTestMode(Test_Silent); //Bootup in silent mode, NEEDS to done after the control Register is set
 }
 
 void DisableAllCANFilters(void) {

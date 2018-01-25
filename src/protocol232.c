@@ -932,7 +932,7 @@ static void parseCANcontrol( UINT8 id, UINT8 *data, int dataLen ){
             break;
         case 'j': //get filters enabled or not
         	get_CAN_filters_enabled(id);
-        	break;
+        	return;
         case 'i':   //get CAN info (status, counters, etc)
             break;
         default:
