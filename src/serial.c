@@ -22,11 +22,11 @@
 #include "serial.h"
 #include "eic.h"
 #include "J1708.h"
-
+//#include "common.h"
 #include <stdarg.h>
 #include <string.h>
 #include <stdio.h>
-
+#define _DEBUG
 
 
 typedef struct _BaudTableEntry {
