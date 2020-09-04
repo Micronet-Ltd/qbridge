@@ -35,6 +35,7 @@
 //#include "J1939.h"
 #include "CAN.h"
 #include "interrupt.h"
+#define _DEBUG
 
 /***********/
 /* Pragmas */

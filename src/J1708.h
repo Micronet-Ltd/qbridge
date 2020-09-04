@@ -1,6 +1,6 @@
 #ifndef J1708_H
 #define J1708_H
-
+#define _DEBUG
 #define J1708_IDLE_TIME 10
 #define J1708_TX_QUEUE_SIZE 16
 #define J1708_RX_QUEUE_SIZE 128
